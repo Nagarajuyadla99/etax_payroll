@@ -1,0 +1,89 @@
+.loan-wrapper {
+  margin-left: 10px;
+}
+
+/* TITLE */
+.loan-title {
+  font-style: italic;
+}
+
+/* SUMMARY CARDS */
+
+.loan-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.loan-card {
+  padding: 10px;
+  border-radius: 10px;
+  font-style: italic;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* colors like your dashboard */
+.loan-card.a {
+  background: hsl(63, 62%, 93%);
+}
+
+.loan-card.b {
+  background: #f7e4e4;
+}
+
+.loan-card.c {
+  background: rgb(241, 253, 221);
+}
+
+.loan-card:hover {
+  transform: scale(1.08);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.2);
+}
+
+.big {
+  font-size: 24px;
+  font-weight: bold;
+  color:blue;
+}
+
+/* TABLE */
+
+.loan-table-card {
+  margin-top: 12px;
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.loan-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.loan-table th {
+  text-align: left;
+  background: #f1f5f9;
+  padding: 6px;
+}
+
+.loan-table td {
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+
+/* STATUS */
+
+.status {
+  background: #d6ffe4;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+  .loan-summary {
+    grid-template-columns: 1fr;
+  }
+}

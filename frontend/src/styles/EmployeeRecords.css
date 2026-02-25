@@ -1,0 +1,84 @@
+/* ===== Employee Receipt Styles ===== */
+.receipt-container {
+  background: #ffffff;
+  max-width: 750px;
+  margin: 20px auto;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  font-family: Arial, sans-serif;
+}
+
+.receipt-title {
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.receipt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  font-size: 14px;
+}
+
+.receipt-label {
+  font-weight: 600;
+  color: #333;
+}
+
+.salary-section {
+  margin-top: 16px;
+  border-top: 1px solid #ddd;
+  padding-top: 10px;
+}
+
+.salary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  font-size: 14px;
+}
+
+.salary-total {
+  font-weight: bold;
+  margin-top: 6px;
+}
+
+.print-btn {
+  margin-top: 15px;
+  padding: 8px 14px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.print-btn:hover {
+  background: #1d4ed8;
+}
+
+/* ===== PRINT MODE ===== */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .receipt-container, .receipt-container * {
+    visibility: visible;
+  }
+
+  .receipt-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    box-shadow: none;
+  }
+
+  .print-btn {
+    display: none;
+  }
+}

@@ -1,0 +1,82 @@
+.payrun-title {
+  margin-left: 10px;
+  font-style: italic;
+  color: #1e3a8a;
+  text-shadow: 1px 1px 2px #ccc;
+}
+
+/* GRID */
+.payrun-container {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 15px;
+  margin: 10px;
+}
+
+/* COMMON CARD STYLE */
+.pay-card {
+  padding: 15px;
+  border-radius: 12px;
+  color: #1f2937;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* COLOR THEMES */
+.pay-card-a {
+  background: linear-gradient(135deg, #e0f2fe, #bae6fd);
+  border-left: 5px solid #0284c7;
+}
+
+.pay-card-b {
+  background: linear-gradient(135deg, #fef3c7, #fde68a);
+  border-left: 5px solid #d97706;
+}
+
+.pay-card-c {
+  background: linear-gradient(135deg, #dcfce7, #bbf7d0);
+  border-left: 5px solid #16a34a;
+}
+
+/* HEADER */
+.card-header {
+  font-weight: bold;
+  font-size: 18px;
+  color: #0f172a;
+}
+
+/* HOVER EFFECT */
+.pay-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+}
+
+/* BUTTON */
+.pay-btn {
+  margin-top: 10px;
+  background: linear-gradient(to right, #2563eb, #3b82f6);
+  color: white;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: 0.3s;
+}
+
+.pay-btn:hover {
+  background: linear-gradient(to right, #1d4ed8, #2563eb);
+  transform: scale(1.05);
+}
+
+/* MOBILE */
+@media (max-width: 900px) {
+  .payrun-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .payrun-container {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,72 @@
+/* ===== GLOBAL ===== */
+
+
+
+
+
+
+body {
+  background: #f1f5f9;
+  font-family: 'Inter', sans-serif;
+  margin: 0;
+}
+
+/* ===== LAYOUT ===== */
+.app {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ===== SIDEBAR ===== */
+
+/* MOBILE SIDEBAR */
+
+
+/* ===== MAIN ===== */
+.main {
+  flex: 1;
+  min-width: 0;     
+}
+
+
+/* ===== NAVBAR ===== */
+
+
+.noticeboard h3 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.noticeboard a {
+  display: block;
+  padding: 10px;
+  color: #cbd5e1;
+  text-decoration: none;
+  margin-bottom: 6px;
+  border-radius: 8px;
+}
+
+.noticeboard a:hover {
+  background: #1e293b;
+  color: white;
+}
+
+/* MOBILE RIGHT SLIDE */
+@media (max-width: 768px) {
+  .noticeboard {
+    position: fixed;
+    right: -260px;
+    top: 0;
+    height: 100%;
+    z-index: 1000;
+  }
+
+  .noticeboard.open {
+    right: 0;
+  }
+}
+
+
+
+
+

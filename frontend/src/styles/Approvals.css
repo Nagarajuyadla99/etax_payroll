@@ -1,0 +1,118 @@
+.approval-wrapper {
+  margin-left: 10px;
+}
+
+/* ===== TITLE ===== */
+.approval-title {
+  font-style: italic;
+}
+
+/* ===== TOP CARDS ===== */
+.approval-cards {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.ap-card {
+  padding: 10px;
+  border-radius: 10px;
+  font-style: italic;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+/* different colors */
+.ap-pending {
+  background: #fff7d6;
+}
+
+.ap-approved {
+  background: #d6ffe4;
+}
+
+.ap-rejected {
+  background: #ffd6d6;
+}
+
+.ap-card:hover {
+  transform: scale(1.06);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.15);
+}
+
+.big {
+  font-size: 26px;
+  font-weight: bold;
+}
+
+/* ===== TABLE CARD ===== */
+
+.approval-table-card {
+  margin-top: 15px;
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+/* ===== TABLE ===== */
+
+.ap-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.ap-table th {
+  text-align: left;
+  background: #f1f5f9;
+  padding: 6px;
+}
+
+.ap-table td {
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+
+/* ===== BADGES ===== */
+
+.badge {
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.pending {
+  background: #ffeaa7;
+}
+
+/* ===== BUTTONS ===== */
+
+.btn-approve {
+  background: #16a34a;
+  color: white;
+  border: none;
+  margin-right: 4px;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.btn-reject {
+  background: #dc2626;
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.btn-approve:hover {
+  background: #15803d;
+}
+
+.btn-reject:hover {
+  background: #b91c1c;
+}
+
+/* ===== MOBILE ===== */
+@media (max-width: 800px) {
+  .approval-cards {
+    grid-template-columns: 1fr;
+  }
+}

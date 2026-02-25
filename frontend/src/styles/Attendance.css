@@ -1,0 +1,133 @@
+.att-wrapper {
+  margin-left: 10px;
+}
+
+/* TITLE */
+.att-title {
+  font-style: italic;
+}
+
+/* FORM CARD */
+.att-card {
+  background: white;
+  padding: 12px;
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+
+.att-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.att-input {
+  width: 100%;
+  padding: 6px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+}
+
+.att-btn {
+  margin-top: 8px;
+  padding: 6px 12px;
+  border: none;
+  background: #2563eb;
+  color: white;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.att-btn:hover {
+  background: #1d4ed8;
+}
+
+/* SUMMARY */
+
+.att-summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.att-box {
+  padding: 10px;
+  border-radius: 10px;
+  font-style: italic;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.att-box.a {
+  background: #fff7d6;
+}
+
+.att-box.b {
+  background: #d6f8ff;
+}
+
+.att-box.c {
+  background: #e8ffd6;
+}
+
+.att-box:hover {
+  transform: scale(1.05);
+}
+
+.big {
+  font-size: 22px;
+  font-weight: bold;
+}
+
+/* TABLE */
+
+.att-table-card {
+  background: white;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.att-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.att-table th {
+  text-align: left;
+  background: #f1f5f9;
+  padding: 6px;
+}
+
+.att-table td {
+  padding: 6px;
+  border-bottom: 1px solid #eee;
+}
+
+/* STATUS */
+
+.st {
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.st.good {
+  background: #d6ffe4;
+}
+
+.st.avg {
+  background: #fff3d6;
+}
+
+.st.bad {
+  background: #ffd6d6;
+}
+
+/* MOBILE */
+
+@media (max-width: 800px) {
+  .att-grid,
+  .att-summary {
+    grid-template-columns: 1fr;
+  }
+}

@@ -1,0 +1,132 @@
+.navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  padding: 10px 20px;
+  background: #ffffff;
+
+  border-bottom: 1px solid #ddd;
+}
+.nav2{
+  margin-left: 40%;
+}
+.nav-icons{
+  margin-left: 50%;
+  display: flex;
+  gap: 15px;
+}
+
+/* SEARCH */
+.nav-search {
+  padding: 8px 12px;
+  width: 260px;
+
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+/* RIGHT */
+.nav-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* PROFILE */
+.profile-box {
+  position: relative;
+}
+
+.profile-trigger {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+
+  cursor: pointer;
+}
+
+.avatar {
+  width: 34px;
+  height: 34px;
+
+  background: #4f46e5;
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 50%;
+}
+
+.arrow {
+  transition: 0.2s;
+}
+
+.rotate {
+  transform: rotate(180deg);
+}
+
+/* DROPDOWN - OPEN LEFT */
+.profile-menu {
+  position: absolute;
+
+  right: 110%;
+  top: 0;
+
+  width: 190px;
+
+  background: white;
+  border-radius: 10px;
+
+  box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+
+  display: flex;
+  flex-direction: column;
+
+  animation: slideLeft 0.2s ease;
+  z-index: 999;
+}
+
+.profile-menu button {
+  padding: 10px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.profile-menu button:hover {
+  background: #f3f4f6;
+}
+
+.logout {
+  color: red;
+}
+
+@keyframes slideLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-80%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-100%);
+  }
+}
+
+/* MOBILE */
+.mobile-btn {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .mobile-btn {
+    display: block;
+  }
+
+  .nav-search {
+    width: 150px;
+  }
+}

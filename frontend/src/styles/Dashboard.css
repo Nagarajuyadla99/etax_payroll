@@ -1,0 +1,133 @@
+.dashboard-container {
+  padding: 24px;
+  background: linear-gradient(120deg, #f0f4ff, #ffffff);
+  min-height: 100vh;
+  font-family: 'Segoe UI', system-ui;
+}
+
+.dash-title {
+  margin-bottom: 18px;
+  font-size: 22px;
+  letter-spacing: 0.3px;
+}
+
+/* ===== STATS CARDS ===== */
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+}
+
+.stat-card {
+  background: #ffffff;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #eaeaea;
+  transition: all .3s ease;
+  position: relative;
+}
+
+.stat-card:hover {
+  box-shadow: 0 12px 24px rgba(37, 99, 235, 0.12);
+  transform: translateY(-3px);
+}
+
+.stat-header h3 {
+  font-size: 14px;
+  color: #555;
+}
+
+.stat-icon {
+  background: #eef2ff;
+  padding: 6px;
+  border-radius: 8px;
+  color: #2563eb;
+}
+
+.stat-value {
+  font-size: 22px;
+  font-weight: 700;
+  margin-top: 6px;
+}
+
+/* ===== BOTTOM BOX ===== */
+
+.bottom-grid {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.box {
+  background: #fff;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid #eaeaea;
+  transition: all .3s;
+}
+
+.box:hover {
+  box-shadow: 0 12px 24px rgba(0,0,0,0.08);
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  margin: 8px 0;
+}
+
+.mute {
+  opacity: .6;
+}
+
+/* ===== BUTTONS ===== */
+
+button {
+  padding: 9px;
+  border: 1px solid #dcdcdc;
+  background: #fff;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+button:hover {
+  background: #2563eb;
+  color: white;
+}
+
+.primary-btn {
+  width: 100%;
+  margin-top: 10px;
+  background: linear-gradient(90deg,#2563eb,#4f46e5);
+  color: white;
+  border: none;
+}
+
+/* ===== BADGES ===== */
+
+.status-complete {
+  background: #dcfce7;
+  color: #166534;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+.status-progress {
+  background: #fff7ed;
+  color: #9a3412;
+  padding: 3px 8px;
+  border-radius: 10px;
+  font-size: 12px;
+}
+
+/* RESPONSIVE */
+@media(max-width:900px){
+  .bottom-grid{
+    grid-template-columns:1fr;
+  }
+}

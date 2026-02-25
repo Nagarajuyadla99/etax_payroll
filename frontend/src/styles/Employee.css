@@ -1,0 +1,97 @@
+.emp-wrapper {
+  padding: 16px;
+  background: linear-gradient(120deg,#f0f4ff,#ffffff);
+}
+
+/* HEADER */
+.emp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.search-box {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: white;
+  padding: 6px 10px;
+  border-radius: 10px;
+  border: 1px solid #e5e5e5;
+}
+
+.search-box input {
+  border: none;
+  outline: none;
+}
+
+/* FORM */
+.emp-form {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.emp-form input {
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+}
+
+.add-btn {
+  background: linear-gradient(90deg,#07f513,#7cf757);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* TABLE */
+.table-card {
+  background: white;
+  border-radius: 14px;
+  padding: 6px;
+  border: 1px solid #eaeaea;
+}
+
+.emp-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.emp-table th {
+  background: #074be7;
+  color: white;
+  padding: 9px;
+  text-align: left;
+}
+
+.emp-table td {
+  padding: 9px;
+  border-bottom: 1px solid #eee;
+}
+
+.role {
+  background: #eef2ff;
+  color: #2563eb;
+  padding: 3px 8px;
+  border-radius: 10px;
+}
+
+/* MOBILE */
+@media(max-width:900px){
+  .emp-form{
+    grid-template-columns: repeat(2,1fr);
+  }
+}
+
+@media(max-width:600px){
+  .emp-form{
+    grid-template-columns:1fr;
+  }
+}

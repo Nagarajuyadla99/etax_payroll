@@ -1,0 +1,59 @@
+.form16-container {
+  padding: 20px;
+}
+
+.form16-title {
+  margin-bottom: 15px;
+}
+
+.form16-card {
+  background: white;
+  padding: 16px;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+
+.row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.col label {
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.col input {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+.form16-footer {
+  text-align: center;
+  margin-top: 10px;
+}
+
+.submit-btn {
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 8px;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-img {
+  width: 20px;
+  height: 20px;
+}

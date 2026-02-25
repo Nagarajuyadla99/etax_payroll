@@ -1,0 +1,83 @@
+.payroll-wrapper {
+  padding: 20px;
+  max-width: 1200px;
+  margin-left: 8%;
+  height:80%;
+}
+
+/* Card */
+.pcard {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+/* Grid 2 columns */
+.pay-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  height:fit-content;
+  gap: 15px;
+  margin-top: 10px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.form-group label {
+  font-size: 14px;
+  margin-bottom: 4px;
+  color: #444;
+}
+
+.zinput {
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+   grid-template-columns: 1fr 1fr
+}
+
+.netbox {
+  grid-column: span 2;
+  background: #f1f7ff;
+  padding: 10px;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 16px;
+}
+
+.zbtn {
+  grid-column: span 2;
+  background: #2563eb;
+  color: white;
+  border: none;
+  padding: 10px;
+  border-radius: 6px;
+}
+
+/* TABLE */
+
+.pay-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.pay-table th,
+.pay-table td {
+  padding: 8px;
+  border: 1px solid #ddd;
+  text-align: center;
+}
+
+.pay-table th {
+  background: #f3f4f6;
+}
+
+.net {
+  font-weight:lighter;
+}
