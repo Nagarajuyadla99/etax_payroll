@@ -13,7 +13,7 @@ from schemas.user_schemas import (
 )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
+print(pwd_context.hash("123"))
 # ============================================================
 # USER CRUD
 # ============================================================

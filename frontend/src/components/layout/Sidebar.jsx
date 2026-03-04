@@ -10,7 +10,6 @@ import {
   Calendar,
   PlayCircle,
   HelpCircle,
-  Bell,
   User,
   ChevronLeft,
   ChevronRight,
@@ -178,7 +177,7 @@ export default function Sidebar({ open }) {
             <div className="mt-1 flex flex-col gap-1">
               <SubItem to="/Attendance" icon={<Calendar size={16} />} label="Attendance" />
               <SubItem to="/AttendanceSummary" icon={<FileText size={16} />} label="Attendance Summary" />
-              <SubItem to="/AttendanceBulkUpload" icon={<Upload size={16} />} label="Bulk Upload" />
+              <SubItem to="/attendanceTable" icon={<Upload size={16} />} label="Attendance Table" />
               <SubItem to="/attendance/leave-request" icon={<UserCheck size={16} />} label="Leave Requests" />
               <SubItem to="/LeaveApproval" icon={<CheckCircle size={16} />} label="Leave Approval" />
             </div>
@@ -199,7 +198,7 @@ export default function Sidebar({ open }) {
         {/* Employees */}
         <SideItem
           to="/employeeList"
-          label="Employees"
+          label="Employees List"
           icon={<User size={18} />}
           color="blue"
           collapsed={collapsed}
@@ -222,6 +221,17 @@ export default function Sidebar({ open }) {
         label="Employee Form"
         icon={<User size={18} />}
         color="emerald"
+        collapsed={collapsed}
+        baseLink={baseLink}
+        activeLink={activeLink}
+        inactiveLink={inactiveLink}
+      />
+
+      <SideItem
+        to="/employeebulkupload"
+        label="Employee Bulk Upload"
+        icon={<Upload size={18} />}
+        color="rose"
         collapsed={collapsed}
         baseLink={baseLink}
         activeLink={activeLink}

@@ -17,11 +17,12 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # Password hashing utilities
 # ---------------------------
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    truncated = password[:72]
+    return pwd_context.hash(truncated)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
+    truncated = plain_password[:72]  # truncate before verification
+    return pwd_context.verify(truncated, hashed_password)
 # ---------------------------
 # JWT utilities
 # ---------------------------

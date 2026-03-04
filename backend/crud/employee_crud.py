@@ -94,7 +94,7 @@ async def get_employee(
         )
     )
     return result.scalar_one_or_none()
-
+    print("List Org ID:", current_user.organisation_id)
 
 async def list_employees(
     db: AsyncSession,
@@ -123,7 +123,7 @@ async def list_employees(
 
     result = await db.execute(query)
     return result.scalars().all()
-
+    print("List Org ID:", current_user.organisation_id)
 
 async def update_employee(
     db: AsyncSession,
@@ -212,3 +212,77 @@ async def assign_salary_structure(
     except IntegrityError as e:
         await db.rollback()
         raise ValueError("Failed to assign salary structure") from e
+
+
+
+        # ============================================================
+# EMPLOYEE BULK UPLOAD
+# ============================================================
+
+import csv
+from io import StringIO
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+from uuid import UUID
+from models.employee_model import Employee
+from schemas.employee_schemas import EmployeeCreate
+from crud.employee_crud import _ensure_organisation_exists
+
+async def bulk_create_employees(
+    db: AsyncSession,
+    file_content: str,
+    organisation_id: UUID,
+):
+    """
+    Bulk upload employees via CSV.
+    Ensures:
+      - organisation_id injected
+      - employees are active by default
+      - returns inserted/failed summary
+    """
+    # ✅ Ensure organisation exists
+    await _ensure_organisation_exists(db, organisation_id)
+
+    reader = csv.DictReader(StringIO(file_content))
+
+    inserted = []
+    errors = []
+    row_number = 1  # Header row counted separately
+
+    for row in reader:
+        row_number += 1
+        try:
+            # Inject organisation_id and force active
+            row["organisation_id"] = organisation_id
+            row["is_active"] = True  # Force employee to be active
+
+            # Validate row via Pydantic
+            emp_schema = EmployeeCreate(**row)
+            employee = Employee(**emp_schema.model_dump())
+
+            db.add(employee)
+            inserted.append(employee)
+
+        except Exception as e:
+            errors.append({
+                "row": row_number,
+                "error": str(e),
+                "data": row
+            })
+
+    try:
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        raise ValueError("Bulk insert failed due to duplicate data") from e
+
+    # ✅ Debug log
+    print(f"Bulk Upload Completed for Organisation: {organisation_id}")
+    print(f"Total Rows: {row_number - 1}, Inserted: {len(inserted)}, Failed: {len(errors)}")
+
+    return {
+        "total_rows": row_number - 1,
+        "inserted": len(inserted),
+        "failed": len(errors),
+        "errors": errors
+    }

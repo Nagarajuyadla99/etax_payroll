@@ -19,6 +19,7 @@ export default function Navbar({ toggle }) {
   const [openProfile, setOpenProfile] = useState(false);
   const [openNotify, setOpenNotify] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [user, setUser] = useState(null);
 
   const profileRef = useRef();
   const notifyRef = useRef();
@@ -28,7 +29,32 @@ export default function Navbar({ toggle }) {
     nav("/");
   };
 
-  // close dropdowns on outside click
+  // Fetch logged-in user
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) return;
+
+        const res = await fetch("http://127.0.0.1:8000/me", {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch user");
+
+        const data = await res.json();
+        setUser(data);
+      } catch (error) {
+        console.error("User load error:", error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  // Close dropdowns on outside click
   useEffect(() => {
     const handler = (e) => {
       if (profileRef.current && !profileRef.current.contains(e.target)) {
@@ -43,26 +69,19 @@ export default function Navbar({ toggle }) {
   }, []);
 
   return (
-    <div className="w-full sticky top-0 z-50
-                    backdrop-blur-md bg-white/70 
-                    border-b border-white/40 shadow-sm">
-
+    <div className="w-full sticky top-0 z-50 backdrop-blur-md bg-white/70 border-b border-white/40 shadow-sm">
       <div className="flex items-center justify-between px-4 md:px-8 py-3">
 
-        {/* LEFT SECTION */}
+        {/* LEFT */}
         <div className="flex items-center gap-4">
-
-          {/* Mobile Sidebar Button */}
           <button
             onClick={toggle}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition"
           >
             <Menu size={20} />
           </button>
 
-          {/* Desktop Search */}
-          <div className="hidden md:flex items-center bg-gray-100 
-                          rounded-xl px-3 py-2 w-80">
+          <div className="hidden md:flex items-center bg-gray-100 rounded-xl px-3 py-2 w-80">
             <Search size={16} className="text-gray-500 mr-2" />
             <input
               type="text"
@@ -70,13 +89,11 @@ export default function Navbar({ toggle }) {
               className="bg-transparent outline-none w-full text-sm"
             />
           </div>
-
         </div>
 
-        {/* RIGHT SECTION */}
+        {/* RIGHT */}
         <div className="flex items-center gap-3 md:gap-5">
 
-          {/* Mobile Search Icon */}
           <button
             onClick={() => setShowSearch(!showSearch)}
             className="md:hidden p-2 rounded-lg hover:bg-gray-100"
@@ -84,94 +101,70 @@ export default function Navbar({ toggle }) {
             <Search size={18} />
           </button>
 
-          {/* Social Icons (Desktop Only) */}
           <div className="hidden md:flex items-center gap-4">
-
             <IconBox color="indigo">
               <MessageSquare size={18} />
             </IconBox>
-
             <IconBox color="sky">
               <Mail size={18} />
             </IconBox>
-
             <IconBox color="blue">
               <Linkedin size={18} />
             </IconBox>
-
             <IconBox color="black">
               <Twitter size={18} />
             </IconBox>
-
           </div>
-
-
-          
 
           {/* Notifications */}
           <div className="relative" ref={notifyRef}>
             <div
               onClick={() => setOpenNotify(!openNotify)}
-              className="relative p-2 rounded-xl 
-                         bg-amber-50 text-amber-600
-                         hover:bg-amber-100 cursor-pointer"
+              className="relative p-2 rounded-xl bg-amber-50 text-amber-600 hover:bg-amber-100 cursor-pointer"
             >
               <Bell size={18} />
-              <span className="absolute -top-1 -right-1 
-                               bg-red-500 text-white text-[10px]
-                               px-1.5 py-0.5 rounded-full">
-               3
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full">
+                3
               </span>
             </div>
 
-            {/* Animated Dropdown */}
             {openNotify && (
-              <div className="absolute right-0 mt-3 w-72 
-                              bg-white rounded-2xl shadow-xl 
-                              border border-gray-100
-                              animate-fadeIn p-4 space-y-3">
-
+              <div className="absolute right-0 mt-3 w-72 md:w-80 bg-white rounded-2xl shadow-xl border border-gray-100 p-4 space-y-3">
                 <h4 className="font-semibold text-sm">Notifications</h4>
-
                 <div className="text-sm p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer">
                   Payroll processed successfully
                 </div>
-
                 <div className="text-sm p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer">
                   2 new leave requests
                 </div>
-
                 <div className="text-sm p-3 rounded-lg bg-gray-50 hover:bg-gray-100 cursor-pointer">
                   Tax update available
                 </div>
-
               </div>
             )}
           </div>
 
-          {/* Profile Dropdown */}
+          {/* Profile */}
           <div className="relative" ref={profileRef}>
             <div
               onClick={() => setOpenProfile(!openProfile)}
-              className="flex items-center gap-2 cursor-pointer 
-                         px-3 py-2 rounded-xl hover:bg-gray-100"
+              className="flex items-center gap-2 cursor-pointer px-3 py-2 rounded-xl hover:bg-gray-100"
             >
-              <div className="w-8 h-8 rounded-full 
-                              bg-indigo-600 text-white 
-                              flex items-center justify-center text-sm">
-                A
+              <div className="w-8 h-8 rounded-full bg-indigo-600 text-white flex items-center justify-center text-sm">
+                {user?.full_name
+                  ? user.full_name.charAt(0).toUpperCase()
+                  : user?.username
+                  ? user.username.charAt(0).toUpperCase()
+                  : "U"}
               </div>
+
               <span className="hidden md:block text-sm font-medium">
-                Admin
+                {user?.full_name || user?.username || "User"}
               </span>
             </div>
 
             {openProfile && (
-              <div className="absolute right-0 mt-3 w-48 
-                              bg-white rounded-2xl shadow-xl 
-                              border border-gray-100 
-                              animate-fadeIn p-2">
-
+              <div className="absolute right-0 mt-3 w-48 md:w-56 bg-white rounded-2xl shadow-xl border border-gray-100 p-2">
                 <DropdownItem icon={<User size={16} />} label="Profile" />
                 <DropdownItem icon={<ShieldCheck size={16} />} label="Security" />
                 <DropdownItem
@@ -183,14 +176,13 @@ export default function Navbar({ toggle }) {
               </div>
             )}
           </div>
-
         </div>
       </div>
 
-      {/* Mobile Expandable Search */}
+      {/* Mobile Search */}
       {showSearch && (
         <div className="md:hidden px-4 pb-3">
-          <div className="flex items-center bg-gray-100 rounded-xl px-3 py-2">
+          <div className="flex items-center bg-gray-100 rounded-xl px-3 py-2 w-full">
             <Search size={16} className="text-gray-500 mr-2" />
             <input
               type="text"
@@ -208,12 +200,14 @@ export default function Navbar({ toggle }) {
 
 function IconBox({ children, color }) {
   return (
-    <div className={`p-2 rounded-xl hover:scale-105 transition
-      ${color === "indigo" && "bg-indigo-50 text-indigo-600 hover:bg-indigo-100"}
-      ${color === "sky" && "bg-sky-50 text-sky-600 hover:bg-sky-100"}
-      ${color === "blue" && "bg-blue-50 text-blue-700 hover:bg-blue-100"}
-      ${color === "black" && "bg-gray-100 text-black hover:bg-gray-200"}
-    `}>
+    <div
+      className={`p-2 rounded-xl hover:scale-105 transition
+        ${color === "indigo" ? "bg-indigo-50 text-indigo-600 hover:bg-indigo-100" : ""}
+        ${color === "sky" ? "bg-sky-50 text-sky-600 hover:bg-sky-100" : ""}
+        ${color === "blue" ? "bg-blue-50 text-blue-700 hover:bg-blue-100" : ""}
+        ${color === "black" ? "bg-gray-100 text-black hover:bg-gray-200" : ""}
+      `}
+    >
       {children}
     </div>
   );
@@ -223,11 +217,8 @@ function DropdownItem({ icon, label, onClick, danger }) {
   return (
     <div
       onClick={onClick}
-      className={`flex items-center gap-2 px-3 py-2 rounded-lg 
-      text-sm cursor-pointer transition
-      ${danger
-        ? "text-red-600 hover:bg-red-50"
-        : "hover:bg-gray-100"}`}
+      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm cursor-pointer transition
+        ${danger ? "text-red-600 hover:bg-red-50" : "hover:bg-gray-100"}`}
     >
       {icon}
       {label}

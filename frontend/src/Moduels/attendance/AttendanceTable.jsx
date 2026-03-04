@@ -1,8 +1,11 @@
 export default function AttendanceTable({ data }) {
 
+  if (!data || data.length === 0) {
+    return <div className="mt-4">No attendance records found.</div>;
+  }
+
   return (
     <table className="w-full border mt-4">
-
       <thead>
         <tr className="bg-gray-200">
           <th className="border p-2">Employee</th>
@@ -15,7 +18,7 @@ export default function AttendanceTable({ data }) {
       </thead>
 
       <tbody>
-        {data.map(item => (
+        {data.map((item) => (
           <tr key={item.attendance_id}>
             <td className="border p-2">{item.employee_id}</td>
             <td className="border p-2">{item.work_date}</td>
@@ -26,7 +29,6 @@ export default function AttendanceTable({ data }) {
           </tr>
         ))}
       </tbody>
-
     </table>
   );
 }

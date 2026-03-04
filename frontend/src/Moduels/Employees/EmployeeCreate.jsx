@@ -1,64 +1,197 @@
-import React, { useState } from "react";
-import EmployeeForm from "./EmployeeForm";
+import { useState } from "react";
 import { createEmployee } from "./EmployeeApi";
 
-export default function EmployeeCreate({ onSuccess }) {
-  const token = localStorage.getItem("token");
+export default function EmployeeCreate() {
+  const [form, setForm] = useState({
+    employee_code: "",
+    first_name: "",
+    middle_name: "",
+    last_name: "",
+    email: "",
+    work_email: "",
+    phone: "",
+    mobile_phone: "",
+    gender: "",
+    marital_status: "",
+    fathers_name: "",
+    business_unit: "",
+    annual_ctc: "",
+    pay_frequency: "Monthly",
+  });
 
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [message, setMessage] = useState("");
 
-  async function handleCreate(data) {
+  // Update form state dynamically
+  const handleChange = (e) => {
+    setForm({
+      ...form,
+      [e.target.name]: e.target.value,
+    });
+  };
+
+  // Submit handler
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     setLoading(true);
-    setError(null);
+    setMessage("");
 
     try {
-      const result = await createEmployee(data, token);
+      // Filter out empty strings and convert numeric fields
+      const payload = Object.fromEntries(
+        Object.entries(form).filter(([_, v]) => v !== "")
+      );
+      payload.annual_ctc = payload.annual_ctc
+        ? parseFloat(payload.annual_ctc)
+        : null;
 
-      alert("✅ Employee created successfully");
+      await createEmployee(payload);
 
-      if (onSuccess) onSuccess();
-
-    } catch (err) {
-      setError(err.message || "Failed to create employee");
+      setMessage("✅ Employee created successfully");
+      // Reset form
+      setForm({
+        employee_code: "",
+        first_name: "",
+        middle_name: "",
+        last_name: "",
+        email: "",
+        work_email: "",
+        phone: "",
+        mobile_phone: "",
+        gender: "",
+        marital_status: "",
+        fathers_name: "",
+        business_unit: "",
+        annual_ctc: "",
+        pay_frequency: "Monthly",
+      });
+    } catch (error) {
+      setMessage(
+        "❌ " +
+          (error.response?.data?.detail || error.response?.data || error.message)
+      );
     } finally {
       setLoading(false);
     }
-  }
+  };
 
- return (
-  <div className="w-full min-h-screen bg-gray-100">
+  return (
+    <div className="container">
+      <h2>Create Employee</h2>
 
-    <div className="w-full bg-white shadow-md p-8">
+      {message && <p>{message}</p>}
 
-      <div className="mb-6 border-b pb-4">
-        <h2 className="text-3xl font-bold text-gray-800">
-          Create Employee
-        </h2>
+      <form onSubmit={handleSubmit}>
+        <input
+          name="employee_code"
+          placeholder="Employee Code"
+          value={form.employee_code}
+          onChange={handleChange}
+        />
 
-        <p className="text-sm text-gray-500 mt-1">
-          Enter employee details to add new employee
-        </p>
-      </div>
+        <input
+          name="first_name"
+          placeholder="First Name *"
+          value={form.first_name}
+          onChange={handleChange}
+          required
+        />
 
-      {error && (
-        <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg">
-          {error}
-        </div>
-      )}
+        <input
+          name="middle_name"
+          placeholder="Middle Name"
+          value={form.middle_name}
+          onChange={handleChange}
+        />
 
-      <EmployeeForm
-        onSubmit={handleCreate}
-        loading={loading}
-      />
+        <input
+          name="last_name"
+          placeholder="Last Name"
+          value={form.last_name}
+          onChange={handleChange}
+        />
 
-      {loading && (
-        <div className="mt-4 text-blue-600 text-sm">
-          Creating employee...
-        </div>
-      )}
+        <input
+          name="email"
+          type="email"
+          placeholder="Personal Email"
+          value={form.email}
+          onChange={handleChange}
+        />
 
+        <input
+          name="work_email"
+          type="email"
+          placeholder="Work Email"
+          value={form.work_email}
+          onChange={handleChange}
+        />
+
+        <input
+          name="phone"
+          placeholder="Phone"
+          value={form.phone}
+          onChange={handleChange}
+        />
+
+        <input
+          name="mobile_phone"
+          placeholder="Mobile Phone"
+          value={form.mobile_phone}
+          onChange={handleChange}
+        />
+
+        <select name="gender" value={form.gender} onChange={handleChange}>
+          <option value="">Select Gender</option>
+          <option value="Male">Male</option>
+          <option value="Female">Female</option>
+          <option value="Other">Other</option>
+        </select>
+
+        <select
+          name="marital_status"
+          value={form.marital_status}
+          onChange={handleChange}
+        >
+          <option value="">Marital Status</option>
+          <option value="Single">Single</option>
+          <option value="Married">Married</option>
+        </select>
+
+        <input
+          name="fathers_name"
+          placeholder="Father's Name"
+          value={form.fathers_name}
+          onChange={handleChange}
+        />
+
+        <input
+          name="business_unit"
+          placeholder="Business Unit"
+          value={form.business_unit}
+          onChange={handleChange}
+        />
+
+        <input
+          name="annual_ctc"
+          placeholder="Annual CTC"
+          value={form.annual_ctc}
+          onChange={handleChange}
+        />
+
+        <select
+          name="pay_frequency"
+          value={form.pay_frequency}
+          onChange={handleChange}
+        >
+          <option value="Monthly">Monthly</option>
+          <option value="Biweekly">Biweekly</option>
+        </select>
+
+        <button type="submit" disabled={loading}>
+          {loading ? "Creating..." : "Create Employee"}
+        </button>
+      </form>
     </div>
-  </div>
-);
+  );
 }

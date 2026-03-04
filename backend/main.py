@@ -2,6 +2,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.attendance_route import router as attendance_router
 from api.employee_route import router as employee_router
+from api.user_routes import router as user_router
+from api.auth_rotes import router as auth_router
 
 
 
@@ -13,13 +15,13 @@ import models
 app = FastAPI()
 
 origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
+    "http://localhost:9999",
+    "http://127.0.0.1:9999",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,6 +30,8 @@ app.add_middleware(
 # include router
 app.include_router(attendance_router)
 app.include_router(employee_router)
+app.include_router(user_router)
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 
 
 # create tables on startup

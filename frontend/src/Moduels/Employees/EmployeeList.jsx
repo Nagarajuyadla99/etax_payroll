@@ -1,85 +1,95 @@
-import React, { useEffect, useState } from "react";
-import { fetchEmployees } from "./EmployeeApi";
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { getEmployees } from "./EmployeeApi";
 
 export default function EmployeeList() {
-
-  const token = localStorage.getItem("token");
-
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchEmployees();
-  }, []);
+  const nav = useNavigate();
 
-  async function fetchEmployees() {
-    try {
-      const data = await fetchEmployees(token);
-      setEmployees(data);
-    } catch (err) {
-      setError(err.message || "Failed to load employees");
-    } finally {
-      setLoading(false);
-    }
-  }
+  useEffect(() => {
+    const fetchEmployees = async () => {
+      try {
+        setLoading(true);
+        const data = await getEmployees();
+        setEmployees(data);
+      } catch (err) {
+        console.error("Employee fetch error:", err);
+
+        if (err.response?.status === 401) {
+          localStorage.removeItem("token");
+          nav("/");
+        } else {
+          setError("Failed to load employees");
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchEmployees();
+  }, [nav]);
 
   return (
-    <div className="w-full min-h-screen bg-gray-100 p-6">
+    <div className="p-6">
+      <h2 className="text-xl font-bold mb-6">Employees</h2>
 
-      <div className="w-full bg-white shadow-sm p-6">
+      {loading && (
+        <div className="text-gray-500 text-sm">Loading employees...</div>
+      )}
 
-        <h2 className="text-2xl font-bold mb-6 text-gray-800">
-          Employee List
-        </h2>
+      {error && (
+        <div className="text-red-500 text-sm mb-4">{error}</div>
+      )}
 
-        {loading && <p>Loading employees...</p>}
+      {!loading && employees.length === 0 && (
+        <div className="text-gray-500 text-sm">
+          No employees found.
+        </div>
+      )}
 
-        {error && (
-          <div className="text-red-600 mb-4">
-            {error}
-          </div>
-        )}
+      {!loading && employees.length > 0 && (
+        <div className="overflow-x-auto bg-white rounded-xl shadow-sm border">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="bg-gray-100 text-left">
+                <th className="p-3 font-semibold">Full Name</th>
+                <th className="p-3 font-semibold">Email</th>
+                <th className="p-3 font-semibold">Phone</th>
+                <th className="p-3 font-semibold">Joining Date</th>
+              </tr>
+            </thead>
+            <tbody>
+              {employees.map((emp) => (
+                <tr
+                  key={emp.employee_id}
+                  className="border-t hover:bg-gray-50 transition"
+                >
+                  <td className="p-3">
+                    {emp.first_name} {emp.middle_name || ""} {emp.last_name}
+                  </td>
 
-        {!loading && employees.length === 0 && (
-          <p>No employees found.</p>
-        )}
+                  <td className="p-3">
+                    {emp.email || "-"}
+                  </td>
 
-        {!loading && employees.length > 0 && (
-          <div className="overflow-x-auto">
+                  <td className="p-3">
+                    {emp.phone || emp.mobile_phone || "-"}
+                  </td>
 
-            <table className="w-full border-collapse">
-
-              <thead>
-                <tr className="bg-gray-200 text-left">
-                  <th className="p-3 border">First Name</th>
-                  <th className="p-3 border">Last Name</th>
-                  <th className="p-3 border">Email</th>
-                  <th className="p-3 border">Mobile</th>
-                  <th className="p-3 border">Date of Joining</th>
-                  <th className="p-3 border">Annual CTC</th>
+                  <td className="p-3">
+                    {emp.date_of_joining
+                      ? new Date(emp.date_of_joining).toLocaleDateString()
+                      : "-"}
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody>
-                {employees.map((emp) => (
-                  <tr key={emp.id} className="hover:bg-gray-50">
-                    <td className="p-3 border">{emp.first_name}</td>
-                    <td className="p-3 border">{emp.last_name}</td>
-                    <td className="p-3 border">{emp.email}</td>
-                    <td className="p-3 border">{emp.mobile}</td>
-                    <td className="p-3 border">{emp.date_of_joining}</td>
-                    <td className="p-3 border">{emp.annual_ctc}</td>
-                  </tr>
-                ))}
-              </tbody>
-
-            </table>
-
-          </div>
-        )}
-
-      </div>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

@@ -11,17 +11,20 @@ import {
 
 export default function Dashboard() {
   return (
-    <div className="w-full">
+    <div className="w-full space-y-6">
+
+      {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-slate-800">
-           Payroll – India
+        <h1 className="text-2xl sm:text-3xl font-semibold text-slate-800">
+          Payroll – India
         </h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm sm:text-base text-slate-500">
           PF • ESI • TDS • Professional Tax • Indian Compliance
         </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+      {/* Stat Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           icon={<Users size={28} />}
           title="Total Employees"
@@ -29,7 +32,6 @@ export default function Dashboard() {
           sub="12 new this month"
           bg="bg-gradient-to-r from-blue-700 to-blue-500"
         />
-
         <StatCard
           icon={<IndianRupee size={28} />}
           title="Net Pay – Feb"
@@ -37,7 +39,6 @@ export default function Dashboard() {
           sub="Credited 01-Feb-2025"
           bg="bg-gradient-to-r from-emerald-700 to-emerald-500"
         />
-
         <StatCard
           icon={<TrendingDown size={28} />}
           title="Total Deductions"
@@ -45,7 +46,6 @@ export default function Dashboard() {
           sub="PF • ESI • TDS • PT"
           bg="bg-gradient-to-r from-rose-700 to-rose-500"
         />
-
         <StatCard
           icon={<ShieldCheck size={28} />}
           title="Compliance Due"
@@ -55,12 +55,9 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <Section
-          title="Payroll Status"
-          icon={<FileCheck className='text-indigo-700' />}
-          headColor="bg-indigo-50"
-        >
+      {/* Sections */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        <Section title="Payroll Status" icon={<FileCheck className="text-indigo-700" />} headColor="bg-indigo-50">
           <StatusRow label="Salary Processed" val="142 / 156" type="success" />
           <StatusRow label="Bank File" val="Generated" type="success" />
           <StatusRow label="Payslips Email" val="Pending" type="warning" />
@@ -69,12 +66,8 @@ export default function Dashboard() {
           <StatusRow label="TDS Payment" val="Due 07 Feb" type="danger" />
         </Section>
 
-        <Section
-          title="Quick Actions"
-          icon={<Zap className='text-emerald-700' />}
-          headColor="bg-emerald-50"
-        >
-          <div className="grid grid-cols-2 gap-3">
+        <Section title="Quick Actions" icon={<Zap className="text-emerald-700" />} headColor="bg-emerald-50">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             <ActionBtn title="Add Employee" color="indigo" />
             <ActionBtn title="Generate Payslip" color="green" />
             <ActionBtn title="Tax Declaration" color="blue" />
@@ -84,11 +77,7 @@ export default function Dashboard() {
           </div>
         </Section>
 
-        <Section
-          title="Alerts"
-          icon={<AlertTriangle className='text-rose-700' />}
-          headColor="bg-rose-50"
-        >
+        <Section title="Alerts" icon={<AlertTriangle className="text-rose-700" />} headColor="bg-rose-50">
           <AlertBox text="5 employees missing Bank Account" level="danger" />
           <AlertBox text="2 employees missing PAN" level="warning" />
           <AlertBox text="PF return pending" level="danger" />
@@ -96,13 +85,14 @@ export default function Dashboard() {
         </Section>
       </div>
 
-      <div className="bg-white rounded-xl border shadow-sm mt-6 overflow-hidden">
+      {/* Recent Transactions Table */}
+      <div className="bg-white rounded-xl border shadow-sm mt-6 overflow-x-auto">
         <div className="p-4 border-b flex items-center gap-2 bg-slate-700 text-white">
           <Clock className="text-white" />
           <h3 className="font-semibold">Recent Transactions</h3>
         </div>
 
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-max">
           <thead className="bg-slate-100 text-slate-700">
             <tr className="text-left">
               <th className="p-3">Employee</th>
@@ -132,6 +122,7 @@ export default function Dashboard() {
   );
 }
 
+/* ================= Reusable Components ================= */
 function Section({ title, icon, children, headColor }) {
   return (
     <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
@@ -146,7 +137,7 @@ function Section({ title, icon, children, headColor }) {
 
 function StatCard({ icon, title, value, sub, bg }) {
   return (
-    <div className={`${bg} text-white rounded-xl p-5 shadow-lg`}> 
+    <div className={`${bg} text-white rounded-xl p-5 shadow-lg`}>
       <div className="bg-white/20 w-12 h-12 flex items-center justify-center rounded-lg mb-3">
         {icon}
       </div>
@@ -164,7 +155,6 @@ function StatusRow({ label, val, type }) {
     danger: "bg-rose-100 text-rose-800",
     info: "bg-blue-100 text-blue-800",
   };
-
   return (
     <div className="flex justify-between items-center">
       <span className="text-slate-700">{label}</span>
@@ -182,7 +172,6 @@ function ActionBtn({ title, color }) {
     purple: "bg-purple-50 hover:bg-purple-100 border-purple-200",
     rose: "bg-rose-50 hover:bg-rose-100 border-rose-200",
   };
-
   return (
     <button className={`border rounded p-2 text-sm transition font-medium ${map[color]}`}>
       {title}
@@ -196,7 +185,6 @@ function AlertBox({ text, level }) {
     warning: "bg-amber-50 text-amber-800 border-amber-200",
     info: "bg-blue-50 text-blue-800 border-blue-200",
   };
-
   return (
     <div className={`p-2 rounded border font-medium ${map[level]}`}>• {text}</div>
   );
@@ -208,15 +196,12 @@ function Chip({ text }) {
     : text.includes("Full")
     ? "bg-purple-100 text-purple-800"
     : "bg-blue-100 text-blue-800";
-
   return <span className={`px-2 py-1 rounded text-xs font-semibold ${color}`}>{text}</span>;
 }
 
 function Amount({ text }) {
   return (
-    <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-1 rounded">
-      {text}
-    </span>
+    <span className="font-semibold text-slate-800 bg-slate-100 px-2 py-1 rounded">{text}</span>
   );
 }
 

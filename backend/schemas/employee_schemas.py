@@ -1,6 +1,6 @@
 # payroll_system/schemas/employee_schemas.py
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr,Field
 from typing import Optional, Dict
 from uuid import UUID
 from datetime import date, datetime
@@ -74,7 +74,7 @@ class EmployeeBase(BaseModel):
     annual_ctc: Optional[float] = None
     pay_frequency: Optional[str] = "Monthly"
     uan_link_status: Optional[str] = "Unlinked"
-    metadata: Optional[Dict] = None
+    metadata: Optional[Dict] = Field(default=None, alias="extra_metadata")
     is_active: Optional[bool] = True
 
 
@@ -124,7 +124,7 @@ class EmployeeOut(EmployeeBase):
     pay_structure: Optional[PayStructureRef] = None
     manager: Optional[EmployeeRef] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True,populate_by_name=True)
 
 
 # ============================================================

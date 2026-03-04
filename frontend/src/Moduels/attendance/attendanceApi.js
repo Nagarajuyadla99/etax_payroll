@@ -1,16 +1,32 @@
 const API = "http://127.0.0.1:8000/attendance/";
 
+// 🔹 Fetch Attendance (Protected)
 export async function fetchAttendance() {
-  const res = await fetch(API);   
-  if (!res.ok) throw new Error("Failed to fetch attendance");
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(API, {
+    headers: {
+      "Authorization": `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    throw new Error(err.detail || "Failed to fetch attendance");
+  }
+
   return res.json();
 }
 
+// 🔹 Create Attendance (Protected - Admin Only)
 export async function createAttendance(data) {
-  const res = await fetch(API, {   
+  const token = localStorage.getItem("token");
+
+  const res = await fetch(API, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`,   // ✅ IMPORTANT
     },
     body: JSON.stringify(data),
   });
