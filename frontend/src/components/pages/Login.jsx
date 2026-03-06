@@ -21,10 +21,10 @@ const handleSubmit = async (e) => {
 };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100">
+    <div className=" bg-white flex items-center justify-center min-h-screen bg-gray-100">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded shadow w-80"
+        className="bg-white shadoe p-6 rounded shadow w-80"
       >
         <h2 className="text-xl font-bold mb-4">Login</h2>
 

@@ -1,6 +1,6 @@
 /* ===== SIDEBAR CONTAINER ===== */
 .sidebar {
-  width: 250px;
+  width: auto;
   background: #ffffff;        /* slate-900 */
   color: #5123f8;
   min-height: 100vh;

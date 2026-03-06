@@ -8,8 +8,26 @@ import {
   AlertTriangle,
   Clock,
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getEmployees } from "../../Moduels/Employees/EmployeeApi"; 
+
 
 export default function Dashboard() {
+  const [employees, setEmployees] = useState([]);
+
+  useEffect(() => {
+  const fetchEmployees = async () => {
+    try {
+      const data = await getEmployees();
+      setEmployees(data);
+    } catch (error) {
+      console.error("Error loading employees", error);
+    }
+  };
+
+  fetchEmployees();
+}, []);
+
   return (
     <div className="w-full space-y-6">
 
@@ -28,7 +46,7 @@ export default function Dashboard() {
         <StatCard
           icon={<Users size={28} />}
           title="Total Employees"
-          value="156"
+          value={employees.length}
           sub="12 new this month"
           bg="bg-gradient-to-r from-blue-700 to-blue-500"
         />

@@ -1,6 +1,6 @@
 .dashboard-container {
   padding: 24px;
-  background: linear-gradient(120deg, #f0f4ff, #ffffff);
+  background: linear-gradient(120deg, #ffffff, #ffffff);
   min-height: 100vh;
   font-family: 'Segoe UI', system-ui;
 }
@@ -39,7 +39,7 @@
 }
 
 .stat-icon {
-  background: #eef2ff;
+  background: #ffffff;
   padding: 6px;
   border-radius: 8px;
   color: #2563eb;

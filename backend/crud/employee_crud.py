@@ -2,17 +2,19 @@
 
 from typing import Optional, List
 from uuid import UUID
+from fastapi import HTTPException
+import csv
+from io import StringIO
+import io
+from openpyxl import load_workbook
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 
-from models.employee_model import (
-    Employee,
-    EmployeeDocument,
-    EmployeeSalaryAssignment,
-)
-from models.org_models import Organisation  # ✅ IMPORTANT
+from models.employee_model import Employee, EmployeeDocument, EmployeeSalaryAssignment
+from models.org_models import Organisation  # ✅ Organisation check
 
 from schemas.employee_schemas import (
     EmployeeCreate,
@@ -21,43 +23,29 @@ from schemas.employee_schemas import (
     EmployeeSalaryAssignmentCreate,
 )
 
+
 # ============================================================
 # INTERNAL HELPERS
 # ============================================================
 
-async def _ensure_organisation_exists(
-    db: AsyncSession,
-    organisation_id: UUID,
-):
+async def _ensure_organisation_exists(db: AsyncSession, organisation_id: UUID):
     """
     Ensure organisation exists before any employee operation.
     """
     result = await db.execute(
-        select(Organisation).where(
-            Organisation.organisation_id == organisation_id
-        )
+        select(Organisation).where(Organisation.organisation_id == organisation_id)
     )
     org = result.scalar_one_or_none()
-
     if not org:
-        raise ValueError(
-            "Organisation not created. Please create organisation first."
-        )
+        raise ValueError("Organisation not created. Please create organisation first.")
 
 
 # ============================================================
 # EMPLOYEE CRUD
 # ============================================================
 
-async def create_employee(
-    db: AsyncSession,
-    emp: EmployeeCreate,
-    organisation_id: UUID,
-) -> Employee:
-    """
-    Create a new employee under a specific organisation.
-    Organisation is enforced server-side.
-    """
+async def create_employee(db: AsyncSession, emp: EmployeeCreate, organisation_id: UUID):
+
     await _ensure_organisation_exists(db, organisation_id)
 
     emp_data = emp.model_dump(exclude_unset=True)
@@ -70,31 +58,34 @@ async def create_employee(
         await db.commit()
         await db.refresh(employee)
         return employee
-    except IntegrityError as e:
+
+    except IntegrityError:
         await db.rollback()
-        raise ValueError(
-            "Employee creation failed (duplicate email or employee code)"
-        ) from e
+        raise HTTPException(
+            status_code=400,
+            detail="Employee with this email or employee code already exists"
+        )
 
-
-async def get_employee(
-    db: AsyncSession,
-    emp_id: UUID,
-    organisation_id: UUID,
-) -> Optional[Employee]:
+async def get_employee(db: AsyncSession, emp_id: UUID, organisation_id: UUID) -> Optional[Employee]:
     """
     Fetch a single employee by ID within organisation scope.
+    Eager-load nested relationships to avoid MissingGreenlet errors.
     """
     await _ensure_organisation_exists(db, organisation_id)
 
     result = await db.execute(
-        select(Employee).where(
-            Employee.employee_id == emp_id,
-            Employee.organisation_id == organisation_id,
+        select(Employee)
+        .where(Employee.employee_id == emp_id, Employee.organisation_id == organisation_id)
+        .options(
+            selectinload(Employee.department),
+            selectinload(Employee.designation),
+            selectinload(Employee.location),
+            selectinload(Employee.pay_structure),
+            selectinload(Employee.manager)
         )
     )
     return result.scalar_one_or_none()
-    print("List Org ID:", current_user.organisation_id)
+
 
 async def list_employees(
     db: AsyncSession,
@@ -105,25 +96,28 @@ async def list_employees(
 ) -> List[Employee]:
     """
     List employees for an organisation with optional filters.
+    Eager-load relationships.
     """
     await _ensure_organisation_exists(db, organisation_id)
 
-    query = select(Employee).where(
-        Employee.organisation_id == organisation_id
+    query = select(Employee).where(Employee.organisation_id == organisation_id).options(
+        selectinload(Employee.department),
+        selectinload(Employee.designation),
+        selectinload(Employee.location),
+        selectinload(Employee.pay_structure),
+        selectinload(Employee.manager)
     )
 
     if department_id:
         query = query.where(Employee.department_id == department_id)
-
     if designation_id:
         query = query.where(Employee.designation_id == designation_id)
-
     if active_only:
         query = query.where(Employee.is_active.is_(True))
 
     result = await db.execute(query)
     return result.scalars().all()
-    print("List Org ID:", current_user.organisation_id)
+
 
 async def update_employee(
     db: AsyncSession,
@@ -150,19 +144,14 @@ async def update_employee(
         return employee
     except IntegrityError as e:
         await db.rollback()
-        raise ValueError(
-            "Employee update failed due to integrity error"
-        ) from e
+        raise ValueError("Employee update failed due to integrity error") from e
 
 
 # ============================================================
 # EMPLOYEE DOCUMENTS
 # ============================================================
 
-async def upload_employee_document(
-    db: AsyncSession,
-    payload: EmployeeDocumentCreate,
-) -> EmployeeDocument:
+async def upload_employee_document(db: AsyncSession, payload: EmployeeDocumentCreate) -> EmployeeDocument:
     """
     Upload a document for an employee.
     """
@@ -182,10 +171,7 @@ async def upload_employee_document(
 # EMPLOYEE SALARY ASSIGNMENTS
 # ============================================================
 
-async def assign_salary_structure(
-    db: AsyncSession,
-    payload: EmployeeSalaryAssignmentCreate,
-) -> EmployeeSalaryAssignment:
+async def assign_salary_structure(db: AsyncSession, payload: EmployeeSalaryAssignmentCreate) -> EmployeeSalaryAssignment:
     """
     Assign a salary structure to an employee.
     Prevent duplicate effective_from entries.
@@ -196,11 +182,8 @@ async def assign_salary_structure(
             EmployeeSalaryAssignment.effective_from == payload.effective_from,
         )
     )
-
     if existing.scalar_one_or_none():
-        raise ValueError(
-            "Salary assignment with the same effective date already exists"
-        )
+        raise ValueError("Salary assignment with the same effective date already exists")
 
     assignment = EmployeeSalaryAssignment(**payload.model_dump())
 
@@ -214,75 +197,64 @@ async def assign_salary_structure(
         raise ValueError("Failed to assign salary structure") from e
 
 
-
-        # ============================================================
+# ============================================================
 # EMPLOYEE BULK UPLOAD
 # ============================================================
 
-import csv
-from io import StringIO
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
-from models.employee_model import Employee
-from schemas.employee_schemas import EmployeeCreate
-from crud.employee_crud import _ensure_organisation_exists
+async def bulk_create_employees(db: AsyncSession, file_content, file_type, organisation_id):
 
-async def bulk_create_employees(
-    db: AsyncSession,
-    file_content: str,
-    organisation_id: UUID,
-):
-    """
-    Bulk upload employees via CSV.
-    Ensures:
-      - organisation_id injected
-      - employees are active by default
-      - returns inserted/failed summary
-    """
-    # ✅ Ensure organisation exists
-    await _ensure_organisation_exists(db, organisation_id)
+    rows = []
 
-    reader = csv.DictReader(StringIO(file_content))
+    # =========================
+    # CSV PARSER
+    # =========================
+    if file_type == "csv":
+        reader = csv.DictReader(io.StringIO(file_content.decode("utf-8")))
+        rows = list(reader)
 
-    inserted = []
+    # =========================
+    # EXCEL PARSER
+    # =========================
+    elif file_type == "xlsx":
+        workbook = load_workbook(io.BytesIO(file_content))
+        sheet = workbook.active
+
+        headers = [cell.value for cell in sheet[1]]
+
+        for row in sheet.iter_rows(min_row=2, values_only=True):
+            rows.append(dict(zip(headers, row)))
+
+    created = 0
     errors = []
-    row_number = 1  # Header row counted separately
 
-    for row in reader:
-        row_number += 1
+    for idx, row in enumerate(rows, start=1):
+
         try:
-            # Inject organisation_id and force active
-            row["organisation_id"] = organisation_id
-            row["is_active"] = True  # Force employee to be active
-
-            # Validate row via Pydantic
-            emp_schema = EmployeeCreate(**row)
-            employee = Employee(**emp_schema.model_dump())
+            employee = Employee(
+                employee_code=row.get("employee_code"),
+                first_name=row.get("first_name"),
+                last_name=row.get("last_name"),
+                email=row.get("email"),
+                phone=row.get("phone"),
+                department_id=row.get("department_id"),
+                designation_id=row.get("designation_id"),
+                organisation_id=organisation_id,
+            )
 
             db.add(employee)
-            inserted.append(employee)
+            created += 1
 
         except Exception as e:
             errors.append({
-                "row": row_number,
-                "error": str(e),
-                "data": row
+                "row": idx,
+                "error": str(e)
             })
 
-    try:
-        await db.commit()
-    except IntegrityError as e:
-        await db.rollback()
-        raise ValueError("Bulk insert failed due to duplicate data") from e
-
-    # ✅ Debug log
-    print(f"Bulk Upload Completed for Organisation: {organisation_id}")
-    print(f"Total Rows: {row_number - 1}, Inserted: {len(inserted)}, Failed: {len(errors)}")
+    await db.commit()
 
     return {
-        "total_rows": row_number - 1,
-        "inserted": len(inserted),
-        "failed": len(errors),
-        "errors": errors
-    }
+    "total_rows": len(rows),
+    "inserted": created,
+    "failed": len(errors),
+    "errors": errors
+}

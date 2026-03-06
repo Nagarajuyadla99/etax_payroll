@@ -81,14 +81,7 @@ export default function Navbar({ toggle }) {
             <Menu size={20} />
           </button>
 
-          <div className="hidden md:flex items-center bg-gray-100 rounded-xl px-3 py-2 w-80">
-            <Search size={16} className="text-gray-500 mr-2" />
-            <input
-              type="text"
-              placeholder="Search employees, payroll..."
-              className="bg-transparent outline-none w-full text-sm"
-            />
-          </div>
+          
         </div>
 
         {/* RIGHT */}

@@ -1,60 +1,70 @@
-/* Full page layout wrapper */
+/* ===== FULL PAGE LAYOUT ===== */
 .layout-wrapper {
   display: flex;
-  min-height: 100vh;
-  background-color: #f1f5f9; /* Tailwind slate-100 equivalent */
+  min-height: auto;
+  background-color: #ffffff; /* Tailwind slate-100 equivalent */
 }
 
-/* Sidebar */
+/* SIDEBAR */
 .layout-wrapper aside {
-  width: 16rem; /* 64 Tailwind */
-  min-width: 16rem;
-  height: 100vh;
-  background-color: #ffffff;
-  border-right: 1px solid #e5e7eb; /* Tailwind slate-200 */
   flex-shrink: 0;
+  height: auto;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  transition: all 0.3s ease;
+  z-index: 1000;
 }
 
-/* Main content wrapper */
+/* COLLAPSED WIDTH */
+.layout-wrapper aside.collapsed {
+  width: 3rem; /* w-20 */
+}
+
+.layout-wrapper aside.expanded {
+  width: 16rem; /* w-72 */
+}
+
+/* MAIN CONTENT */
 .main-content {
   flex: 1;
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  background-color: #ffffff;
 }
 
-/* Main area scrollable */
+/* MAIN SCROLL AREA */
 .content-area {
   flex: 1;
   padding: 1rem;
   overflow-y: auto;
+  background-color: #ffffff;
 }
 
-/* ===== Responsive adjustments ===== */
-
-/* Mobile: sidebar becomes top horizontal menu */
-@media (max-width: 1023px) {
+/* MOBILE SIDEBAR */
+@media (max-width: 1024px) {
   .layout-wrapper {
     flex-direction: column;
   }
 
   .layout-wrapper aside {
-    width: 100%;
-    min-width: 100%;
-    height: auto;
-    border-right: none;
-    border-bottom: 1px solid #e5e7eb;
+    position: fixed;
+    top: 0;
+    left: -100%;
+    width: 16rem;
+    height: 100%;
+    z-index: 1100;
+    transition: left 0.3s ease;
+  }
+
+  .layout-wrapper aside.open {
+    left: 0;
   }
 
   .main-content {
+    margin-top: 0;
     width: 100%;
-  }
-}
-
-/* Tablet: sidebar smaller width */
-@media (min-width: 640px) and (max-width: 1023px) {
-  .layout-wrapper aside {
-    width: 14rem; /* slightly smaller */
-    min-width: 14rem;
+    
   }
 }

@@ -54,16 +54,14 @@ export default function Sidebar({ open }) {
 
   return (
     <aside
-      
-        className={`
-    relative top-0 left-0 z-40
-    min-h-screen
-    ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
-    ${collapsed ? "w-20" : "w-72"}
+    className={`relative top-0 left-0 z-80
+    h-screen
     bg-white border-r shadow-sm
     transition-all duration-300 ease-in-out
-  `}
-    >
+    ${open ? "open" : ""} 
+    ${collapsed ? "collapsed" : "expanded"}`}
+>
+    
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-5">
         {!collapsed && (
@@ -83,7 +81,7 @@ export default function Sidebar({ open }) {
         </button>
       </div>
 
-      <nav className="flex flex-col gap-2 p-3 h-[calc(100vh-120px)] overflow-y-auto">
+      <nav className="flex flex-col gap-2 p-3 h-[calc(120vh-120px)] overflow-y-auto">
 
         {/* Dashboard */}
         <SideItem

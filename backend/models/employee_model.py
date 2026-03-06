@@ -10,6 +10,7 @@ from sqlalchemy import (
     UniqueConstraint,
     ForeignKey,
     text,
+    Numeric
 )
 from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.sql import func
@@ -58,7 +59,7 @@ class Employee(Base):
     business_unit = Column(String(100))
     manager_id = Column(PGUUID(as_uuid=True), ForeignKey("employees.employee_id", ondelete="SET NULL"))
     pay_structure_id = Column(PGUUID(as_uuid=True), ForeignKey("pay_structures.pay_structure_id", ondelete="SET NULL"))
-    annual_ctc = Column("annual_ctc", String)  # Consider NUMERIC type; using String as placeholder
+    annual_ctc = Column(Numeric(15, 2))  # Consider NUMERIC type; using String as placeholder
     pay_frequency = Column(String(20), server_default=text("'Monthly'"))
     uan_link_status = Column(String(50), server_default=text("'Unlinked'"))
     extra_metadata = Column("metadata", JSONB)  # Correctly mapped to JSONB metadata column

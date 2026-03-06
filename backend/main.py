@@ -31,7 +31,7 @@ app.add_middleware(
 app.include_router(attendance_router)
 app.include_router(employee_router)
 app.include_router(user_router)
-app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(auth_router, tags=["Authentication"])
 
 
 # create tables on startup
