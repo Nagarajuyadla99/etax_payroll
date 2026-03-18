@@ -12,9 +12,14 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getEmployees } from "../../Moduels/Employees/EmployeeApi";
+import { useNavigate } from "react-router-dom";
+
 
 export default function Dashboard() {
   const [employees, setEmployees] = useState([]);
+  const navigate = useNavigate();
+  const [showPopup, setShowPopup] = useState(false);
+  const [popupMessage, setPopupMessage] = useState("");
 
   useEffect(() => {
     const fetchEmployees = async () => {
@@ -27,9 +32,21 @@ export default function Dashboard() {
     };
     fetchEmployees();
   }, []);
+  const handleComingSoon = (feature) => {
+  setPopupMessage(`${feature} will be available soon`);
+  setShowPopup(true);
+};
 
   return (
     <>
+    {showPopup && (
+  <div className="popup-overlay">
+    <div className="popup-box">
+      <p>{popupMessage}</p>
+      <button onClick={() => setShowPopup(false)}>OK</button>
+    </div>
+  </div>
+)}
       <style>{`
         .dash-root { width: 100%; }
 
@@ -285,8 +302,46 @@ export default function Dashboard() {
         .chip-blue   { background: #DBEAFE; color: #1E40AF; }
 
         .amount-chip { background: #FEF3C7; color: #92400E; padding: 4px 10px; border-radius: 8px; font-weight: 700; font-size: 13px; border: 1px solid #FDE68A; }
-
+        
         .txn-date { color: #A38A4A; font-size: 12px; }
+
+        .popup-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.popup-box {
+  background: #fff;
+  padding: 20px 30px;
+  border-radius: 12px;
+  text-align: center;
+  min-width: 260px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+}
+
+.popup-box p {
+  margin-bottom: 15px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.popup-box button {
+  padding: 6px 16px;
+  border: none;
+  background: #1C1507;
+  color: #fff;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
       `}</style>
 
       <div className="dash-root">
@@ -360,12 +415,38 @@ export default function Dashboard() {
             </div>
             <div className="card-body">
               <div className="action-grid">
-                <button className="action-btn ab-amber" to="employeeCreate">Add Employee</button>
-                <button className="action-btn ab-green">Gen Payslip</button>
-                <button className="action-btn ab-blue">Tax Decl.</button>
-                <button className="action-btn ab-red">Leave Import</button>
-                <button className="action-btn ab-purple">PF Report</button>
-                <button className="action-btn ab-rose">ESI Report</button>
+                <button
+                 className="action-btn ab-amber"
+                         onClick={() => navigate("/employeeCreate")}
+                                 >
+                                            Add Employee
+                                            </button>
+                    <button className="action-btn ab-green" onClick={() => handleComingSoon("Payslip Generation")} >Gen Payslip</button>
+                <button
+  className="action-btn ab-blue"
+  onClick={() => handleComingSoon("Tax Declaration")}
+>
+  Tax Decl.
+</button>
+                <button
+  className="action-btn ab-red"
+  onClick={() => handleComingSoon("Leave Import")}
+>
+  Leave Import
+</button>
+                <button
+  className="action-btn ab-purple"
+  onClick={() => handleComingSoon("PF Report")}
+>
+  PF Report
+</button>
+
+                <button
+  className="action-btn ab-rose"
+  onClick={() => handleComingSoon("ESI Report")}
+>
+  ESI Report
+</button>
               </div>
             </div>
           </div>

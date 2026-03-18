@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getEmployees, deleteEmployee } from "./EmployeeApi";
-
+import { Link } from "react-router-dom";
 export default function EmployeeList() {
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
@@ -81,7 +81,7 @@ export default function EmployeeList() {
           />
 
           <button
-            onClick={() => nav("/employees/create")}
+            onClick={() => nav("/employeeCreate")}
             className="bg-red-600 text-white px-4 py-2 rounded text-sm"
           >
             Add Employee

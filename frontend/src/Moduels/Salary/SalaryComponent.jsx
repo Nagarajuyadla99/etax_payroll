@@ -91,7 +91,7 @@ export default function SalaryComponents() {
             <th className="p-2 border">Name</th>
             <th className="p-2 border">Code</th>
             <th className="p-2 border">Type</th>
-            <th className="p-2 border">Calc</th>
+            <th className="p-2 border">Calculation</th>
           </tr>
         </thead>
 

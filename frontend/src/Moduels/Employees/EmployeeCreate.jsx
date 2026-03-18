@@ -80,7 +80,7 @@ export default function EmployeeCreate() {
         <h2 className="text-2xl font-semibold mb-6">
           Create Employee
         </h2>
-
+       
         {message && (
           <div className="mb-6 bg-gray-100 p-4 rounded text-sm">
             <pre>{message}</pre>
