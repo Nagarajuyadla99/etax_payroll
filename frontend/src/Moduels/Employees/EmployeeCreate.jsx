@@ -4,15 +4,12 @@ import { createEmployee } from "./EmployeeApi";
 export default function EmployeeCreate() {
 
   const [form, setForm] = useState({
-    organisation_id: "",
     employee_code: "",
     first_name: "",
     middle_name: "",
     last_name: "",
     display_name: "",
-    email: "",
     work_email: "",
-    phone: "",
     mobile_phone: "",
     gender: "",
     date_of_birth: "",
@@ -21,12 +18,12 @@ export default function EmployeeCreate() {
     date_of_joining: "",
     date_of_leaving: "",
     status: "active",
-    department_id: "",
-    designation_id: "",
-    location_id: "",
+    /*department_id: "",*/
+    /*designation_id: "",*/
+    /*location_id: "",*/
     business_unit: "",
-    manager_id: "",
-    pay_structure_id: "",
+    /*manager_id: "",*/
+    /*pay_structure_id: "",*/
     annual_ctc: "",
     pay_frequency: "Monthly",
     uan_link_status: "Unlinked",
@@ -95,8 +92,7 @@ export default function EmployeeCreate() {
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
         >
 
-          <input className={input} name="organisation_id" placeholder="Organisation ID*" value={form.organisation_id} onChange={handleChange} required />
-
+         
           <input className={input} name="employee_code" placeholder="Employee Code" value={form.employee_code} onChange={handleChange} />
 
           <input className={input} name="first_name" placeholder="First Name *" value={form.first_name} onChange={handleChange} required />
@@ -107,11 +103,7 @@ export default function EmployeeCreate() {
 
           <input className={input} name="display_name" placeholder="Display Name" value={form.display_name} onChange={handleChange} />
 
-          <input className={input} name="email" placeholder="Personal Email" value={form.email} onChange={handleChange} />
-
           <input className={input} name="work_email" placeholder="Work Email" value={form.work_email} onChange={handleChange} />
-
-          <input className={input} name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
 
           <input className={input} name="mobile_phone" placeholder="Mobile Phone" value={form.mobile_phone} onChange={handleChange} />
 
@@ -152,18 +144,10 @@ export default function EmployeeCreate() {
 
           <input className={input} name="status" placeholder="Status (active/inactive)" value={form.status} onChange={handleChange} />
 
-          <input className={input} name="department_id" placeholder="Department ID" value={form.department_id} onChange={handleChange} />
-
-          <input className={input} name="designation_id" placeholder="Designation ID" value={form.designation_id} onChange={handleChange} />
-
-          <input className={input} name="location_id" placeholder="Location ID" value={form.location_id} onChange={handleChange} />
-
+          
           <input className={input} name="business_unit" placeholder="Business Unit" value={form.business_unit} onChange={handleChange} />
 
-          <input className={input} name="manager_id" placeholder="Manager ID" value={form.manager_id} onChange={handleChange} />
-
-          <input className={input} name="pay_structure_id" placeholder="Pay Structure ID" value={form.pay_structure_id} onChange={handleChange} />
-
+         
           <input className={input} name="annual_ctc" placeholder="Annual CTC" value={form.annual_ctc} onChange={handleChange} />
 
           <input className={input} name="pay_frequency" placeholder="Pay Frequency" value={form.pay_frequency} onChange={handleChange} />
@@ -179,7 +163,7 @@ export default function EmployeeCreate() {
             <button
               type="submit"
               disabled={loading}
-              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700 transition"
+              className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition"
             >
               {loading ? "Creating..." : "Create Employee"}
             </button>

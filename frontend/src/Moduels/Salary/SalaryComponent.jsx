@@ -1,99 +1,115 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { getComponents, createComponent } from "./SalaryApi";
 
 export default function SalaryComponents() {
 
-  const [component, setComponent] = useState({
+  const [components, setComponents] = useState([]);
+  const [form, setForm] = useState({
     name: "",
-    type: "Earning",
-    calculation: "Fixed",
-    value: ""
+    code: "",
+    component_type: "earning",
+    calc_type: "fixed"
   });
 
-  const [components, setComponents] = useState([
-    { id: 1, name: "Basic", type: "Earning", calculation: "Fixed", value: 30000 },
-    { id: 2, name: "HRA", type: "Earning", calculation: "Percentage", value: 40 },
-    { id: 3, name: "PF", type: "Deduction", calculation: "Percentage", value: 12 }
-  ]);
+  useEffect(() => {
+    load();
+  }, []);
 
-  const handleChange = (e) =>
-    setComponent({ ...component, [e.target.name]: e.target.value });
+  async function load() {
+    const data = await getComponents();
+    setComponents(data);
+  }
 
-  const addComponent = () => {
-    if (!component.name || !component.value) return;
+  function handleChange(e){
+    setForm({...form,[e.target.name]:e.target.value})
+  }
 
-    setComponents([
-      ...components,
-      { ...component, id: Date.now(), value: Number(component.value) }
-    ]);
+  async function handleCreate(){
+    await createComponent({
+      organisation_id:"23789067-370a-4a80-bc56-e0c1c54264aa",
+      ...form
+    })
 
-    setComponent({ name: "", type: "Earning", calculation: "Fixed", value: "" });
-  };
+    load()
+  }
 
   return (
-    <div className="p-6 bg-slate-50 min-h-screen w-full">
-      <div className="w-full bg-white p-6 rounded-2xl shadow">
+    <div className="p-6">
 
-        <h2 className="text-xl font-semibold mb-6">
-          Salary Components
-        </h2>
+      <h1 className="text-xl font-semibold mb-6">
+        Salary Components
+      </h1>
 
-        <div className="grid md:grid-cols-4 gap-4 mb-6">
-          <input name="name" placeholder="Component Name"
-            value={component.name} onChange={handleChange}
-            className="border px-3 py-2 rounded-xl" />
+      <div className="grid grid-cols-4 gap-3 mb-6">
 
-          <select name="type" value={component.type}
-            onChange={handleChange}
-            className="border px-3 py-2 rounded-xl">
-            <option>Earning</option>
-            <option>Deduction</option>
-          </select>
+        <input
+        name="name"
+        placeholder="Component Name"
+        className="border p-2 rounded"
+        onChange={handleChange}
+        />
 
-          <select name="calculation" value={component.calculation}
-            onChange={handleChange}
-            className="border px-3 py-2 rounded-xl">
-            <option>Fixed</option>
-            <option>Percentage</option>
-          </select>
+        <input
+        name="code"
+        placeholder="Code"
+        className="border p-2 rounded"
+        onChange={handleChange}
+        />
 
-          <input type="number" name="value"
-            placeholder="Value"
-            value={component.value}
-            onChange={handleChange}
-            className="border px-3 py-2 rounded-xl" />
-        </div>
+        <select
+        name="component_type"
+        className="border p-2 rounded"
+        onChange={handleChange}
+        >
+          <option value="earning">Earning</option>
+          <option value="deduction">Deduction</option>
+        </select>
+
+        <select
+        name="calc_type"
+        className="border p-2 rounded"
+        onChange={handleChange}
+        >
+          <option value="fixed">Fixed</option>
+          <option value="percentage">Percentage</option>
+          <option value="formula">Formula</option>
+        </select>
 
         <button
-          onClick={addComponent}
-          className="bg-indigo-600 text-white px-4 py-2 rounded-xl mb-6"
+        className="bg-red-600 text-white rounded px-4 py-2"
+        onClick={handleCreate}
         >
           Add Component
         </button>
 
-        <table className="w-full text-sm border rounded-xl overflow-hidden">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-3 text-left">Name</th>
-              <th className="p-3 text-left">Type</th>
-              <th className="p-3 text-left">Calculation</th>
-              <th className="p-3 text-left">Value</th>
-            </tr>
-          </thead>
-          <tbody>
-            {components.map(c => (
-              <tr key={c.id} className="border-t">
-                <td className="p-3">{c.name}</td>
-                <td className="p-3">{c.type}</td>
-                <td className="p-3">{c.calculation}</td>
-                <td className="p-3">
-                  {c.calculation === "Percentage" ? `${c.value}%` : `₹${c.value}`}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-
       </div>
+
+      <table className="w-full border">
+
+        <thead className="bg-gray-100">
+          <tr>
+            <th className="p-2 border">Name</th>
+            <th className="p-2 border">Code</th>
+            <th className="p-2 border">Type</th>
+            <th className="p-2 border">Calc</th>
+          </tr>
+        </thead>
+
+        <tbody>
+
+          {components.map((c)=>(
+            <tr key={c.component_id}>
+              <td className="p-2 border">{c.name}</td>
+              <td className="p-2 border">{c.code}</td>
+              <td className="p-2 border">{c.component_type}</td>
+              <td className="p-2 border">{c.calc_type}</td>
+            </tr>
+          ))}
+
+        </tbody>
+
+      </table>
+
     </div>
-  );
+  )
 }

@@ -61,7 +61,7 @@ class User(Base):
     organisation_id = Column(
         PGUUID(as_uuid=True),
         ForeignKey("organisations.organisation_id", ondelete="SET NULL"),
-        nullable=True,
+        nullable=False,
     )
     username = Column(String(150), nullable=False)
     email = Column(String(255), nullable=False)
@@ -73,7 +73,8 @@ class User(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
     is_system_admin = Column(Boolean, nullable=False, server_default=text("false"))
-
+    reset_token = Column(String, nullable=True)
+    reset_token_expiry = Column(TIMESTAMP(timezone=True), nullable=True)
     __table_args__ = (
         UniqueConstraint("organisation_id", "username", name="ux_users_org_username"),
         UniqueConstraint("organisation_id", "email", name="ux_users_org_email"),
@@ -95,7 +96,7 @@ class User(Base):
         foreign_keys="[UserRole.assigned_by]",
         viewonly=True,
     )
-
+    
     def __repr__(self):
         return f"<User(username={self.username}, email={self.email}, organisation_id={self.organisation_id})>"
 

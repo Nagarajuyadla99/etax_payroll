@@ -2,11 +2,9 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./components/pages/Login";
 import Dashboard from "./components/pages/Dashboard";
-import Payroll from "./components/pages/Payroll";
 import Form16 from "./components/pages/Form16";
 import Layout from "./components/layout/Layout";
 import Protected from "./components/Protected";
-import Payruns from "./components/pages/Payruns";
 import Approvals from "./components/pages/Approvals/Approvals";
 import Loans from "./components/pages/Loans/Loans";
 import EmployeeCreate from "./Moduels/Employees/EmployeeCreate";
@@ -17,12 +15,16 @@ import Tax from "./components/pages/Tax";
 import NoticeBoard from "./components/layout/NoticeBoard";
 import Help from "./components/pages/Help";
 import AttendancePage from "./Moduels/attendance/AttendancePage";
+//Payroll-Home
+import PayrollHome from "./Moduels/Salary/PayrollHome";
 
 // Salary
-import Component from "./Moduels/Salary/SalaryComponent";
-import PayStructure from "./Moduels/Salary/PayStracture";
-import SalaryTemplate from "./Moduels/Salary/SalaryTemplate";
-import SalaryEngine from "./Moduels/Salary/PayrollEngine";
+import SalaryComponents from "./Moduels/Salary/SalaryComponent";
+import SalaryTemplates from "./Moduels/Salary/SalaryTemplate";
+import SalaryTemplateDetail from "./Moduels/Salary/SalaryTemplateDetail";
+import SalaryPreview from "./Moduels/Salary/SalaryPreview";
+import EmployeeSalaryStructure from "./Moduels/Salary/EmployeeSalaryStructure";
+import EmployeeSelector from "./Moduels/Salary/EmployeeSelector";
 
 // Attendance
 import AttendanceSummary from "./components/pages/Attendance/AttendancsSummary";
@@ -40,6 +42,20 @@ import Audit from "./Moduels/Audit/AuditLogViewer";
 
 // Auth
 import AuthProvider from "./Moduels/Context/AuthContext";
+import ResetPassword from "./components/pages/ResetPassword";
+
+//Payroll
+import PayPeriods from "./Moduels/payroll/PayPeriods";
+import PayrollRuns from "./Moduels/payroll/PayrollRuns";
+import ProcessPayroll from "./Moduels/payroll/PayrollProcess";
+import PayrollSummary from "./Moduels/payroll/PayrollSummary";
+import PayrollRegister from "./Moduels/payroll/PayrollRegister";
+import SalaryStatement from "./Moduels/payroll/SalaryStatement";
+import TdsSummary from "./Moduels/payroll/TdsSummary";
+import PayslipDownload from "./Moduels/payroll/paySlipDownload";
+
+//User Registration
+import RegisterModal from "./components/pages/RegisterModal";
 
 export default function App() {
   return (
@@ -49,6 +65,8 @@ export default function App() {
 
           {/* PUBLIC ROUTE */}
           <Route path="/" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
+          <Route pathh="/registermodal" element={<RegisterModal />} />
 
           {/* PROTECTED ROUTES */}
           <Route
@@ -65,13 +83,16 @@ export default function App() {
             <Route path="/employeeList" element={<EmployeeList />} />
             <Route path="/employeeForm" element={<EmployeeForm />} />
             <Route path="/employeebulkupload" element={<EmployeeBulkUpload />} />
+            {/* Payroll */}
+            <Route path="/payrollhome" element={<PayrollHome />} />
 
             {/* Salary Setup */}
-            <Route path="/salarycomponents" element={<Component />} />
-            <Route path="/salarytemplate" element={<SalaryTemplate />} />
-            <Route path="/paystructure" element={<PayStructure />} />
-            <Route path="/salaryengine" element={<SalaryEngine />} />
-
+           <Route path="/salary/components" element={<SalaryComponents />} />
+            <Route path="/salary/templates" element={<SalaryTemplates />} />
+            <Route path="/salary/templates/:id" element={<SalaryTemplateDetail />} />
+            <Route path="/salary/preview" element={<EmployeeSelector />} />
+            <Route path="/salary/preview/:id" element={<SalaryPreview />} />
+            <Route path="/employeesalarystructure" element={<EmployeeSalaryStructure />} />
             {/* Attendance */}
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/attendanceSummary" element={<AttendanceSummary />} />
@@ -79,8 +100,14 @@ export default function App() {
             <Route path="/leaveApproval" element={<LeaveApproval />} />
 
             {/* Payroll */}
-            <Route path="/payroll" element={<Payroll />} />
-            <Route path="/payruns" element={<Payruns />} />
+            <Route path="/pay-periods" element={<PayPeriods/>}/>
+            <Route path="/payroll-runs" element={<PayrollRuns/>}/>
+            <Route path="/process-payroll" element={<ProcessPayroll/>}/>
+            <Route path="/summary" element={<PayrollSummary/>}/>
+            <Route path="/register" element={<PayrollRegister/>}/>
+            <Route path="/salary-statement" element={<SalaryStatement/>}/>
+            <Route path="/tds-summary" element={<TdsSummary/>}/>
+            <Route path="/payslip" element={<PayslipDownload/>}/>
 
             {/* Bank */}
             <Route path="/bank" element={<BankPayments />} />
@@ -92,6 +119,7 @@ export default function App() {
             <Route path="/audit" element={<Audit />} />
 
             {/* Other */}
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/approvals" element={<Approvals />} />
             <Route path="/loans" element={<Loans />} />
             <Route path="/form16" element={<Form16 />} />

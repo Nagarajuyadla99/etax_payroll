@@ -1,18 +1,28 @@
 import { createContext, useEffect, useState } from "react";
-import { loginUser, getProfile } from "../auth/auth";
+import { loginUser, getProfile, registerUser } from "../auth/auth";
 
 export const AuthContext = createContext();
 
 export default function AuthProvider({ children }) {
+
   const [user, setUser] = useState(null);
 
+  // LOGIN
   const login = async (username, password) => {
     const res = await loginUser(username, password);
     localStorage.setItem("token", res.access_token);
+
     const profile = await getProfile();
     setUser(profile);
   };
 
+  // REGISTER
+  const register = async (data) => {
+    const res = await registerUser(data);
+    return res;
+  };
+
+  // LOGOUT
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
@@ -25,7 +35,7 @@ export default function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, register }}>
       {children}
     </AuthContext.Provider>
   );

@@ -45,7 +45,7 @@ async def _ensure_organisation_exists(db: AsyncSession, organisation_id: UUID):
 # ============================================================
 
 async def create_employee(db: AsyncSession, emp: EmployeeCreate, organisation_id: UUID):
-
+    print(">>> CRUD FUNCTION HIT")
     await _ensure_organisation_exists(db, organisation_id)
 
     emp_data = emp.model_dump(exclude_unset=True)

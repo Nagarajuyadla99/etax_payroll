@@ -50,6 +50,8 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     password: str
+    organisation_name: str
+    
 
 
 class UserUpdate(BaseModel):
@@ -61,13 +63,13 @@ class UserUpdate(BaseModel):
     password: Optional[str] = None
     is_system_admin: Optional[bool] = None
 
-
 class UserRead(UserBase):
     user_id: UUID
     last_login: Optional[datetime] = None
     created_at: datetime
     updated_at: datetime
-
+    role: str | None = None
+    organisation_id: Optional[UUID] = None
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -90,3 +92,10 @@ class UserRoleOut(UserRoleBase):
     assigned_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+    
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str

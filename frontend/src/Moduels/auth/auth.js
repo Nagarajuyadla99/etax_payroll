@@ -5,7 +5,18 @@ export const loginUser = async (username, password) => {
   form.append("username", username);
   form.append("password", password);
 
-  const { data } = await API.post("/login", form);
+  const { data } = await API.post("/auth/login", form);
+  localStorage.setItem("token", data.access_token);
+  return data;
+};
+
+export const registerUser = async (payload) => {
+  const { data } = await API.post("/auth/register", payload);
+  return data;
+};
+
+export const forgotPassword = async (email) => {
+  const { data } = await API.post("/auth/forgot-password", { email });
   return data;
 };
 

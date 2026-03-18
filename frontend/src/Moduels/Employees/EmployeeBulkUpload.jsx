@@ -60,7 +60,7 @@ export default function EmployeeBulkUpload() {
           <button
             onClick={handleUpload}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg"
+            className="bg-orange-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
           >
             {loading ? "Uploading..." : "Upload File"}
           </button>

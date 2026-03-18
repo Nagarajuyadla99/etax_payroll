@@ -3,7 +3,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from api.attendance_route import router as attendance_router
 from api.employee_route import router as employee_router
 from api.user_routes import router as user_router
-from api.auth_rotes import router as auth_router
+from api.auth_routes import router as auth_router
+from api.salary_routes import router as salary_router
+from api.payroll_routes import router as payroll_router
+from api.payslip_routes import router as payslip_router
+from api.org_routes import router as org_router
 
 
 
@@ -31,8 +35,11 @@ app.add_middleware(
 app.include_router(attendance_router)
 app.include_router(employee_router)
 app.include_router(user_router)
-app.include_router(auth_router, tags=["Authentication"])
-
+app.include_router(auth_router,prefix="/auth", tags=["Authentication"])
+app.include_router(salary_router, prefix="/salary", tags=["Salary"])
+app.include_router(payroll_router)
+app.include_router(payslip_router)
+app.include_router(org_router, prefix="/organisation")
 
 # create tables on startup
 @app.on_event("startup")

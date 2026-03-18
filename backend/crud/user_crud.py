@@ -40,42 +40,40 @@ async def list_users(db: AsyncSession) -> List[User]:
 # ✅ FIXED create_user() – Prevent duplicate keyword error
 # ============================================================
 
-async def create_user(db: AsyncSession, payload: UserCreate, is_system_admin: bool = False) -> User:
-    """
-    Create a new user with hashed password and uniqueness checks.
-    Prevents duplicate 'is_system_admin' keyword from schema.
-    """
+async def create_user(
+    db: AsyncSession,
+    payload: UserCreate,
+    is_system_admin: bool = False
+) -> User:
 
-    # Check for existing user (organisation + email)
     existing = await db.execute(
         select(User).filter(
             User.organisation_id == payload.organisation_id,
             User.email == payload.email,
         )
     )
+
     if existing.scalar_one_or_none():
         raise ValueError("Email already registered for this organisation")
 
-    # ✅ FIXED: Extract password separately and hash it
-    # plain_password = payload.password
-    # hashed = pwd_context.hash(plain_password)
+    # hash password
+    hashed_password = pwd_context.hash(payload.password)
 
-    # ✅ FIXED: Convert payload to dict, excluding 'password'
-    # and pop is_system_admin to avoid duplicate argument
     data = payload.model_dump(exclude={"password"})
     is_admin_flag = data.pop("is_system_admin", is_system_admin)
 
-    # ✅ FIXED: Create User safely
-    user = User(**data, password_hash=payload.password, is_system_admin=is_admin_flag)
+    user = User(
+        **data,
+        password_hash=hashed_password,
+        is_system_admin=is_admin_flag
+    )
 
-    try:
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
-        return user
-    except IntegrityError as e:
-        await db.rollback()
-        raise ValueError("User creation failed due to integrity error") from e
+    db.add(user)
+    await db.commit()
+    await db.refresh(user)
+
+    return user
+    
 
 async def authenticate_user(db: AsyncSession, identifier: str, password: str) -> Optional[User]:
     """Authenticate a user using email or username."""

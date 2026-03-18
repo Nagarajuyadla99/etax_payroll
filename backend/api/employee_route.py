@@ -26,18 +26,19 @@ async def create_new_employee(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_current_user),
 ):
+    print(">>> CREATE EMPLOYEE API HIT")
+
     if not getattr(current_user, "organisation_id", None):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Organisation not found. Please create organisation first.",
         )
+
     return await create_employee(
         db=db,
-        emp=emp,
-        organisation_id=current_user.organisation_id,
+        emp=emp,   # ✅ keep schema (not dict)
+        organisation_id=current_user.organisation_id,  # ✅ REQUIRED
     )
-
-
 # ============================================================
 # LIST EMPLOYEES (ORG SCOPED)
 # ============================================================
@@ -125,3 +126,40 @@ async def bulk_upload_employees(
     )
 
     return result
+
+
+    # ============================================================
+# DELETE EMPLOYEE (ORG SCOPED)
+# ============================================================
+@router.delete(
+    "/{emp_id}",
+    status_code=status.HTTP_200_OK,
+)
+async def delete_employee_by_id(
+    emp_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_current_user),
+):
+
+    if not getattr(current_user, "organisation_id", None):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Organisation not found"
+        )
+
+    emp = await get_employee(
+        db=db,
+        emp_id=emp_id,
+        organisation_id=current_user.organisation_id,
+    )
+
+    if not emp:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Employee not found"
+        )
+
+    await db.delete(emp)
+    await db.commit()
+
+    return {"message": "Employee deleted successfully"}

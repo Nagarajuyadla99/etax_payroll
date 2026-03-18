@@ -19,6 +19,11 @@ export const createEmployee = async (payload) => {
   return data;
 };
 
+export const deleteEmployee = async (id) => {
+  const { data } = await API.delete(`/employees/${id}`, getAuthHeaders());
+  return data;
+};
+
 export const bulkUploadEmployees = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
@@ -39,12 +44,12 @@ export const bulkUploadEmployees = async (file) => {
 
 export const fetchFKData = async () => {
   const [orgRes, deptRes, desigRes, locRes, mgrRes, payRes] = await Promise.all([
-    API.get("/organisations/"), // list of organisations
-    API.get("/departments/"),   // list of departments
-    API.get("/designations/"),  // list of designations
-    API.get("/locations/"),     // list of locations
-    API.get("/employees/"),     // list of employees (for manager dropdown)
-    API.get("/pay_structures/") // list of pay structures
+    API.get("/organisations/"),
+    API.get("/departments/"),
+    API.get("/designations/"),
+    API.get("/locations/"),
+    API.get("/employees/"),
+    API.get("/pay_structures/")
   ]);
 
   return {

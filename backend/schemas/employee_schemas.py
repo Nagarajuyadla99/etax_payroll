@@ -48,7 +48,7 @@ class EmployeeRef(BaseModel):
 # ============================================================
 
 class EmployeeBase(BaseModel):
-    organisation_id: UUID
+    organisation_id: Optional[UUID] = None
     employee_code: Optional[str] = None
     first_name: str
     middle_name: Optional[str] = None
@@ -116,7 +116,7 @@ class EmployeeOut(EmployeeBase):
     employee_id: UUID
     created_at: datetime
     updated_at: datetime
-
+    organisation_id: UUID   # ✅ visible in response only
     # Nested references
     department: Optional[DepartmentRef] = None
     designation: Optional[DesignationRef] = None

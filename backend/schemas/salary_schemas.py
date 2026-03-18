@@ -19,6 +19,7 @@ class SalaryComponentBase(BaseModel):
     is_active: Optional[bool] = True
     calc_type: Optional[str] = "fixed"  # 'fixed', 'percentage'
     percentage_of: Optional[str] = None
+    formula: Optional[str] = None
     rounding: Optional[Decimal] = Decimal("0.0000")
     is_taxable: Optional[bool] = True
     is_pf_applicable: Optional[bool] = False
@@ -124,5 +125,28 @@ class PayStructureOut(PayStructureBase):
     pay_structure_id: UUID
     created_at: datetime
     updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+
+    # ============================================================
+# EMPLOYEE SALARY STRUCTURE SCHEMAS
+# ============================================================
+
+class EmployeeSalaryStructureBase(BaseModel):
+    employee_id: UUID
+    template_id: UUID
+    effective_from: Optional[date] = None
+
+
+class EmployeeSalaryStructureCreate(EmployeeSalaryStructureBase):
+    ctc: Decimal
+
+
+
+class EmployeeSalaryStructureOut(EmployeeSalaryStructureBase):
+    id: UUID
+    ctc: Decimal
 
     model_config = ConfigDict(from_attributes=True)

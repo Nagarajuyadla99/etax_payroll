@@ -3,7 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import get_async_db
-from schemas.user_schemas import UserRead
+from schemas.user_schemas import UserRead,ForgotPasswordRequest
 from crud.user_crud import get_user_by_id, list_users
 from utils.dependencies import get_current_user, get_admin_user
 

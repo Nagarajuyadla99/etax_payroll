@@ -1,6 +1,5 @@
 import { NavLink, useLocation } from "react-router-dom";
 import { useState, useEffect } from "react";
-
 import {
   Home,
   Users,
@@ -8,417 +7,359 @@ import {
   Briefcase,
   CheckCircle,
   Calendar,
-  PlayCircle,
   HelpCircle,
-  User,
   ChevronLeft,
   ChevronRight,
   Layers,
   Shield,
   FileText,
-  MessageCircle,
   Upload,
   UserCheck,
-  Grid
+  ChevronDown,
+  Zap,
+  Bell
 } from "lucide-react";
 
-export default function Sidebar({ open }) {
-
+export default function Sidebar({ mobileOpen, onCollapsedChange }) {
   const location = useLocation();
-
   const [collapsed, setCollapsed] = useState(false);
-
-  const [salaryOpen, setSalaryOpen] = useState(
-    location.pathname.startsWith("/salary")
-  );
-
-  const [attendanceOpen, setAttendanceOpen] = useState(
-    location.pathname.startsWith("/attendance")
-  );
+  const [salaryOpen, setSalaryOpen] = useState(location.pathname.startsWith("/salary"));
+  const [attendanceOpen, setAttendanceOpen] = useState(location.pathname.startsWith("/attendance"));
+  const [employeeOpen, setEmployeeOpen] = useState(location.pathname.startsWith("/employee"));
 
   useEffect(() => {
-    if (location.pathname.startsWith("/attendance")) {
-      setAttendanceOpen(true);
-    }
-    if (location.pathname.startsWith("/salary")) {
-      setSalaryOpen(true);
-    }
+    if (location.pathname.startsWith("/salary")) setSalaryOpen(true);
+    if (location.pathname.startsWith("/attendance")) setAttendanceOpen(true);
+    if (location.pathname.startsWith("/employee")) setEmployeeOpen(true);
   }, [location.pathname]);
 
-  const baseLink =
-    "flex items-center gap-3 px-4 py-3 rounded-xl text-[15px] font-medium transition-all duration-300 group";
-
-  const activeLink = "bg-indigo-600 text-white shadow-md";
-  const inactiveLink =
-    "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700";
+  const handleCollapse = (val) => {
+    setCollapsed(val);
+    onCollapsedChange?.(val);
+  };
 
   return (
-    <aside
-    className={`relative top-0 left-0 z-80
-    h-screen
-    bg-white border-r shadow-sm
-    transition-all duration-300 ease-in-out
-    ${open ? "open" : ""} 
-    ${collapsed ? "collapsed" : "expanded"}`}
->
-    
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-5">
-        {!collapsed && (
-          <div>
-            <h2 className="text-xl font-semibold text-slate-800">
-              Payroll Pro
-            </h2>
-            <p className="text-xs text-slate-500">Management System</p>
+    <>
+      <style>{`
+        .sb {
+          height: 100vh;
+          background: #FFFFFF;
+          border-right: 1.5px solid #f0c0c0;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+
+        /* ── Header ── */
+        .sb-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 16px 14px;
+          border-bottom: 1.5px solid #fec7c7;
+          background: linear-gradient(135deg, #ffffff 0%, #FFFFFF 100%);
+        }
+
+        .sb-brand { display: flex; align-items: center; gap: 10px; }
+
+        .sb-logo {
+          width: 36px;
+          height: 36px;
+          border-radius: 10px;
+          background: linear-gradient(135deg, #ec5454, #f52d2d);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          box-shadow: 0 4px 10px rgba(245, 11, 11, 0.35);
+          flex-shrink: 0;
+        }
+
+        .sb-brand-name {
+          font-weight: 800;
+          font-size: 14.5px;
+          color: #1c0719;
+          letter-spacing: -0.3px;
+        }
+
+        .sb-brand-sub {
+          font-size: 10.5px;
+          color: #a34a4a;
+          font-weight: 500;
+        }
+
+        .sb-collapse-btn {
+          width: 26px;
+          height: 26px;
+          border-radius: 8px;
+          border: 1.5px solid #f0c0c0;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          background: #f5acac;
+          cursor: pointer;
+          color: #a34a4a;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
+        }
+        .sb-collapse-btn:hover {
+          background: #fec7c7;
+          border-color: #f50b0b;
+          color: #f50b0b;
+        }
+
+        /* ── Nav ── */
+        .sb-nav {
+          flex: 1;
+          overflow-y: auto;
+          padding: 10px 8px;
+          scrollbar-width: none;
+        }
+        .sb-nav::-webkit-scrollbar { display: none; }
+
+        .sb-section {
+          font-size: 9.5px;
+          font-weight: 700;
+          color: #000000;
+          margin-top: 14px;
+          margin-bottom: 4px;
+          padding-left: 10px;
+          text-transform: uppercase;
+          letter-spacing: 0.8px;
+        }
+
+        .sb-item {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 7px 10px;
+          border-radius: 10px;
+          text-decoration: none;
+          font-size: 13px;
+          color: #5c1e1e;
+          font-weight: 500;
+          transition: all 0.15s ease;
+          margin-bottom: 1px;
+        }
+        .sb-item:hover { background: #f5cdcd; color: #e48989; }
+        .sb-item.active {
+          background: linear-gradient(135deg, #f8cece, #fd8a8a);
+          color: #000000;
+          font-weight: 700;
+          box-shadow: 0 2px 8px rgba(245, 11, 62, 0.15);
+        }
+
+        .sb-icon {
+          width: 28px;
+          height: 28px;
+          border-radius: 8px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+        }
+
+        /* Accordion trigger */
+        .sb-acc-trigger {
+          display: flex;
+          align-items: center;
+          gap: 9px;
+          padding: 7px 10px;
+          border-radius: 10px;
+          cursor: pointer;
+          border: none;
+          background: transparent;
+          width: 100%;
+          font-size: 13px;
+          color: #000000;
+          font-weight: 500;
+          font-family: 'Plus Jakarta Sans', sans-serif;
+          transition: all 0.15s ease;
+          margin-bottom: 1px;
+        }
+        .sb-acc-trigger:hover { background: #ffe6e6; color: #b40909; }
+
+        .sb-chevron { margin-left: auto; transition: transform .2s; color: #c47d7d; }
+        .sb-chevron.open { transform: rotate(180deg); }
+
+        .sb-acc-inner { padding-left: 28px; margin-bottom: 2px; }
+
+        .sb-sub {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 8px;
+          font-size: 12px;
+          text-decoration: none;
+          color: #7c3535;
+          border-radius: 8px;
+          font-weight: 500;
+          transition: all 0.15s ease;
+          margin-bottom: 1px;
+        }
+        .sb-sub:hover { background: #ffe6e6; color: #b40909; }
+        .sb-sub.active {
+          background: linear-gradient(135deg, #fec7c7, #fd8a8a);
+          color: #920e0e;
+          font-weight: 700;
+        }
+
+        /* Footer */
+        .sb-footer {
+          padding: 10px 10px 14px;
+          border-top: 1.5px solid #fec7c7;
+        }
+
+        .sb-footer-badge {
+          display: flex;
+          gap: 9px;
+          background: linear-gradient(135deg, #ffebf5, #fec7c7);
+          padding: 10px 12px;
+          border-radius: 12px;
+          align-items: center;
+          border: 1px solid #fd8a8a;
+        }
+
+        .sb-footer-badge-icon {
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #f50b0b, #f91616);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #fff;
+          flex-shrink: 0;
+          box-shadow: 0 3px 8px rgba(245, 11, 11, 0.3);
+        }
+
+        .sb-footer-title { font-size: 12.5px; font-weight: 700; color: #920e0e; }
+        .sb-footer-sub { font-size: 10.5px; color: #b40909; font-weight: 500; }
+
+        /* ── Icon Color Tokens ── */
+        .ic-amber   { background: #f10b0b; color: #ffffff; }
+        .ic-red  { background: #FFF7ED; color: #ea0c74; }
+        .ic-yellow  { background: #FEFCE8; color: #CA8A04; }
+        .ic-green   { background: #F0FDF4; color: #16A34A; }
+        .ic-red     { background: #FEF2F2; color: #DC2626; }
+        .ic-blue    { background: #EFF6FF; color: #2563EB; }
+        .ic-sky     { background: #F0F9FF; color: #0284C7; }
+        .ic-purple  { background: #FAF5FF; color: #9333EA; }
+        .ic-rose    { background: #FFF1F2; color: #E11D48; }
+        .ic-teal    { background: #F0FDFA; color: #0D9488; }
+        .ic-brown   { background: #FEF3C7; color: #92400E; }
+        .ic-slate   { background: #F8FAFC; color: #475569; }
+        .ic-warm    { background: #FFFBEB; color: #B45309; }
+      `}</style>
+
+      <aside className="sb">
+        <div className="sb-header">
+          <div className="sb-brand">
+            <div className="sb-logo">
+              <Zap size={17} />
+            </div>
+            {!collapsed && (
+              <div>
+                <div className="sb-brand-name">BrixiGo</div>
+                <div className="sb-brand-sub">Management System</div>
+              </div>
+            )}
           </div>
-        )}
-
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="p-2 rounded-lg hover:bg-gray-100 transition"
-        >
-          {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
-        </button>
-      </div>
-
-      <nav className="flex flex-col gap-2 p-3 h-[calc(120vh-120px)] overflow-y-auto">
-
-        {/* Dashboard */}
-        <SideItem
-          to="/dashboard"
-          label="Home"
-          icon={<Home size={18} />}
-          color="blue"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-        {/* Employees */}
-        <SideItem
-          to="/employee"
-          label="Employees"
-          icon={<Users size={18} />}
-          color="emerald"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-        {/* ================= SALARY MODULE ================= */}
-        <div>
-          <button
-            onClick={() => setSalaryOpen(!salaryOpen)}
-            className={`${baseLink} ${
-              location.pathname.startsWith("/salary")
-                ? activeLink
-                : inactiveLink
-                
-            } w-full`}
-          >
-            <div
-              className={`p-2 rounded-lg transition-all duration-300
-              ${
-                location.pathname.startsWith("/salary")
-                  ? "bg-white/20 text-white"
-                  : "bg-indigo-200 text-indigo-600 group-hover:bg-indigo-200"
-              }
-              group-hover:scale-110`}
-            >
-              <Layers size={18}
-               />
-             
-        
-            </div>
-
-            {!collapsed && <span>Salary Setup</span>}
+          <button className="sb-collapse-btn" onClick={() => handleCollapse(!collapsed)}>
+            {collapsed ? <ChevronRight size={13} /> : <ChevronLeft size={13} />}
           </button>
-
-          {salaryOpen && !collapsed && (
-            <div className="mt-1 flex flex-col gap-1">
-              <SubItem to="/salarycomponents" icon={<Layers size={16} />} label="Components" />
-              <SubItem to="/salarytemplates" icon={<FileText size={16} />} label="Templates" />
-              <SubItem to="/paystructure" icon={<Grid size={16} />} label="Pay Structure" />
-              <SubItem to="/salaryengine" icon={<PlayCircle size={16} />} label="Payroll Engine" />
-            </div>
-          )}
         </div>
 
-        {/* ================= ATTENDANCE MODULE ================= */}
-        <div>
-          <button
-            onClick={() => setAttendanceOpen(!attendanceOpen)}
-            className={`${baseLink} ${
-              location.pathname.startsWith("/attendance")
-                ? activeLink
-                : inactiveLink
-            } w-full`}
-          >
-            <div
-              className={`p-2 rounded-lg transition-all duration-300
-              ${
-                location.pathname.startsWith("/attendance")
-                  ? "bg-white/20 text-white"
-                  : "bg-cyan-100 text-cyan-600 group-hover:bg-cyan-200"
-              }
-              group-hover:scale-110`}
-            >
-              <Calendar size={18} />
-            </div>
+        <nav className="sb-nav">
+          <div className="sb-section">Main</div>
 
-            {!collapsed && <span>Attendance</span>}
-          </button>
+          <SbItem to="/dashboard" label="Home" icon={<Home size={15} />} color="ic-amber" />
 
-          {attendanceOpen && !collapsed && (
-            <div className="mt-1 flex flex-col gap-1">
-              <SubItem to="/Attendance" icon={<Calendar size={16} />} label="Attendance" />
-              <SubItem to="/AttendanceSummary" icon={<FileText size={16} />} label="Attendance Summary" />
-              <SubItem to="/attendanceTable" icon={<Upload size={16} />} label="Attendance Table" />
-              <SubItem to="/attendance/leave-request" icon={<UserCheck size={16} />} label="Leave Requests" />
-              <SubItem to="/LeaveApproval" icon={<CheckCircle size={16} />} label="Leave Approval" />
+          <div className="sb-section">Payroll</div>
+
+          <SbAccordion label="Salary Setup" icon={<Layers size={15} />} color="ic-red" open={salaryOpen} onToggle={() => setSalaryOpen(!salaryOpen)}>
+            <SbSub to="/salary/components" label="Components" icon={<Layers size={13} />} color="ic-red" />
+            <SbSub to="/salary/templates" label="Templates" icon={<FileText size={13} />} color="ic-purple" />
+          </SbAccordion>
+
+          <SbItem to="/payrollhome" label="Pay Runs" icon={<Wallet size={15} />} color="ic-yellow" />
+
+          <div className="sb-section">Workforce</div>
+
+          <SbAccordion label="Attendance" icon={<Calendar size={15} />} color="ic-teal" open={attendanceOpen} onToggle={() => setAttendanceOpen(!attendanceOpen)}>
+            <SbSub to="/attendance" label="Attendance" icon={<Calendar size={13} />} color="ic-teal" />
+            <SbSub to="/attendance-summary" label="Summary" icon={<FileText size={13} />} color="ic-blue" />
+            <SbSub to="/attendance-table" label="Attendance Table" icon={<Layers size={13} />} color="ic-sky" />
+            <SbSub to="/attendance/leave-request" label="Leave Requests" icon={<Users size={13} />} color="ic-rose" />
+            <SbSub to="/leave-approval" label="Leave Approval" icon={<CheckCircle size={13} />} color="ic-green" />
+          </SbAccordion>
+
+          <SbAccordion label="Employee" icon={<Users size={15} />} color="ic-blue" open={employeeOpen} onToggle={() => setEmployeeOpen(!employeeOpen)}>
+            <SbSub to="/employeeList" label="Employee List" icon={<Users size={13} />} color="ic-blue" />
+            <SbSub to="/employeeCreate" label="Add Employee" icon={<UserCheck size={13} />} color="ic-green" />
+            <SbSub to="/employeeForm" label="Employee Form" icon={<FileText size={13} />} color="ic-sky" />
+            <SbSub to="/employeebulkupload" label="Bulk Upload" icon={<Upload size={13} />} color="ic-rose" />
+          </SbAccordion>
+
+          <div className="sb-section">Finance & Compliance</div>
+
+          <SbItem to="/bank" label="Bank Requests" icon={<Wallet size={15} />} color="ic-blue" />
+          <SbItem to="/approvals" label="Approvals" icon={<CheckCircle size={15} />} color="ic-green" />
+          <SbItem to="/loans" label="Loans" icon={<Briefcase size={15} />} color="ic-red" />
+          <SbItem to="/audit" label="Audit Logs" icon={<Shield size={15} />} color="ic-red" />
+          <SbItem to="/statutorytax" label="Statutory & Tax" icon={<FileText size={15} />} color="ic-purple" />
+
+          <div className="sb-section">Support</div>
+
+          <SbItem to="/noticeboard" label="Notice Board" icon={<Bell size={15} />} color="ic-amber" />
+          <SbItem to="/help" label="Help & Support" icon={<HelpCircle size={15} />} color="ic-slate" />
+        </nav>
+
+        <div className="sb-footer">
+          <div className="sb-footer-badge">
+            <div className="sb-footer-badge-icon">
+              <Zap size={14} />
             </div>
-          )}
+            {!collapsed && (
+              <div>
+                <div className="sb-footer-title">BrixiGo</div>
+                <div className="sb-footer-sub">Payroll Management System</div>
+              </div>
+            )}
+          </div>
         </div>
-
-        {/* Pay Runs */}
-        <SideItem
-          to="/payruns"
-          label="Pay Runs"
-          icon={<Wallet size={18} />}
-          color="amber"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-        {/* Employees */}
-        <SideItem
-          to="/employeeList"
-          label="Employees List"
-          icon={<User size={18} />}
-          color="blue"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-         <SideItem
-          to="/employeeCreate"
-          label="Add Employee"
-          icon={<User size={18} />}
-          color="cyan"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-        <SideItem
-        to="/employeeForm"
-        label="Employee Form"
-        icon={<User size={18} />}
-        color="emerald"
-        collapsed={collapsed}
-        baseLink={baseLink}
-        activeLink={activeLink}
-        inactiveLink={inactiveLink}
-      />
-
-      <SideItem
-        to="/employeebulkupload"
-        label="Employee Bulk Upload"
-        icon={<Upload size={18} />}
-        color="rose"
-        collapsed={collapsed}
-        baseLink={baseLink}
-        activeLink={activeLink}
-        inactiveLink={inactiveLink}
-      />
-
-
-        {/* Bank Requests */}
-        <SideItem
-          to="/bank"
-          label="Bank Requests"
-          icon={<Wallet size={18} />}
-          color="sky"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-        {/* Approvals */}
-        <SideItem
-          to="/approvals"
-          label="Approvals"
-          icon={<CheckCircle size={18} />}
-          color="purple"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-        {/* Loans */}
-        <SideItem
-          to="/loans"
-          label="Loans"
-          icon={<Briefcase size={18} />}
-          color="rose"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-        {/* Payroll */}
-        <SideItem
-          to="/payroll"
-          label="Process Payroll"
-          icon={<PlayCircle size={18} />}
-          color="orange"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-        {/* Audit */}
-        <SideItem
-          to="/audit"
-          label="Audit Logs"
-          icon={<Shield size={18} />}
-          color="red"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-           <SideItem
-            to="/statutorytax"
-            label="Statutory & Tax"
-            icon={<FileText size={18} />}
-            color="violet"
-            collapsed={collapsed}
-            baseLink={baseLink}
-              activeLink={activeLink}
-             inactiveLink={inactiveLink}
-              />
-
-       
-
-
-        {/* Help */}
-        <SideItem
-          to="/help"
-          label="Help"
-          icon={<HelpCircle size={18} />}
-          color="yellow"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-        {/* Noticeboard */}
-        <SideItem
-          to="/noticeboard"
-          label="Noticeboard"
-          icon={<MessageCircle size={18} />}
-          color="yellow"
-          collapsed={collapsed}
-          baseLink={baseLink}
-          activeLink={activeLink}
-          inactiveLink={inactiveLink}
-        />
-
-      </nav>
-    </aside>
+      </aside>
+    </>
   );
 }
 
-/* ================= SUB MENU ================= */
-function SubItem({ to, label, icon }) {
+function SbItem({ to, label, icon, color }) {
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `flex items-center gap-3 px-10 py-3 rounded-xl text-[15px] font-medium transition-all duration-300 w-full
-        ${
-          isActive
-            ? "bg-indigo-600 text-white shadow-md"
-            : "text-slate-600 hover:bg-indigo-50 hover:text-indigo-700"
-        }`
-      }
-    >
-      {({ isActive }) => (
-        <>
-          {icon && (
-            <div
-              className={`p-1 rounded-md transition-all duration-300
-              ${isActive ? "text-white" : "text-indigo-500"}
-              group-hover:scale-110`}
-            >
-              {icon}
-            </div>
-          )}
-          <span>{label}</span>
-        </>
-      )}
+    <NavLink to={to} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
+      <div className={`sb-icon ${color}`}>{icon}</div>
+      <span>{label}</span>
     </NavLink>
   );
 }
 
-/* ================= MAIN ITEM ================= */
-function SideItem({
-  to,
-  label,
-  icon,
-  color,
-  collapsed,
-  baseLink,
-  activeLink,
-  inactiveLink
-}) {
-
-  const colorMap = {
-    blue: "bg-blue-100 text-blue-600 group-hover:bg-blue-200",
-    emerald: "bg-emerald-100 text-emerald-600 group-hover:bg-emerald-200",
-    amber: "bg-amber-100 text-amber-600 group-hover:bg-amber-200",
-    purple: "bg-purple-100 text-purple-600 group-hover:bg-purple-200",
-    rose: "bg-rose-100 text-rose-600 group-hover:bg-rose-200",
-    cyan: "bg-cyan-100 text-cyan-600 group-hover:bg-cyan-200",
-    orange: "bg-orange-100 text-orange-600 group-hover:bg-orange-200",
-    pink: "bg-pink-100 text-pink-600 group-hover:bg-pink-200",
-    gray: "bg-gray-100 text-gray-600 group-hover:bg-gray-200",
-    violet: "bg-violet-100 text-violet-600 group-hover:bg-violet-200",
-    sky: "bg-sky-100 text-sky-600 group-hover:bg-sky-200",
-    red: "bg-red-100 text-red-600 group-hover:bg-red-200",
-    yellow: "bg-yellow-100 text-yellow-600 group-hover:bg-yellow-200",
-
-  };
-
+function SbAccordion({ label, icon, color, open, onToggle, children }) {
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) =>
-        `${baseLink} ${isActive ? activeLink : inactiveLink}`
-      }
-    >
-      {({ isActive }) => (
-        <>
-          <div
-            className={`p-2 rounded-lg transition-all duration-300
-              ${isActive ? "bg-white/20 text-white" : colorMap[color]}
-              group-hover:scale-110`}
-          >
-            {icon}
-          </div>
+    <div>
+      <button className="sb-acc-trigger" onClick={onToggle}>
+        <div className={`sb-icon ${color}`}>{icon}</div>
+        {label}
+        <ChevronDown size={13} className={`sb-chevron ${open ? "open" : ""}`} />
+      </button>
+      {open && <div className="sb-acc-inner">{children}</div>}
+    </div>
+  );
+}
 
-          {!collapsed && <span>{label}</span>}
-        </>
-      )}
+function SbSub({ to, label, icon, color }) {
+  return (
+    <NavLink to={to} className={({ isActive }) => `sb-sub ${isActive ? "active" : ""}`}>
+      <div className={`sb-icon ${color}`} style={{ width: 22, height: 22, borderRadius: 6 }}>{icon}</div>
+      <span>{label}</span>
     </NavLink>
   );
 }
