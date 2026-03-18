@@ -360,7 +360,7 @@ export default function Dashboard() {
             </div>
             <div className="card-body">
               <div className="action-grid">
-                <button className="action-btn ab-amber">Add Employee</button>
+                <button className="action-btn ab-amber" to="employeeCreate">Add Employee</button>
                 <button className="action-btn ab-green">Gen Payslip</button>
                 <button className="action-btn ab-blue">Tax Decl.</button>
                 <button className="action-btn ab-red">Leave Import</button>

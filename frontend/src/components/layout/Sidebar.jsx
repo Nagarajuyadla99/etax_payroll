@@ -297,7 +297,6 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           <SbAccordion label="Employee" icon={<Users size={15} />} color="ic-blue" open={employeeOpen} onToggle={() => setEmployeeOpen(!employeeOpen)}>
             <SbSub to="/employeeList" label="Employee List" icon={<Users size={13} />} color="ic-blue" />
             <SbSub to="/employeeCreate" label="Add Employee" icon={<UserCheck size={13} />} color="ic-green" />
-            <SbSub to="/employeeForm" label="Employee Form" icon={<FileText size={13} />} color="ic-sky" />
             <SbSub to="/employeebulkupload" label="Bulk Upload" icon={<Upload size={13} />} color="ic-rose" />
           </SbAccordion>
 

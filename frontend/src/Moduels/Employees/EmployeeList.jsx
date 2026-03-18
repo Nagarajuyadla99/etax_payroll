@@ -120,7 +120,7 @@ export default function EmployeeList() {
                     {emp.first_name} {emp.middle_name || ""} {emp.last_name}
                   </td>
 
-                  <td className="p-3">{emp.email || "-"}</td>
+                  <td className="p-3">{emp.work_email || "-"}</td>
 
                   <td className="p-3">
                     {emp.phone || emp.mobile_phone || "-"}

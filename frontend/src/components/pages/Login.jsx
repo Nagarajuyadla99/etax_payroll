@@ -303,7 +303,16 @@ export default function Login() {
           border-color: #f50b0b;
           color: #f30e0e;
         }
+         /* Hide default browser password reveal icon */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear {
+  display: none;
+}
 
+    input[type="password"]::-webkit-credentials-auto-fill-button,
+input[type="password"]::-webkit-password-toggle-button {
+  display: none !important;
+}
         .login-footer {
           text-align: center;
           margin-top: 20px;
