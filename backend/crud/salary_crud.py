@@ -27,15 +27,31 @@ from schemas.salary_schemas import (
 )
 
 # ============================================================
+# COMMON HELPER
+# ============================================================
+
+def clean_payload(payload):
+    data = payload.model_dump()
+    data.pop("organisation_id", None)
+    return data
+
+
+# ============================================================
 # SALARY COMPONENTS
 # ============================================================
 
 async def create_salary_component(
     db: AsyncSession,
-    payload: SalaryComponentCreate
+    payload: SalaryComponentCreate,
+    current_user
 ) -> SalaryComponent:
 
-    comp = SalaryComponent(**payload.model_dump())
+    data = clean_payload(payload)
+
+    comp = SalaryComponent(
+        **data,
+        organisation_id=current_user.organisation_id
+    )
 
     try:
         db.add(comp)
@@ -50,32 +66,41 @@ async def create_salary_component(
 
 async def get_salary_component(
     db: AsyncSession,
-    component_id: UUID
+    component_id: UUID,
+    current_user
 ) -> Optional[SalaryComponent]:
 
     q = await db.execute(
-        select(SalaryComponent)
-        .filter(SalaryComponent.component_id == component_id)
+        select(SalaryComponent).where(
+            SalaryComponent.component_id == component_id,
+            SalaryComponent.organisation_id == current_user.organisation_id
+        )
     )
 
     return q.scalar_one_or_none()
 
 
 async def list_salary_components(
-    db: AsyncSession
+    db: AsyncSession,
+    current_user
 ) -> List[SalaryComponent]:
 
-    q = await db.execute(select(SalaryComponent))
+    q = await db.execute(
+        select(SalaryComponent).where(
+            SalaryComponent.organisation_id == current_user.organisation_id
+        )
+    )
     return q.scalars().all()
 
 
 async def update_salary_component(
     db: AsyncSession,
     component_id: UUID,
-    payload: SalaryComponentUpdate
+    payload: SalaryComponentUpdate,
+    current_user
 ) -> Optional[SalaryComponent]:
 
-    comp = await get_salary_component(db, component_id)
+    comp = await get_salary_component(db, component_id, current_user)
 
     if not comp:
         return None
@@ -99,10 +124,16 @@ async def update_salary_component(
 
 async def create_salary_template(
     db: AsyncSession,
-    payload: SalaryTemplateCreate
+    payload: SalaryTemplateCreate,
+    current_user
 ) -> SalaryTemplate:
 
-    tpl = SalaryTemplate(**payload.model_dump())
+    data = clean_payload(payload)
+
+    tpl = SalaryTemplate(
+        **data,
+        organisation_id=current_user.organisation_id
+    )
 
     try:
         db.add(tpl)
@@ -110,29 +141,37 @@ async def create_salary_template(
         await db.refresh(tpl)
         return tpl
 
-    except IntegrityError as e:
+    except IntegrityError:
         await db.rollback()
         raise ValueError("Salary template already exists for this organisation")
 
 
 async def get_salary_template(
     db: AsyncSession,
-    template_id: UUID
+    template_id: UUID,
+    current_user
 ) -> Optional[SalaryTemplate]:
 
     q = await db.execute(
-        select(SalaryTemplate)
-        .filter(SalaryTemplate.template_id == template_id)
+        select(SalaryTemplate).where(
+            SalaryTemplate.template_id == template_id,
+            SalaryTemplate.organisation_id == current_user.organisation_id
+        )
     )
 
     return q.scalar_one_or_none()
 
 
 async def list_salary_templates(
-    db: AsyncSession
+    db: AsyncSession,
+    current_user
 ) -> List[SalaryTemplate]:
 
-    q = await db.execute(select(SalaryTemplate))
+    q = await db.execute(
+        select(SalaryTemplate).where(
+            SalaryTemplate.organisation_id == current_user.organisation_id
+        )
+    )
     return q.scalars().all()
 
 
@@ -142,12 +181,18 @@ async def list_salary_templates(
 
 async def add_component_to_template(
     db: AsyncSession,
-    payload: SalaryTemplateComponentCreate
+    payload: SalaryTemplateComponentCreate,
+    current_user
 ) -> SalaryTemplateComponent:
 
+    template = await get_salary_template(db, payload.template_id, current_user)
+    component = await get_salary_component(db, payload.component_id, current_user)
+
+    if not template or not component:
+        raise ValueError("Invalid template/component")
+
     q = await db.execute(
-        select(SalaryTemplateComponent)
-        .filter(
+        select(SalaryTemplateComponent).where(
             SalaryTemplateComponent.template_id == payload.template_id,
             SalaryTemplateComponent.component_id == payload.component_id
         )
@@ -171,12 +216,17 @@ async def add_component_to_template(
 
 async def get_template_components(
     db: AsyncSession,
-    template_id: UUID
+    template_id: UUID,
+    current_user
 ):
 
     q = await db.execute(
         select(SalaryTemplateComponent)
-        .filter(SalaryTemplateComponent.template_id == template_id)
+        .join(SalaryTemplate)
+        .where(
+            SalaryTemplateComponent.template_id == template_id,
+            SalaryTemplate.organisation_id == current_user.organisation_id
+        )
         .order_by(SalaryTemplateComponent.sequence)
     )
 
@@ -186,17 +236,24 @@ async def get_template_components(
 async def update_template_component(
     db: AsyncSession,
     stc_id: UUID,
-    payload: SalaryTemplateComponentUpdate
+    payload: SalaryTemplateComponentUpdate,
+    current_user
 ) -> Optional[SalaryTemplateComponent]:
 
     q = await db.execute(
-        select(SalaryTemplateComponent)
-        .filter(SalaryTemplateComponent.stc_id == stc_id)
+        select(SalaryTemplateComponent).where(
+            SalaryTemplateComponent.stc_id == stc_id
+        )
     )
 
     stc = q.scalar_one_or_none()
 
     if not stc:
+        return None
+
+    template = await get_salary_template(db, stc.template_id, current_user)
+
+    if not template:
         return None
 
     for k, v in payload.model_dump(exclude_unset=True).items():
@@ -218,10 +275,21 @@ async def update_template_component(
 
 async def create_pay_structure(
     db: AsyncSession,
-    payload: PayStructureCreate
+    payload: PayStructureCreate,
+    current_user
 ) -> PayStructure:
 
-    ps = PayStructure(**payload.model_dump())
+    template = await get_salary_template(db, payload.template_id, current_user)
+
+    if not template:
+        raise ValueError("Invalid template")
+
+    data = clean_payload(payload)
+
+    ps = PayStructure(
+        **data,
+        organisation_id=current_user.organisation_id
+    )
 
     try:
         db.add(ps)
@@ -236,12 +304,15 @@ async def create_pay_structure(
 
 async def get_pay_structure(
     db: AsyncSession,
-    pay_structure_id: UUID
+    pay_structure_id: UUID,
+    current_user
 ) -> Optional[PayStructure]:
 
     q = await db.execute(
-        select(PayStructure)
-        .filter(PayStructure.pay_structure_id == pay_structure_id)
+        select(PayStructure).where(
+            PayStructure.pay_structure_id == pay_structure_id,
+            PayStructure.organisation_id == current_user.organisation_id
+        )
     )
 
     return q.scalar_one_or_none()
@@ -253,10 +324,21 @@ async def get_pay_structure(
 
 async def assign_salary_template(
     db: AsyncSession,
-    payload: EmployeeSalaryStructureCreate
+    payload: EmployeeSalaryStructureCreate,
+    current_user
 ) -> EmployeeSalaryStructure:
 
-    obj = EmployeeSalaryStructure(**payload.model_dump())
+    template = await get_salary_template(db, payload.template_id, current_user)
+
+    if not template:
+        raise ValueError("Invalid template")
+
+    data = clean_payload(payload)
+
+    obj = EmployeeSalaryStructure(
+        **data,
+        organisation_id=current_user.organisation_id
+    )
 
     try:
         db.add(obj)
@@ -271,12 +353,16 @@ async def assign_salary_template(
 
 async def get_employee_salary_structure(
     db: AsyncSession,
-    employee_id: UUID
+    employee_id: UUID,
+    current_user
 ):
 
     q = await db.execute(
         select(EmployeeSalaryStructure)
-        .filter(EmployeeSalaryStructure.employee_id == employee_id)
+        .where(
+            EmployeeSalaryStructure.employee_id == employee_id,
+            EmployeeSalaryStructure.organisation_id == current_user.organisation_id
+        )
         .order_by(EmployeeSalaryStructure.effective_from.desc())
         .limit(1)
     )
@@ -285,8 +371,23 @@ async def get_employee_salary_structure(
 
 
 async def list_employee_salary_structures(
-    db: AsyncSession
+    db: AsyncSession,
+    current_user
 ):
 
-    q = await db.execute(select(EmployeeSalaryStructure))
-    return q.scalars().all()
+    q = await db.execute(
+        select(EmployeeSalaryStructure).where(
+            EmployeeSalaryStructure.organisation_id == current_user.organisation_id
+        )
+    )
+
+    records = q.scalars().all()
+
+    for r in records:
+        if r.ctc is not None:
+            try:
+                r.ctc = float(r.ctc)
+            except Exception:
+                r.ctc = 0.0
+
+    return records

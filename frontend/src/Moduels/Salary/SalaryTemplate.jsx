@@ -1,74 +1,165 @@
 import { useEffect, useState } from "react";
-import { getTemplates, createTemplate } from "./SalaryApi";
-import { useNavigate } from "react-router-dom";
+import {
+  getComponents,
+  addTemplateComponent
+} from "./SalaryApi";
+import { useParams } from "react-router-dom";
 
-export default function SalaryTemplate() {
-  const [templates, setTemplates] = useState([]);
-  const [name, setName] = useState("");
-  const nav = useNavigate();
+export default function TemplateBuilder() {
+  const { templateId } = useParams();
+
+  const [components, setComponents] = useState([]);
+  const [selectedComponent, setSelectedComponent] = useState("");
+
+  const [calcMode, setCalcMode] = useState("percentage");
+  const [percentage, setPercentage] = useState("");
+  const [formula, setFormula] = useState("");
+  const [base, setBase] = useState("ctc");
 
   useEffect(() => {
-    load();
+    loadComponents();
   }, []);
 
-  async function load() {
-    const data = await getTemplates();
-    setTemplates(data);
+  async function loadComponents() {
+    try {
+      const data = await getComponents();
+      setComponents(data);
+
+      if (data.length > 0) {
+        setSelectedComponent(data[0].component_id);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Failed to load components");
+    }
   }
 
-  async function handleCreate() {
-    const tpl = await createTemplate({
-      organisation_id: "23789067-370a-4a80-bc56-e0c1c54264aa",
-      name
-    });
-    nav(`/salary/templates/${tpl.template_id}`);
-  }
+async function handleAdd() {
+  try {
+    const payload = {
+      template_id: templateId,
+      
+      component_id: selectedComponent,
+    };
+    console.log("TEMPLATE ID FROM URL:", templateId);
+    if (calcMode === "percentage") {
+      if (percentage === "" || isNaN(Number(percentage))) {
+        alert("Enter valid percentage");
+        return;
+      }
 
+      payload.percentage = Number(percentage);
+      payload.percentage_of = base || "ctc";
+    }
+
+    if (calcMode === "formula") {
+      if (!formula.trim()) {
+        alert("Enter valid formula");
+        return;
+      }
+
+      payload.formula = formula.trim().toLowerCase();
+    }
+
+    // 🔥 DEBUG (VERY IMPORTANT)
+    console.log("SENDING PAYLOAD:", payload);
+
+    await addTemplateComponent(payload);
+
+    alert("Component added");
+
+    setPercentage("");
+    setFormula("");
+
+  } catch (err) {
+  console.error("FULL ERROR:", err);
+
+  if (err.response) {
+    console.error("STATUS:", err.response.status);
+    console.error("DATA:", err.response.data);
+    console.error("FULL ERROR DATA:", JSON.stringify(err.response.data, null, 2));
+    console.log("🔥 templateId:", templateId);
+    alert(JSON.stringify(err.response.data));
+  } else {
+    console.error("NO RESPONSE:", err);
+  }
+}
+}
   return (
     <div className="p-6">
-      <h1 className="text-xl font-semibold mb-4">Salary Templates</h1>
 
-      <div className="flex gap-2 mb-4">
-        <input
+      <h2 className="text-lg font-semibold mb-4">Template Builder</h2>
+
+      <div className="flex gap-2 mb-4 items-center">
+
+        {/* COMPONENT SELECT */}
+        <select
           className="border p-2 rounded"
-          placeholder="Template Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
-
-        <button
-          onClick={handleCreate}
-          className="bg-green-600 text-white px-4 py-2 rounded"
+          value={selectedComponent}
+          onChange={(e) => setSelectedComponent(e.target.value)}
         >
-          Create
+          {components.map((c) => (
+            <option key={c.component_id} value={c.component_id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+
+        {/* MODE */}
+        <select
+          className="border p-2 rounded"
+          value={calcMode}
+          onChange={(e) => setCalcMode(e.target.value)}
+        >
+          <option value="percentage">%</option>
+          <option value="formula">Formula</option>
+        </select>
+
+        {/* INPUT */}
+        {calcMode === "percentage" ? (
+          <>
+            <input
+              type="number"
+              placeholder="Enter %"
+              className="border p-2 rounded w-28"
+              value={percentage}
+              onChange={(e) => setPercentage(e.target.value)}
+            />
+
+            <select
+              className="border p-2 rounded"
+              value={base}
+              onChange={(e) => setBase(e.target.value)}
+            >
+              <option value="ctc">CTC</option>
+              <option value="basic">Basic</option>
+            </select>
+          </>
+        ) : (
+          <input
+            type="text"
+            placeholder="e.g. ctc * 0.1"
+            className="border p-2 rounded w-64"
+            value={formula}
+            onChange={(e) => setFormula(e.target.value)}
+          />
+        )}
+
+        {/* BUTTON */}
+        <button
+          onClick={handleAdd}
+          className="bg-purple-600 text-white px-4 py-2 rounded"
+        >
+          Add
         </button>
+
       </div>
 
-      <table className="w-full border">
-        <thead>
-          <tr className="bg-gray-100">
-            <th className="p-2 border">Name</th>
-            <th className="p-2 border">Actions</th>
-          </tr>
-        </thead>
+      {/* INFO */}
+      <p className="text-sm text-gray-500">
+        Use variables: ctc, basic, hra
+      </p>
 
-        <tbody>
-          {templates.map((t) => (
-            <tr key={t.template_id}>
-              <td className="p-2 border">{t.name}</td>
-
-              <td className="p-2 border">
-                <button
-                  className="text-red-600"
-                  onClick={() => nav(`/salary/templates/${t.template_id}`)}
-                >
-                  Open
-                </button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   );
 }

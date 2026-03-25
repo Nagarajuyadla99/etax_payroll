@@ -41,14 +41,34 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
   return (
     <>
       <style>{`
+      :root {
+        --bg-sidebar: #FFFFFF;
+        --bg-hover: #F1F5F9;
+        --bg-active: #EFF6FF;
+
+        --text-primary: #0F172A;
+        --text-secondary: #64748B;
+
+        --blue-600: #2563EB;
+        --blue-500: #3B82F6;
+       --blue-50: #EFF6FF;
+
+      --teal-500: #14B8A6;
+      --green-500: #22C55E;
+      --amber-500: #F59E0B;
+      --red-500: #EF4444;
+
+      --border: #E2E8F0;
+}
         .sb {
-          height: 100vh;
-          background: #FFFFFF;
-          border-right: 1.5px solid #f0c0c0;
-          display: flex;
-          flex-direction: column;
-          overflow: hidden;
-        }
+  height: 100vh;
+  width: 260px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  transition: all 0.25s ease;
+}
 
         /* ── Header ── */
         .sb-header {
@@ -56,7 +76,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           justify-content: space-between;
           align-items: center;
           padding: 16px 14px;
-          border-bottom: 1.5px solid #fec7c7;
+          border-bottom: 1px solid var(--border);
           background: linear-gradient(135deg, #ffffff 0%, #FFFFFF 100%);
         }
 
@@ -66,11 +86,12 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           width: 36px;
           height: 36px;
           border-radius: 10px;
-          background: linear-gradient(135deg, #ec5454, #f52d2d);
+          background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+          color: #fff;
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #fff;
+          
           box-shadow: 0 4px 10px rgba(245, 11, 11, 0.35);
           flex-shrink: 0;
         }
@@ -78,13 +99,13 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
         .sb-brand-name {
           font-weight: 800;
           font-size: 14.5px;
-          color: #1c0719;
+          color: var(--text-primary);
           letter-spacing: -0.3px;
         }
 
         .sb-brand-sub {
           font-size: 10.5px;
-          color: #a34a4a;
+          color: var(--text-secondary);
           font-weight: 500;
         }
 
@@ -129,24 +150,27 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
         }
 
         .sb-item {
-          display: flex;
-          align-items: center;
-          gap: 9px;
-          padding: 7px 10px;
-          border-radius: 10px;
-          text-decoration: none;
-          font-size: 13px;
-          color: #5c1e1e;
-          font-weight: 500;
-          transition: all 0.15s ease;
-          margin-bottom: 1px;
-        }
-        .sb-item:hover { background: #f5cdcd; color: #e48989; }
-        .sb-item.active {
-          background: linear-gradient(135deg, #f8cece, #fd8a8a);
-          color: #000000;
-          font-weight: 700;
-          box-shadow: 0 2px 8px rgba(245, 11, 62, 0.15);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: all 0.2s ease;
+}
+        .sb-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.sb-item.active {
+  background: var(--bg-active);
+  color: var(--blue-600);
+  font-weight: 600;
+
+  box-shadow: 0 2px 8px rgba(245, 11, 62, 0.15);
         }
 
         .sb-icon {
@@ -171,13 +195,14 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           background: transparent;
           width: 100%;
           font-size: 13px;
-          color: #000000;
+          color: var(--text-secondary);
           font-weight: 500;
           font-family: 'Plus Jakarta Sans', sans-serif;
           transition: all 0.15s ease;
           margin-bottom: 1px;
         }
-        .sb-acc-trigger:hover { background: #ffe6e6; color: #b40909; }
+        background: var(--bg-hover);
+        color: var(--text-primary);
 
         .sb-chevron { margin-left: auto; transition: transform .2s; color: #c47d7d; }
         .sb-chevron.open { transform: rotate(180deg); }
@@ -191,31 +216,32 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           padding: 6px 8px;
           font-size: 12px;
           text-decoration: none;
-          color: #7c3535;
+          color: var(--text-secondary);
           border-radius: 8px;
           font-weight: 500;
           transition: all 0.15s ease;
           margin-bottom: 1px;
         }
-        .sb-sub:hover { background: #ffe6e6; color: #b40909; }
+        .sb-sub:hover {  background: var(--bg-hover); }
         .sb-sub.active {
-          background: linear-gradient(135deg, #fec7c7, #fd8a8a);
-          color: #920e0e;
+          background: var(--bg-active);
+          color: var(--blue-600);
           font-weight: 700;
         }
 
         /* Footer */
         .sb-footer {
           padding: 10px 10px 14px;
-          border-top: 1.5px solid #fec7c7;
+          border-top: 1px solid var(--border);
         }
 
         .sb-footer-badge {
           display: flex;
           gap: 9px;
-          background: linear-gradient(135deg, #ffebf5, #fec7c7);
+          background: var(--bg-hover);
+          border: 1px solid var(--border);
           padding: 10px 12px;
-          border-radius: 12px;
+        
           align-items: center;
           border: 1px solid #fd8a8a;
         }
@@ -233,26 +259,54 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           box-shadow: 0 3px 8px rgba(245, 11, 11, 0.3);
         }
 
-        .sb-footer-title { font-size: 12.5px; font-weight: 700; color: #920e0e; }
-        .sb-footer-sub { font-size: 10.5px; color: #b40909; font-weight: 500; }
+        .sb-footer-title { font-size: 12.5px; font-weight: 700; color: var(--text-primary); }
+        .sb-footer-sub { font-size: 10.5px;color: var(--text-secondary); font-weight: 500; }
 
         /* ── Icon Color Tokens ── */
-        .ic-amber   { background: #f10b0b; color: #ffffff; }
-        .ic-red  { background: #FFF7ED; color: #ea0c74; }
-        .ic-yellow  { background: #FEFCE8; color: #CA8A04; }
-        .ic-green   { background: #F0FDF4; color: #16A34A; }
-        .ic-red     { background: #FEF2F2; color: #DC2626; }
-        .ic-blue    { background: #EFF6FF; color: #2563EB; }
-        .ic-sky     { background: #F0F9FF; color: #0284C7; }
-        .ic-purple  { background: #FAF5FF; color: #9333EA; }
-        .ic-rose    { background: #FFF1F2; color: #E11D48; }
-        .ic-teal    { background: #F0FDFA; color: #0D9488; }
-        .ic-brown   { background: #FEF3C7; color: #92400E; }
-        .ic-slate   { background: #F8FAFC; color: #475569; }
-        .ic-warm    { background: #FFFBEB; color: #B45309; }
+        .ic-blue   { background: #EFF6FF; color: #2563EB; }
+        .ic-green  { background: #F0FDF4; color: #16A34A; }
+        .ic-teal   { background: #F0FDFA; color: #0D9488; }
+        .ic-amber  { background: #FFFBEB; color: #D97706; }
+        .ic-red    { background: #FEF2F2; color: #DC2626; }
+        .ic-purple { background: #FAF5FF; color: #9333EA; }
+        .ic-slate  { background: #F8FAFC; color: #475569; }
+        .sb.collapsed {
+        width: 72px;
+         }
+
+          .sb.collapsed .sb-brand-name,
+          .sb.collapsed .sb-brand-sub,
+          .sb.collapsed span,
+          .sb.collapsed .sb-section,
+          .sb.collapsed .sb-chevron {
+          display: none;
+}
+/* Mobile */
+@media (max-width: 768px) {
+  .sb {
+    position: fixed;
+    left: -100%;
+    top: 0;
+    z-index: 1000;
+    height: 100%;
+  }
+
+  .sb.open {
+    left: 0;
+  }
+
+  .sb-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.4);
+    z-index: 999;
+  }
+}
       `}</style>
 
-      <aside className="sb">
+      {mobileOpen && <div className="sb-overlay" onClick={() => onCollapsedChange?.(false)} />}
+
+       <aside className={`sb ${mobileOpen ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
         <div className="sb-header">
           <div className="sb-brand">
             <div className="sb-logo">

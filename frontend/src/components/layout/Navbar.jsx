@@ -31,7 +31,7 @@ export default function Navbar({ toggle }) {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        const res = await fetch("http://127.0.0.1:8000/me", {
+        const res = await fetch("http://127.0.0.1:9000/api/me", {
           headers: { Authorization: `Bearer ${token}` },
         });
         if (!res.ok) throw new Error("Failed");
@@ -39,7 +39,7 @@ export default function Navbar({ toggle }) {
         setUser(data);
         if (data.organisation_id) {
           try {
-            const orgRes = await fetch(`http://127.0.0.1:8000/organisation/${data.organisation_id}`,  {
+            const orgRes = await fetch(`http://127.0.0.1:9000/api/organisation/${data.organisation_id}`,  {
               headers: { Authorization: `Bearer ${token}` },
             });
            if (orgRes.ok) {

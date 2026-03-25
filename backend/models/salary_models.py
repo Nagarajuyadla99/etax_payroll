@@ -158,15 +158,18 @@ class SalaryTemplateComponent(Base):
 
     sequence = Column(SmallInteger, nullable=False, server_default=text("1"))
 
-    amount = Column(Numeric(18, 4), server_default=text("0"))
-    percentage = Column(Numeric(6, 3))
+    amount = Column(Numeric(18, 4), nullable=True)
+    percentage = Column(Numeric(6, 3), nullable=True)
+
+# ✅ ADD THESE
+    percentage_of = Column(String(100), nullable=True)
+    formula = Column(Text, nullable=True)
 
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 
     template = relationship("SalaryTemplate", back_populates="components")
     component = relationship("SalaryComponent", back_populates="template_components")
-
-
+   
 # --------------------------------------------------------------------
 # PAY STRUCTURES
 # --------------------------------------------------------------------
@@ -238,6 +241,11 @@ class EmployeeSalaryStructure(Base):
         PGUUID(as_uuid=True),
         ForeignKey("salary_templates.template_id"),
         nullable=False
+    )
+    organisation_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organisations.organisation_id", ondelete="CASCADE"),
+        nullable=False,
     )
     ctc = Column(Numeric(18,2))
     effective_from = Column(Date)

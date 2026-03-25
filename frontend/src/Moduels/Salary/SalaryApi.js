@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const API = "http://localhost:8000/salary";
+const API = "http://127.0.0.1:9000/api/salary";
 
 const getAuthHeaders = () => {
   const token = localStorage.getItem("token");

@@ -4,6 +4,7 @@ from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 from passlib.context import CryptContext
 from uuid import UUID
 
@@ -13,31 +14,47 @@ from schemas.user_schemas import (
 )
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-print(pwd_context.hash("123"))
+
 # ============================================================
 # USER CRUD
 # ============================================================
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
-    q = await db.execute(select(User).filter(User.email == email))
+    q = await db.execute(
+        select(User)
+        .options(selectinload(User.roles))   
+        .filter(User.email == email)
+    )
     return q.scalar_one_or_none()
+
 
 async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
-    q = await db.execute(select(User).filter(User.username == username))
+    q = await db.execute(
+        select(User)
+        .options(selectinload(User.roles))  
+        .filter(User.username == username)
+    )
     return q.scalar_one_or_none()
+
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> Optional[User]:
-    """Retrieve a user by their unique UUID."""
-    q = await db.execute(select(User).filter(User.user_id == user_id))
+    q = await db.execute(
+        select(User)
+        .options(selectinload(User.roles))   
+        .filter(User.user_id == user_id)
+    )
     return q.scalar_one_or_none()
 
+
 async def list_users(db: AsyncSession) -> List[User]:
-    """List all users."""
-    q = await db.execute(select(User))
+    q = await db.execute(
+        select(User).options(selectinload(User.roles))  
+    )
     return q.scalars().all()
 
+
 # ============================================================
-# ✅ FIXED create_user() – Prevent duplicate keyword error
+# CREATE USER
 # ============================================================
 
 async def create_user(
@@ -56,7 +73,6 @@ async def create_user(
     if existing.scalar_one_or_none():
         raise ValueError("Email already registered for this organisation")
 
-    # hash password
     hashed_password = pwd_context.hash(payload.password)
 
     data = payload.model_dump(exclude={"password"})
@@ -73,26 +89,36 @@ async def create_user(
     await db.refresh(user)
 
     return user
-    
 
-async def authenticate_user(db: AsyncSession, identifier: str, password: str) -> Optional[User]:
-    """Authenticate a user using email or username."""
+
+async def authenticate_user(
+    db: AsyncSession,
+    identifier: str,
+    password: str
+) -> Optional[User]:
+
     q = await db.execute(
-        select(User).filter((User.email == identifier) | (User.username == identifier))
+        select(User)
+        .options(selectinload(User.roles))   # ✅ IMPORTANT
+        .filter((User.email == identifier) | (User.username == identifier))
     )
+
     user = q.scalar_one_or_none()
+
     if not user:
         return None
+
     if not pwd_context.verify(password, user.password_hash):
         return None
+
     return user
+
 
 # ============================================================
 # ROLE MANAGEMENT
 # ============================================================
 
 async def create_role(db: AsyncSession, payload: RoleCreate) -> Role:
-    """Create a new role for an organisation."""
     role = Role(**payload.model_dump())
     try:
         db.add(role)
@@ -103,10 +129,12 @@ async def create_role(db: AsyncSession, payload: RoleCreate) -> Role:
         await db.rollback()
         raise ValueError("Role creation failed") from e
 
+
 async def assign_role_to_user(
-    db: AsyncSession, payload: UserRoleCreate, assigned_by: Optional[UUID] = None
+    db: AsyncSession,
+    payload: UserRoleCreate,
+    assigned_by: Optional[UUID] = None
 ) -> UserRole:
-    """Assign a role to a user (ensures no duplicates)."""
 
     # Validate user
     q1 = await db.execute(select(User).filter(User.user_id == payload.user_id))
@@ -145,8 +173,8 @@ async def assign_role_to_user(
         await db.rollback()
         raise ValueError("Failed to assign role") from e
 
+
 async def get_user_roles(db: AsyncSession, user_id: UUID) -> List[Role]:
-    """Get all roles assigned to a given user."""
     q = await db.execute(
         select(Role)
         .join(UserRole, Role.role_id == UserRole.role_id)

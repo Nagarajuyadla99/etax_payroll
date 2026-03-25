@@ -148,7 +148,7 @@ export default function Layout() {
           to { opacity: 1; transform: translateY(0); }
         }
 
-        .enter-sidebar { animation: slideInLeft var(--dur-enter) var(--ease-out) forwards; }
+      
         .enter-navbar  { animation: fadeDown var(--dur-enter) var(--ease-out) 80ms both; }
         .enter-content { animation: fadeUp var(--dur-enter) var(--ease-out) 160ms both; }
         .page-wrapper  { animation: fadeUp 280ms var(--ease-out) both; }
@@ -167,25 +167,33 @@ export default function Layout() {
 @media (max-width: 1024px) {
   .sidebar-region {
     position: fixed;
-    left: 0;
     top: 0;
+    left: 0;
     height: 100%;
+    width: var(--sidebar-width);
+    
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+
+    z-index: 1001; /* ABOVE overlay */
+  }
+
+  .sidebar-region.mobile-open {
+    transform: translateX(0);
   }
 }
-        .mobile-overlay {
-          display: none;
-          position: fixed;
-          inset: 0;
-          pointer-events: none;
-          background: rgba(28,21,7,0.35);
-          backdrop-filter: blur(3px);
-          z-index: 190;
-          opacity: 0;
-          transition: opacity var(--dur-base) ease;
-        }
-        .mobile-overlay.visible { pointer-events: all; }
+       .mobile-overlay {
+  display: none;
+}
 
-       @media (max-width: 1024px) {
+.mobile-overlay.visible {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 1000; /* BELOW sidebar */
+}
+  @media (max-width: 1024px) {
   .sidebar-region {
     transform: translateX(-100%);
     width: var(--sidebar-width);
@@ -202,6 +210,26 @@ export default function Layout() {
         @media (max-width: 768px) {
           .content-area { padding: 20px 16px; }
         }
+        @media (min-width: 1025px) {
+  .sidebar-region {
+    transform: none !important;
+  }
+}
+  @media (min-width: 1025px) {
+  .main-region {
+    margin-left: var(--sidebar-width);
+  }
+
+  .main-region.sidebar-collapsed {
+    margin-left: var(--sidebar-collapsed);
+  }
+}
+
+@media (max-width: 1024px) {
+  .main-region {
+    margin-left: 0 !important;
+  }
+}
 
         ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -218,10 +246,11 @@ export default function Layout() {
           aria-hidden="true"
         />
 
-        <div
-          className={`sidebar-region ${sidebarOpen ? "mobile-open" : ""} ${mounted ? "enter-sidebar" : ""} ${sidebarCollapsed ? "collapsed" : ""}`}
-          id="sidebar-region"
-        >
+       <div
+  className={`sidebar-region 
+    ${sidebarOpen ? "mobile-open" : ""} 
+    ${sidebarCollapsed ? "collapsed" : ""} id="sidebar-region"`}
+>
           <Sidebar
             mobileOpen={sidebarOpen}
             onCollapsedChange={(c) => {

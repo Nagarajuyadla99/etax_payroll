@@ -1,4 +1,4 @@
-const API = "http://127.0.0.1:8000/attendance/";
+const API = "http://127.0.0.1:9000/api/attendance/";
 
 // 🔹 Fetch Attendance (Protected)
 export async function fetchAttendance() {

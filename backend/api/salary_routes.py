@@ -49,25 +49,26 @@ async def create_salary_template_route(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_admin_user)
 ):
-    return await create_salary_template(db, template)
-
+   return await create_salary_template(db, template, current_user)
 
 @router.get("/templates/", response_model=list[SalaryTemplateOut], tags=["Salary"])
 async def list_templates(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)
 ):
-    return await list_salary_templates(db)
+    return await list_salary_templates(db, current_user)
 
 
 @router.get("/templates/{template_id}", response_model=SalaryTemplateOut, tags=["Salary"])
 async def get_salary_template_route(
     template_id: UUID,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)
 ):
-    template = await get_salary_template(db, template_id)
+    template = await get_salary_template(db, template_id, current_user)
 
     if not template:
-        raise HTTPException(status_code=404, detail="Salary template not found")
+        raise HTTPException(404, "Salary template not found")
 
     return template
 
@@ -82,14 +83,15 @@ async def create_salary_component_route(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_admin_user)
 ):
-    return await create_salary_component(db, component)
+    return await create_salary_component(db, component,current_user)
 
 
 @router.get("/components/", response_model=list[SalaryComponentOut], tags=["Salary"])
 async def list_salary_components_route(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)
 ):
-    return await list_salary_components(db)
+    return await list_salary_components(db, current_user)
 
 
 # ============================================================
@@ -102,7 +104,7 @@ async def add_component_to_template_route(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_admin_user)
 ):
-    return await add_component_to_template(db, payload)
+    return await add_component_to_template(db, payload,current_user)
 
 
 @router.put("/templates/components/{stc_id}", response_model=SalaryTemplateComponentOut, tags=["Salary"])
@@ -112,7 +114,7 @@ async def update_template_component_route(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_admin_user)
 ):
-    comp = await update_template_component(db, stc_id, payload)
+    comp = await update_template_component(db, stc_id, payload,current_user)
 
     if not comp:
         raise HTTPException(status_code=404, detail="Template component not found")
@@ -130,7 +132,7 @@ async def create_pay_structure_route(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_admin_user)
 ):
-    return await create_pay_structure(db, payload)
+    return await create_pay_structure(db, payload,current_user)
 
 
 # ============================================================
@@ -140,45 +142,53 @@ async def create_pay_structure_route(
 @router.get("/templates/{template_id}/calculate", tags=["Salary"])
 async def calculate_template_salary(
     template_id: UUID,
-    db: AsyncSession = Depends(get_async_db)
+    ctc: float,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)
 ):
 
-    components = await get_template_components(db, template_id)
+    # 🔒 Validate template ownership
+    template = await get_salary_template(db, template_id, current_user)
+    if not template:
+        raise HTTPException(403, "Unauthorized access")
+
+    components = await get_template_components(
+           db,
+        template_id,
+        current_user
+         )
 
     if not components:
-        raise HTTPException(
-            status_code=404,
-            detail="No components found for this salary template"
-        )
+        raise HTTPException(404, "No components found")
 
     component_map = {}
 
     for comp_link in components:
-
-        comp = await get_salary_component(db, comp_link.component_id)
+        comp = await get_salary_component(
+        db,
+        comp_link.component_id,
+        current_user
+    )
 
         if not comp:
             raise HTTPException(
-                status_code=404,
-                detail=f"Salary component {comp_link.component_id} not found"
-            )
+            status_code=404,
+            detail=f"Component {comp_link.component_id} not found"
+        )
 
         component_map[comp_link.component_id] = comp
-
-    preview_ctc = 500000
 
     result = calculate_salary(
         components,
         component_map,
-        preview_ctc
+        ctc   # ✅ real input
     )
 
     return {
         "template_id": str(template_id),
-        "ctc": preview_ctc,
+        "ctc": ctc,
         "salary_breakdown": result
     }
-
 
 # ============================================================
 # EMPLOYEE SALARY STRUCTURE
@@ -194,7 +204,7 @@ async def assign_salary_template_route(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_admin_user)
 ):
-    return await assign_salary_template(db, payload)
+    return await assign_salary_template(db, payload,current_user)
 
 
 @router.get(
@@ -203,9 +213,10 @@ async def assign_salary_template_route(
     tags=["Salary"]
 )
 async def list_employee_salary_structures_route(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)
 ):
-    return await list_employee_salary_structures(db)
+    return await list_employee_salary_structures(db, current_user)
 
 
 @router.get(
@@ -215,13 +226,13 @@ async def list_employee_salary_structures_route(
 )
 async def get_employee_salary_structure_route(
     employee_id: UUID,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)
 ):
-
-    data = await get_employee_salary_structure(db, employee_id)
+    data = await get_employee_salary_structure(db, employee_id, current_user)
 
     if not data:
-        raise HTTPException(status_code=404, detail="Salary structure not found")
+        raise HTTPException(404, "Salary structure not found")
 
     return data
 
@@ -229,37 +240,66 @@ async def get_employee_salary_structure_route(
 # ============================================================
 # EMPLOYEE SALARY CALCULATOR
 # ============================================================
-
 @router.get("/employee-salary/{employee_id}/calculate", tags=["Salary"])
 async def calculate_employee_salary(
     employee_id: UUID,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_admin_user)   # ✅ REQUIRED
 ):
 
-    emp_salary = await get_employee_salary_structure(db, employee_id)
+    # 🔒 Step 1: Fetch employee salary (org filtered inside CRUD)
+    emp_salary = await get_employee_salary_structure(
+        db, employee_id, current_user
+    )
 
     if not emp_salary:
         raise HTTPException(
             status_code=404,
-            detail="Salary structure not found"
+            detail="Salary structure not found or unauthorized"
         )
 
-    components = await get_template_components(db, emp_salary.template_id)
+    # 🔒 Step 2: Validate template belongs to same org
+    template = await get_salary_template(
+        db, emp_salary.template_id, current_user
+    )
+
+    if not template:
+        raise HTTPException(
+            status_code=403,
+            detail="Template does not belong to your organisation"
+        )
+
+    # 🔒 Step 3: Get components
+    components = await get_template_components(
+    db,
+    emp_salary.template_id,
+    current_user
+)
+
+    if not components:
+        raise HTTPException(
+            status_code=404,
+            detail="No components found for template"
+        )
 
     component_map = {}
 
     for comp_link in components:
 
-        comp = await get_salary_component(db, comp_link.component_id)
-
+        comp = await get_salary_component(
+    db,
+    comp_link.component_id,
+    current_user
+)
         if not comp:
             raise HTTPException(
                 status_code=404,
                 detail=f"Component {comp_link.component_id} not found"
             )
-
+        
         component_map[comp_link.component_id] = comp
 
+    # ✅ Step 5: Calculate salary using REAL CTC
     result = calculate_salary(
         components,
         component_map,

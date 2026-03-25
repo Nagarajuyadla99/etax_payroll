@@ -10,6 +10,7 @@ export default function AuthProvider({ children }) {
   // LOGIN
   const login = async (username, password) => {
     const res = await loginUser(username, password);
+    console.log("LOGIN RESPONSE:", res);
     localStorage.setItem("token", res.access_token);
 
     const profile = await getProfile();

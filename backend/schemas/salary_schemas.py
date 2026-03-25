@@ -1,6 +1,6 @@
 # payroll_system/schemas/salary_schemas.py
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 from typing import Optional
 from uuid import UUID
 from datetime import datetime, date
@@ -11,7 +11,7 @@ from decimal import Decimal
 # ============================================================
 
 class SalaryComponentBase(BaseModel):
-    organisation_id: UUID
+   
     code: Optional[str] = None
     name: str
     description: Optional[str] = None
@@ -55,7 +55,6 @@ class SalaryComponentOut(SalaryComponentBase):
 # ============================================================
 
 class SalaryTemplateBase(BaseModel):
-    organisation_id: UUID
     name: str
     description: Optional[str] = None
     is_default: Optional[bool] = False
@@ -83,9 +82,33 @@ class SalaryTemplateComponentBase(BaseModel):
     template_id: UUID
     component_id: UUID
     sequence: Optional[int] = 1
-    amount: Optional[Decimal] = Decimal("0.0000")
-    percentage: Optional[Decimal] = None  # Must be between 0 and 100 if given
+
+    amount: Optional[Decimal] = None
+    percentage: Optional[Decimal] = None
+    percentage_of: Optional[str] = None
+    formula: Optional[str] = None
+
     is_active: Optional[bool] = True
+
+    
+    @model_validator(mode="after")
+    def validate_calc_input(self):
+
+        has_amount = self.amount is not None
+        has_percentage = self.percentage is not None
+        has_formula = self.formula is not None and self.formula != ""
+
+    # At least one required
+        if not any([has_amount, has_percentage, has_formula]):
+            raise ValueError(
+            "Provide one of: amount OR percentage OR formula"
+        )
+
+    # 🔥 IMPORTANT FIX
+        if has_percentage and not self.percentage_of:
+            raise ValueError("percentage_of is required when percentage is used")
+
+        return self
 
 class SalaryTemplateComponentCreate(SalaryTemplateComponentBase):
     pass
@@ -145,8 +168,12 @@ class EmployeeSalaryStructureCreate(EmployeeSalaryStructureBase):
 
 
 
-class EmployeeSalaryStructureOut(EmployeeSalaryStructureBase):
+class EmployeeSalaryStructureOut(BaseModel):
     id: UUID
-    ctc: Decimal
+    employee_id: UUID
+    template_id: UUID
+    effective_from: date
+    ctc: float
 
-    model_config = ConfigDict(from_attributes=True)
+    class Config:
+        from_attributes = True

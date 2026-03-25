@@ -8,11 +8,13 @@ from database import get_async_db
 from utils.auth import decode_token
 from crud.user_crud import get_user_by_username
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
-# ---------------------------
-# Get current authenticated user
-# ---------------------------
+
+# ============================================================
+# GET CURRENT USER
+# ============================================================
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: AsyncSession = Depends(get_async_db),
@@ -20,6 +22,7 @@ async def get_current_user(
     payload = decode_token(token)
 
     username: str | None = payload.get("sub")
+
     if not username:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -27,6 +30,7 @@ async def get_current_user(
         )
 
     user = await get_user_by_username(db, username)
+
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -35,15 +39,19 @@ async def get_current_user(
 
     return user
 
-# ---------------------------
-# Role-based access dependency
-# ---------------------------
+
+# ============================================================
+# ADMIN CHECK
+# ============================================================
+
 async def get_admin_user(
     current_user=Depends(get_current_user),
 ):
-    if not getattr(current_user, "is_system_admin", False):
+    # ✅ SIMPLE + SAFE
+    if not current_user.is_system_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",
         )
+
     return current_user

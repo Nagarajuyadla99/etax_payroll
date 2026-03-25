@@ -1,11 +1,13 @@
 from decimal import Decimal
 import numexpr as ne
 
+
 def calculate_salary(template_components, component_map, ctc):
 
     values = {}
 
-    values["CTC"] = Decimal(ctc)
+    # 🔧 Use lowercase for consistency in formulas
+    values["ctc"] = float(ctc)
 
     earnings = {}
     deductions = {}
@@ -16,31 +18,66 @@ def calculate_salary(template_components, component_map, ctc):
 
         value = Decimal("0")
 
+        # ========================
+        # FIXED
+        # ========================
         if component.calc_type == "fixed":
 
             value = comp.amount or Decimal("0")
 
+        # ========================
+        # PERCENTAGE
+        # ========================
         elif component.calc_type == "percentage":
 
-            base = values.get(component.percentage_of, Decimal("0"))
+            base_key = (component.percentage_of or "").lower()
+            base = Decimal(str(values.get(base_key, 0)))
 
-            value = (base * (comp.percentage or Decimal("0"))) / 100
+            percent = comp.percentage or Decimal("0")
 
+            value = (base * percent) / Decimal("100")
+
+        # ========================
+        # FORMULA (SAFE)
+        # ========================
         elif component.calc_type == "formula":
 
-            result = ne.evaluate(component.formula, local_dict=values)
+            formula = component.formula
 
-            value = Decimal(str(result))
+            if not formula or not isinstance(formula, str):
+                value = Decimal("0")
+            else:
+                try:
+                    # convert all values to float for numexpr
+                    safe_values = {k: float(v) for k, v in values.items()}
 
-        values[component.name] = value
+                    result = ne.evaluate(formula, local_dict=safe_values)
 
+                    value = Decimal(str(result))
+
+                except Exception as e:
+                    print(f"Formula error in {component.name}: {e}")
+                    value = Decimal("0")
+
+        # ========================
+        # STORE VALUE
+        # ========================
+        key = component.name.lower()
+        values[key] = float(value)
+
+        # ========================
+        # CLASSIFY
+        # ========================
         if component.component_type == "earning":
             earnings[component.name] = value
         else:
             deductions[component.name] = value
 
-    gross = sum(earnings.values())
-    total_deductions = sum(deductions.values())
+    # ========================
+    # TOTALS
+    # ========================
+    gross = sum(earnings.values(), Decimal("0"))
+    total_deductions = sum(deductions.values(), Decimal("0"))
     net = gross - total_deductions
 
     return {

@@ -18,7 +18,7 @@ export default function EmployeeSelector() {
     try {
 
       const res = await axios.get(
-        "http://localhost:8000/employees/",
+        "http://127.0.0.1:9000/api/employees/",
         {
           headers: {
             Authorization: `Bearer ${token}`

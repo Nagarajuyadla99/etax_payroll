@@ -48,7 +48,32 @@ export default function Dashboard() {
   </div>
 )}
       <style>{`
-        .dash-root { width: 100%; }
+      :root {
+  --bg-base: #F8FAFC;
+  --bg-card: #FFFFFF;
+  --bg-subtle: #F1F5F9;
+
+  --slate-900: #0F172A;
+  --slate-700: #334155;
+  --slate-500: #64748B;
+  --slate-300: #CBD5F5;
+
+  --blue-600: #2563EB;
+  --blue-500: #3B82F6;
+
+  --green-600: #16A34A;
+  --green-100: #DCFCE7;
+
+  --red-600: #DC2626;
+  --red-100: #FEE2E2;
+
+  --amber-600: #D97706;
+  --amber-100: #FEF3C7;
+
+  --border: #E2E8F0;
+}
+        .dash-root { width: 100%; 
+      }
 
         /* ── Page Header ── */
         .dash-header {
@@ -62,29 +87,29 @@ export default function Dashboard() {
         .dash-title {
           font-size: 26px;
           font-weight: 800;
-          color: #1C1507;
+          color: var(--slate-900);
           letter-spacing: -0.5px;
         }
         .dash-sub {
           font-size: 13px;
-          color: #a34a4a;
+          color: var(--slate-500);
           margin-top: 2px;
           font-weight: 500;
           display: flex;
-          align-items: center;
+          align-items: flex;
           gap: 6px;
         }
         .dash-badge {
           display: inline-flex;
           align-items: center;
           gap: 5px;
-          background: linear-gradient(135deg, #ffffff, #f33737);
-          color: #920e0e;
+          background: var(--blue-50);
+          color: var(--blue-600);
           font-size: 11px;
           font-weight: 700;
           padding: 4px 10px;
           border-radius: 999px;
-          border: 1px solid #fc4d4d;
+          border: 1px solid var(--border);
         }
 
         /* ── Stat Cards ── */
@@ -137,10 +162,10 @@ export default function Dashboard() {
         .stat-value { font-size: 28px; font-weight: 800; line-height: 1; letter-spacing: -0.5px; margin-bottom: 6px; }
         .stat-sub   { font-size: 11px; opacity: 0.78; font-weight: 500; }
 
-        .sc-amber  { background: linear-gradient(135deg, #d8d059 0%, #f9ea16 100%); }
-        .sc-green  { background: linear-gradient(135deg, #10B981 0%, #059669 100%); }
-        .sc-rose   { background: linear-gradient(135deg, #F43F5E 0%, #DC2626 100%); }
-        .sc-blue   { background: linear-gradient(135deg, #3B82F6 0%, #0EA5E9 100%); }
+        .sc-amber  { background: linear-gradient(135deg, #2563EB, #3B82F6); }
+        .sc-green  { background: linear-gradient(135deg, #16A34A, #22C55E); }
+        .sc-rose   { background: linear-gradient(135deg, #DC2626, #F43F5E); }
+        .sc-blue   { background: linear-gradient(135deg, #0EA5E9, #2563EB); }
 
         /* ── Section Grid ── */
         .section-grid {
@@ -153,11 +178,11 @@ export default function Dashboard() {
         @media (max-width: 700px)  { .section-grid { grid-template-columns: 1fr; } }
 
         .card {
-          background: #fff;
+          background: var(--bg-card);
           border-radius: 16px;
-          border: 1.5px solid #F0E4C0;
+          border: 1px solid var(--border);
           overflow: hidden;
-          box-shadow: 0 2px 10px rgba(180,83,9,0.05);
+          box-shadow: 0 2px 10px rgba(15,23,42,0.06);
           transition: box-shadow 0.2s ease;
         }
         .card:hover { box-shadow: 0 6px 20px rgba(180,83,9,0.09); }
@@ -220,11 +245,12 @@ export default function Dashboard() {
           text-align: center;
           font-family: 'Plus Jakarta Sans', sans-serif;
         }
-        .ab-amber  { background: #ffebf9; border-color: #fd8ac0; color: #920e36; }
-        .ab-amber:hover { background: #fec7f9; border-color: #f50b8c; }
-        .ab-red { background: #FFF7ED; border-color: #FDBA74; color: #C2410C; }
-        .ab-red:hover { background: #FFEDD5; border-color: #F97316; }
-        .ab-green  { background: #F0FDF4; border-color: #BBF7D0; color: #166534; }
+        .ab-amber  { background: var(--blue-50); border-color: var(--blue-100); color: var(--blue-600); }
+        .ab-green  { background: var(--green-100); border-color: var(--green-100); color: var(--green-600); }
+        .ab-blue   { background: var(--blue-50); border-color: var(--blue-100); color: var(--blue-600); }
+        .ab-red    { background: var(--red-100); border-color: var(--red-100); color: var(--red-600); }
+        .ab-purple { background: var(--bg-subtle); border-color: var(--border); color: var(--slate-700); }
+        .ab-rose   { background: var(--bg-subtle); border-color: var(--border); color: var(--slate-700); }
 
         .ab-green:hover { background: #DCFCE7; border-color: #4ADE80; }
         .ab-blue   { background: #EFF6FF; border-color: #BFDBFE; color: #1D4ED8; }
@@ -265,27 +291,28 @@ export default function Dashboard() {
         }
         .txn-head {
           padding: 14px 20px;
-          background: linear-gradient(135deg, #f09696, #f09696);
+          background: linear-gradient(135deg, var(--blue-600), var(--blue-500));
+          color: #fff;
           display: flex;
           align-items: center;
           gap: 8px;
-          color: #000000;
           font-weight: 700;
           font-size: 14px;
         }
         .txn-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .txn-table thead tr {
-          background: #FFFBEB;
+           background: var(--bg-subtle);
         }
         .txn-table thead th {
           padding: 11px 16px;
           text-align: left;
           font-size: 11px;
           font-weight: 700;
-          color: #a34a4a;
+          color: var(--slate-500);
+          border-bottom: 1px solid var(--border);
           text-transform: uppercase;
           letter-spacing: 0.5px;
-          border-bottom: 1.5px solid #FEF3C7;
+          
         }
         .txn-table tbody tr {
           border-bottom: 1px solid #FEF9EC;
@@ -293,8 +320,8 @@ export default function Dashboard() {
         }
         .txn-table tbody tr:last-child { border-bottom: none; }
         .txn-table tbody tr:hover { background: #ffffff; }
-        .txn-table td { padding: 12px 16px; color: #3D2C0E; font-weight: 500; }
-        .txn-emp { font-weight: 700; color: #1C1507; }
+        .txn-table td { padding: 12px 16px; color: var(--slate-700); font-weight: 500; }
+        .txn-emp { font-weight: 700; color: var(--slate-900); }
 
         .chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; }
         .chip-green  { background: #D1FAE5; color: #065F46; }
@@ -340,6 +367,29 @@ export default function Dashboard() {
   color: #fff;
   border-radius: 6px;
   cursor: pointer;
+}
+  .dash-root {
+  padding: 16px;
+}
+
+/* Tablet */
+@media (min-width: 768px) {
+  .dash-root {
+    padding: 24px 32px;
+  }
+}
+
+/* Desktop */
+@media (min-width: 1200px) {
+  .dash-root {
+    padding: 24px 48px;
+  }
+}
+  @media (max-width: 600px) {
+  .dash-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
 }
 
       `}</style>
