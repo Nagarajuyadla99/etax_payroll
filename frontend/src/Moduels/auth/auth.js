@@ -21,6 +21,6 @@ export const forgotPassword = async (email) => {
 };
 
 export const getProfile = async () => {
-  const { data } = await API.get("/me");
+  const { data } = await API.get("/users/me");
   return data;
 };

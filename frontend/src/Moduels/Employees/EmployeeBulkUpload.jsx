@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { bulkUploadEmployees } from "./EmployeeApi";
+import { useNavigate } from "react-router-dom";
 
 export default function EmployeeBulkUpload() {
   const [file, setFile] = useState(null);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
-
+  const navigate = useNavigate();
   const handleUpload = async () => {
     if (!file) {
       alert("Please select a CSV file");
@@ -60,7 +61,7 @@ export default function EmployeeBulkUpload() {
           <button
             onClick={handleUpload}
             disabled={loading}
-            className="bg-orange-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg"
+            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg"
           >
             {loading ? "Uploading..." : "Upload File"}
           </button>
@@ -111,7 +112,12 @@ export default function EmployeeBulkUpload() {
         )}
 
       </div>
-
+      <button
+  onClick={() => navigate(-1)}
+  className="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full shadow-lg transition duration-300 flex items-center gap-2 z-50"
+>
+  ← Back
+</button>
     </div>
   );
 }

@@ -1,8 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect} from "react";
 import { createEmployee } from "./EmployeeApi";
+import API from "../../services/api";
+import { useNavigate } from "react-router-dom";
 
 export default function EmployeeCreate() {
-
+  const [departments, setDepartments] = useState([]);
+  const [designations, setDesignations] = useState([]);
+  const [locations, setLocations] = useState([]);
+  const [managers, setManagers] = useState([]);
   const [form, setForm] = useState({
     employee_code: "",
     first_name: "",
@@ -18,17 +23,40 @@ export default function EmployeeCreate() {
     date_of_joining: "",
     date_of_leaving: "",
     status: "active",
-    /*department_id: "",*/
-    /*designation_id: "",*/
-    /*location_id: "",*/
+    department_id: "",
+    designation_id: "",
+    location_id: "",
     business_unit: "",
-    /*manager_id: "",*/
-    /*pay_structure_id: "",*/
+    manager_id: "",
+    pay_structure_id: "",
     annual_ctc: "",
     pay_frequency: "Monthly",
     uan_link_status: "Unlinked",
     is_active: "true",
   });
+  const navigate = useNavigate();
+
+  useEffect(() => {
+  const fetchData = async () => {
+    const token = localStorage.getItem("token");
+
+    const headers = {
+      Authorization: `Bearer ${token}`,
+    };
+
+    const dept = await API.get("/setup/departments", { headers });
+    const des = await API.get("/setup/designations", { headers });
+    const loc = await API.get("/setup/locations", { headers });
+    const mgr = await API.get("/employees", { headers }); // optional
+
+    setDepartments(dept.data);
+    setDesignations(des.data);
+    setLocations(loc.data);
+    setManagers(mgr.data || []);
+  };
+
+  fetchData();
+}, []);
 
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
@@ -36,38 +64,43 @@ export default function EmployeeCreate() {
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+ const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    try {
-      const payload = { ...form };
+  if (!form.department_id || !form.designation_id || !form.location_id) {
+    alert("Please select Department, Designation, and Location");
+    return;
+  }
 
-      payload.annual_ctc = payload.annual_ctc
-        ? parseFloat(payload.annual_ctc)
-        : undefined;
+  setLoading(true);
+  setMessage("");
 
-      payload.is_active = payload.is_active === "true";
+  try {
+    const payload = { ...form };
 
-      Object.keys(payload).forEach((k) => {
-        if (payload[k] === "" || payload[k] === null) delete payload[k];
-      });
+    payload.annual_ctc = payload.annual_ctc
+      ? parseFloat(payload.annual_ctc)
+      : undefined;
 
-      await createEmployee(payload);
+    payload.is_active = payload.is_active === "true";
 
-      setMessage("✅ Employee created successfully");
+    Object.keys(payload).forEach((k) => {
+      if (payload[k] === "" || payload[k] === null) delete payload[k];
+    });
 
-    } catch (error) {
+    console.log("FINAL PAYLOAD:", payload); // 🔥 debug
 
-      setMessage(
-        "Successfully Inserted Data " 
-      );
+    await createEmployee(payload);
 
-    } finally {
-      setLoading(false);
-    }
-  };
+    setMessage("✅ Employee created successfully");
+
+  } catch (error) {
+    console.error(error);
+    setMessage("❌ Failed to insert data");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const input =
     "w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500";
@@ -133,21 +166,69 @@ export default function EmployeeCreate() {
 </div>
 <div>
   <label className="text-sm text-gray-600">Date of Leaving</label>
-<input
-  className={input}
-  type="date"
-  name="date_of_leaving"
-  value={form.date_of_leaving}
-  onChange={handleChange}
-/>
-</div>
+<input className={input} type="date" name="date_of_leaving" value={form.date_of_leaving} onChange={handleChange}/> </div>
 
           <input className={input} name="status" placeholder="Status (active/inactive)" value={form.status} onChange={handleChange} />
 
           
           <input className={input} name="business_unit" placeholder="Business Unit" value={form.business_unit} onChange={handleChange} />
 
-         
+         <select
+         className={input}
+         name="department_id"
+         value={form.department_id}
+         onChange={handleChange}
+         required
+          >
+         <option value="">Select Department</option>
+           {departments.map((d) => (
+           <option key={d.id} value={d.id}>
+            {d.name}
+            </option>
+             ))}
+             </select>
+             <select
+              className={input}
+              name="designation_id"
+               value={form.designation_id}
+               onChange={handleChange}
+                 required
+                 >
+                        <option value="">Select Designation</option>
+                  {designations.map((d) => (
+                  <option key={d.id} value={d.id}>
+                        {d.name}
+                       </option>
+                        ))}
+                     </select>
+                     <select
+                      className={input}
+                       name="location_id"
+                       value={form.location_id}
+                      onChange={handleChange}
+                         required
+                                    >
+                             <option value="">Select Location</option>
+                        {locations.map((l) => (
+                       <option key={l.id} value={l.id}>
+                            {l.name}
+                          </option>
+                             ))}
+                                </select>
+
+                                <select
+                                    className={input}
+                                name="manager_id"
+                                value={form.manager_id}
+                                 onChange={handleChange}
+                                     >
+                                 <option value="">Select Manager</option>
+                                  {managers.map((m) => (
+                                   <option key={m.employee_id} value={m.employee_id}>
+                                    {m.first_name}
+                                     </option>
+                                           ))}
+                                            </select>
           <input className={input} name="annual_ctc" placeholder="Annual CTC" value={form.annual_ctc} onChange={handleChange} />
 
           <input className={input} name="pay_frequency" placeholder="Pay Frequency" value={form.pay_frequency} onChange={handleChange} />
@@ -160,13 +241,22 @@ export default function EmployeeCreate() {
           </select>
 
           <div className="col-span-full pt-4">
+            <>
             <button
               type="submit"
               disabled={loading}
-              className="bg-red-600 text-white px-6 py-2 rounded-md hover:bg-red-700 transition"
+              className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-green-700 transition"
             >
               {loading ? "Creating..." : "Create Employee"}
             </button>
+
+            <button
+              onClick={() => navigate(-1)}
+               className="fixed bottom-3 right-6  bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full shadow-lg transition duration-300 flex items-center gap-2 z-50"
+                 >
+                   ← Back
+                  </button>
+                  </>
           </div>
 
         </form>

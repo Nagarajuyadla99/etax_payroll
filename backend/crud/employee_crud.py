@@ -22,7 +22,8 @@ from schemas.employee_schemas import (
     EmployeeDocumentCreate,
     EmployeeSalaryAssignmentCreate,
 )
-
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 # ============================================================
 # INTERNAL HELPERS
@@ -44,8 +45,10 @@ async def _ensure_organisation_exists(db: AsyncSession, organisation_id: UUID):
 # EMPLOYEE CRUD
 # ============================================================
 
+
 async def create_employee(db: AsyncSession, emp: EmployeeCreate, organisation_id: UUID):
     print(">>> CRUD FUNCTION HIT")
+
     await _ensure_organisation_exists(db, organisation_id)
 
     emp_data = emp.model_dump(exclude_unset=True)
@@ -56,7 +59,22 @@ async def create_employee(db: AsyncSession, emp: EmployeeCreate, organisation_id
     try:
         db.add(employee)
         await db.commit()
-        await db.refresh(employee)
+
+        # 🔥 CRITICAL FIX: reload with relationships
+        result = await db.execute(
+            select(Employee)
+            .options(
+                selectinload(Employee.department),
+                selectinload(Employee.designation),
+                selectinload(Employee.location),
+                selectinload(Employee.pay_structure),
+                selectinload(Employee.manager),
+            )
+            .where(Employee.employee_id == employee.employee_id)
+        )
+
+        employee = result.scalar_one()
+
         return employee
 
     except IntegrityError:
@@ -65,7 +83,6 @@ async def create_employee(db: AsyncSession, emp: EmployeeCreate, organisation_id
             status_code=400,
             detail="Employee with this email or employee code already exists"
         )
-
 async def get_employee(db: AsyncSession, emp_id: UUID, organisation_id: UUID) -> Optional[Employee]:
     """
     Fetch a single employee by ID within organisation scope.

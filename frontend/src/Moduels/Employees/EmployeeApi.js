@@ -9,6 +9,7 @@ const getAuthHeaders = () => {
   };
 };
 
+
 export const getEmployees = async () => {
   const { data } = await API.get("/employees/", getAuthHeaders());
   return data;

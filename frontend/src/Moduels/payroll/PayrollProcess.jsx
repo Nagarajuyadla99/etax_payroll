@@ -74,7 +74,7 @@ export default function ProcessPayroll(){
 
           <button
             onClick={runPayroll}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md font-medium"
+            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-md font-medium"
           >
             Process Payroll
           </button>

@@ -6,18 +6,18 @@ from uuid import UUID
 from datetime import datetime, date
 from decimal import Decimal
 
+
 # ============================================================
 # SALARY COMPONENT SCHEMAS
 # ============================================================
 
 class SalaryComponentBase(BaseModel):
-   
     code: Optional[str] = None
     name: str
     description: Optional[str] = None
-    component_type: str  # 'earning', 'deduction', 'benefit', 'reimbursement'
+    component_type: str       # 'earning', 'deduction', 'benefit', 'reimbursement'
     is_active: Optional[bool] = True
-    calc_type: Optional[str] = "fixed"  # 'fixed', 'percentage'
+    calc_type: Optional[str] = "fixed"   # 'fixed', 'percentage', 'formula'
     percentage_of: Optional[str] = None
     formula: Optional[str] = None
     rounding: Optional[Decimal] = Decimal("0.0000")
@@ -26,8 +26,10 @@ class SalaryComponentBase(BaseModel):
     is_allowance: Optional[bool] = False
     is_loan_related: Optional[bool] = False
 
+
 class SalaryComponentCreate(SalaryComponentBase):
     pass
+
 
 class SalaryComponentUpdate(BaseModel):
     code: Optional[str] = None
@@ -43,12 +45,14 @@ class SalaryComponentUpdate(BaseModel):
     is_allowance: Optional[bool] = None
     is_loan_related: Optional[bool] = None
 
+
 class SalaryComponentOut(SalaryComponentBase):
     component_id: UUID
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # ============================================================
 # SALARY TEMPLATE SCHEMAS
@@ -59,13 +63,16 @@ class SalaryTemplateBase(BaseModel):
     description: Optional[str] = None
     is_default: Optional[bool] = False
 
+
 class SalaryTemplateCreate(SalaryTemplateBase):
     pass
+
 
 class SalaryTemplateUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     is_default: Optional[bool] = None
+
 
 class SalaryTemplateOut(SalaryTemplateBase):
     template_id: UUID
@@ -73,6 +80,7 @@ class SalaryTemplateOut(SalaryTemplateBase):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
 
 # ============================================================
 # SALARY TEMPLATE COMPONENT SCHEMAS
@@ -87,56 +95,67 @@ class SalaryTemplateComponentBase(BaseModel):
     percentage: Optional[Decimal] = None
     percentage_of: Optional[str] = None
     formula: Optional[str] = None
-
     is_active: Optional[bool] = True
 
-    
     @model_validator(mode="after")
     def validate_calc_input(self):
-
-        has_amount = self.amount is not None
+        # BUG FIX: Decimal("0") is not None, so amount=0 used to silently pass
+        # this check and create a broken ₹0 component. Treat zero as absent.
+        has_amount = self.amount is not None and self.amount != Decimal("0")
         has_percentage = self.percentage is not None
-        has_formula = self.formula is not None and self.formula != ""
+        has_formula = self.formula is not None and self.formula.strip() != ""
 
-    # At least one required
         if not any([has_amount, has_percentage, has_formula]):
             raise ValueError(
-            "Provide one of: amount OR percentage OR formula"
-        )
+                "Provide one of: amount (non-zero) OR percentage OR formula"
+            )
 
-    # 🔥 IMPORTANT FIX
         if has_percentage and not self.percentage_of:
             raise ValueError("percentage_of is required when percentage is used")
 
         return self
 
+
 class SalaryTemplateComponentCreate(SalaryTemplateComponentBase):
     pass
+
 
 class SalaryTemplateComponentUpdate(BaseModel):
     sequence: Optional[int] = None
     amount: Optional[Decimal] = None
     percentage: Optional[Decimal] = None
+    # BUG FIX: percentage_of and formula were missing from the update schema.
+    # Without them, PUT /templates/components/{stc_id} could never update these
+    # fields — the patcher silently dropped them.
+    percentage_of: Optional[str] = None
+    formula: Optional[str] = None
     is_active: Optional[bool] = None
+
 
 class SalaryTemplateComponentOut(SalaryTemplateComponentBase):
     stc_id: UUID
 
     model_config = ConfigDict(from_attributes=True)
 
+
 # ============================================================
 # PAY STRUCTURE SCHEMAS
 # ============================================================
 
 class PayStructureBase(BaseModel):
-    organisation_id: UUID
+    # BUG FIX: organisation_id removed from the input schema.
+    # The CRUD layer (clean_payload) already strips it and re-injects it from
+    # current_user.organisation_id, so requiring it from the client was both
+    # redundant and an IDOR risk (any caller could supply any org UUID).
     name: str
     template_id: UUID
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None
 
+
 class PayStructureCreate(PayStructureBase):
     pass
+
 
 class PayStructureUpdate(BaseModel):
     name: Optional[str] = None
@@ -144,16 +163,17 @@ class PayStructureUpdate(BaseModel):
     effective_from: Optional[date] = None
     effective_to: Optional[date] = None
 
+
 class PayStructureOut(PayStructureBase):
     pay_structure_id: UUID
+    organisation_id: UUID          # safe to expose in read responses
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
 
-
-    # ============================================================
+# ============================================================
 # EMPLOYEE SALARY STRUCTURE SCHEMAS
 # ============================================================
 
@@ -167,7 +187,6 @@ class EmployeeSalaryStructureCreate(EmployeeSalaryStructureBase):
     ctc: Decimal
 
 
-
 class EmployeeSalaryStructureOut(BaseModel):
     id: UUID
     employee_id: UUID
@@ -175,5 +194,4 @@ class EmployeeSalaryStructureOut(BaseModel):
     effective_from: date
     ctc: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

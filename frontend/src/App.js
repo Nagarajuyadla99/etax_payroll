@@ -21,11 +21,12 @@ import PayrollHome from "./Moduels/Salary/PayrollHome";
 // Salary
 import SalaryComponents from "./Moduels/Salary/SalaryComponent";
 import SalaryTemplates from "./Moduels/Salary/SalaryTemplate";
-import SalaryTemplateDetail from "./Moduels/Salary/SalaryTemplateDetail";
+import SalaryTemplatess from "./Moduels/Salary/SalaryTemplates";
 import SalaryPreview from "./Moduels/Salary/SalaryPreview";
 import EmployeeSalaryStructure from "./Moduels/Salary/EmployeeSalaryStructure";
 import EmployeeSelector from "./Moduels/Salary/EmployeeSelector";
-
+// Setup
+import Setup from "./Moduels/Setup/setup";
 // Attendance
 import AttendanceSummary from "./components/pages/Attendance/AttendancsSummary";
 import AttendanceTable from "../src/Moduels/attendance/AttendanceTable";
@@ -56,6 +57,7 @@ import PayslipDownload from "./Moduels/payroll/paySlipDownload";
 
 //User Registration
 import RegisterModal from "./components/pages/RegisterModal";
+import TemplateBuilder from "./Moduels/Salary/SalaryTemplate";
 
 export default function App() {
   return (
@@ -79,6 +81,7 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
 
             {/* Employees */}
+            <Route path="/Setup" element={<Setup />} />
             <Route path="/employeeCreate" element={<EmployeeCreate />} />
             <Route path="/employeeList" element={<EmployeeList />} />
             <Route path="/employeeForm" element={<EmployeeForm />} />
@@ -88,8 +91,8 @@ export default function App() {
 
             {/* Salary Setup */}
            <Route path="/salary/components" element={<SalaryComponents />} />
-            <Route path="/salary/templates" element={<SalaryTemplates />} />
-            <Route path="/salary/templates/:id" element={<SalaryTemplateDetail />} />
+            <Route path="/salary/templates" element={<SalaryTemplatess />} />
+            <Route path="/salary/templates/:id" element={<TemplateBuilder />} />
             <Route path="/salary/preview" element={<EmployeeSelector />} />
             <Route path="/salary/preview/:id" element={<SalaryPreview />} />
             <Route path="/employeesalarystructure" element={<EmployeeSalaryStructure />} />

@@ -5,10 +5,12 @@
  */
 
 import { useEffect, useRef, useCallback } from "react";
-import logo from "../assets/images/logo_brixigo.jpeg";
+import logo1 from "../assets/images/logo_brixigo3.png";
 import { useState, useContext } from "react";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import RegisterModal from "./RegisterModal";
+import ResetPassword from "./ResetPassword";
 
 
 
@@ -107,6 +109,25 @@ body {
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   box-shadow: var(--shadow-xs);
+}
+  .nav-links button {
+  position: relative;
+}
+
+.nav-links button::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  bottom: 4px;
+  height: 2px;
+  width: 0%;
+  background: #2563EB;
+  transition: width 0.25s ease;
+}
+
+.nav-links button:hover::after,
+.nav-links button.active::after {
+  width: calc(100% - 20px);
 }
 
 /* ============================================
@@ -471,6 +492,95 @@ body {
   height: 1px;
   background: var(--border);
 }
+  /* Section */
+.features-section {
+  padding: 80px 24px;
+  background: var(--bg-base);
+}
+
+/* Container */
+.features-container {
+  max-width: 100%;
+  margin: 0 48px;
+}
+
+/* Header */
+.features-header {
+  text-align: center;
+  margin-bottom: 56px;
+}
+
+.features-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 40px);
+  color: var(--slate-900);
+  margin: 12px 0;
+}
+
+.features-subtitle {
+  font-size: 16px;
+  color: var(--slate-500);
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+/* Grid */
+.features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 28px;
+  width: 100%;
+}
+
+/* Card */
+.feature-card {
+  padding: 28px;
+  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  height: 100%;
+  transition: all 0.25s ease;
+}
+
+/* Hover effect */
+.feature-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}
+
+/* Top section */
+.feature-top {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+/* Title */
+.feature-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--slate-900);
+}
+
+/* Description */
+.feature-desc {
+  font-size: 14px;
+  color: var(--slate-500);
+  line-height: 1.65;
+}
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .features-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* ============================================
    SCROLLBAR
@@ -663,13 +773,43 @@ const Icon = {
 ───────────────────────────────────────────── */
 function Navbar({ onLoginClick }) {
   const [scrolled, setScrolled] = useState(false);
-  useEffect(() => {
-    const fn = () => setScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", fn);
-    return () => window.removeEventListener("scroll", fn);
-  }, []);
+  const [active, setActive] = useState("features");
+ useEffect(() => {
+  const handleScroll = () => {
+    const sections = navLinks.map(l => document.getElementById(l.id));
 
-  const navLinks = ["Features", "Pricing", "Compliance", "Integrations", "About"];
+    sections.forEach((sec, i) => {
+      if (!sec) return;
+
+      const rect = sec.getBoundingClientRect();
+
+      if (rect.top <= 120 && rect.bottom >= 120) {
+        setActive(navLinks[i].id);
+      }
+    });
+  };
+
+  window.addEventListener("scroll", handleScroll);
+  return () => window.removeEventListener("scroll", handleScroll);
+}, []);
+
+const scrollToSection = (id) => {
+  const el = document.getElementById(id);
+  if (!el) return;
+
+  window.scrollTo({
+    top: el.offsetTop - 70, // navbar offset
+    behavior: "smooth"
+  });
+};
+
+  const navLinks = [
+  { label: "Features", id: "Features" },
+  { label: "Pricing", id: "pricing" },
+  { label: "Compliance", id: "compliancestrip" },
+  { label: "Integrations", id: "features" },
+  { label: "About", id: "footer" }
+];
 
   return (
    
@@ -694,9 +834,7 @@ function Navbar({ onLoginClick }) {
       justifyContent: "space-between"
     }}
   >
-    <div className="mobile-menu">
-     <Icon.Menu />
-    </div>
+   
     {/* Logo */}
     <a
       href="#"
@@ -709,73 +847,39 @@ function Navbar({ onLoginClick }) {
     >
       {/* ✅ REAL LOGO */}
       <img
-        src={logo}
+        src={logo1}
         alt="Brixigo"
         style={{
-          height: 38,
+          height: 50,
           width: "auto",
+
           objectFit: "contain"
         }}
       />
-
-      <div>
-        <div
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: 18,
-            fontWeight: 700,
-            color: "#111827",
-            lineHeight: 1
-          }}
-        >
-          Brixigo
-        </div>
-
-        <div
-          style={{
-            fontSize: 10,
-            color: "#6B7280",
-            fontWeight: 600,
-            letterSpacing: "1px",
-            textTransform: "uppercase"
-          }}
-        >
-          Payroll Platform
-        </div>
-      </div>
     </a>
 
     {/* Nav Links */}
-    <div
-      className="nav-links"
-      style={{ display: "flex", alignItems: "center", gap: 6 }}
+    <div className="nav-links" style={{ display: "flex", gap: 6 }}>
+  {navLinks.map((l) => (
+    <button
+      key={l.id}
+      onClick={() => scrollToSection(l.id)}
+      style={{
+        padding: "8px 14px",
+        borderRadius: 8,
+        fontSize: 14,
+        fontWeight: 600,
+        border: "none",
+        cursor: "pointer",
+        background: active === l.id ? "#EEF2FF" : "transparent",
+        color: active === l.id ? "#2563EB" : "#4B5563",
+        transition: "all 0.2s"
+      }}
     >
-      {navLinks.map((l) => (
-        <a
-          key={l}
-          href="#"
-          style={{
-            padding: "8px 14px",
-            borderRadius: 8,
-            fontSize: 14,
-            fontWeight: 500,
-            color: "#4B5563",
-            textDecoration: "none",
-            transition: "all 0.2s"
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = "#F3F4F6";
-            e.currentTarget.style.color = "#111827";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = "transparent";
-            e.currentTarget.style.color = "#4B5563";
-          }}
-        >
-          {l}
-        </a>
-      ))}
-    </div>
+      {l.label}
+    </button>
+  ))}
+</div>
 
     {/* CTA */}
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -816,7 +920,7 @@ function Navbar({ onLoginClick }) {
 ───────────────────────────────────────────── */
 function SalaryCard() {
   return (
-    <div className="pw-card-flat float-card" style={{ padding: "18px 22px", minWidth: "100%" }}>
+    <div id="salarycard" className="pw-card-flat float-card" style={{ padding: "18px 22px", minWidth: "100%" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 14 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Total Payroll — March 2025</div>
@@ -826,11 +930,15 @@ function SalaryCard() {
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
         {[["Employees", "142"], ["Avg. CTC", "₹1.73L"], ["Tax Deducted", "₹3.2L"]].map(([l, v]) => (
-          <div key={l}>
-            <div style={{ fontSize: 11, color: "var(--slate-400)", fontWeight: 600, marginBottom: 2 }}>{l}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--slate-800)" }}>{v}</div>
-          </div>
-        ))}
+  <div key={l}>
+    <div style={{ fontSize: 11, color: "var(--slate-400)", fontWeight: 600, marginBottom: 2 }}>
+      {l}
+    </div>
+    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--slate-800)" }}>
+      {v}
+    </div>
+  </div>
+))}
       </div>
       <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--border)", display: "flex", gap: 6 }}>
         <div style={{ flex: 0.6, height: 5, borderRadius: 99, background: "var(--blue-600)" }} />
@@ -853,23 +961,114 @@ function SalaryCard() {
 }
 
 function PayslipCard() {
+  const rows = [
+    { label: "Gross Pay", value: "₹1,25,000", color: "var(--slate-800)" },
+    { label: "Tax (TDS)", value: "-₹18,420", color: "var(--red-600)" },
+    { label: "PF Deduction", value: "-₹7,500", color: "var(--amber-700)" },
+    { label: "Net Pay", value: "₹99,080", color: "var(--green-700)" },
+  ];
+
   return (
-    <div className="pw-card-flat float-card-2" style={{ padding: "16px 20px", width: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--slate-700)" }}>Payslip Preview</span>
+    <div id="payslipcard"
+      className="pw-card-flat float-card-2"
+      style={{
+        padding: "18px 22px",
+        width: "100%",
+        minWidth: 260, // ✅ prevents shrinking issues
+      }}
+    >
+      {/* Header */}
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: 14,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--slate-700)",
+          }}
+        >
+          Payslip Preview
+        </span>
+
         <span className="badge badge-blue">March 2025</span>
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
-        <div style={{ width: 36, height: 36, borderRadius: 10, background: "linear-gradient(135deg,#DBEAFE,#93C5FD)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: "#1D4ED8" }}>P</div>
+
+      {/* User */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 16,
+        }}
+      >
+        <div
+          style={{
+            width: 38,
+            height: 38,
+            borderRadius: 10,
+            background: "linear-gradient(135deg,#DBEAFE,#93C5FD)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 15,
+            fontWeight: 700,
+            color: "#1D4ED8",
+          }}
+        >
+          P
+        </div>
+
         <div>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--slate-800)" }}>Priya Sharma</div>
-          <div style={{ fontSize: 11, color: "var(--slate-500)" }}>Sr. Engineer · Bangalore</div>
+          <div
+            style={{
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--slate-800)",
+            }}
+          >
+            Priya Sharma
+          </div>
+
+          <div style={{ fontSize: 11, color: "var(--slate-500)" }}>
+            Sr. Engineer · Bangalore
+          </div>
         </div>
       </div>
-      {[["Gross Pay", "₹1,25,000", "var(--slate-800)"], ["Tax (TDS)", "-₹18,420", "var(--red-600)"], ["PF Deduction", "-₹7,500", "var(--amber-700)"], ["Net Pay", "₹99,080", "var(--green-700)"]].map(([l, v, c]) => (
-        <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "5px 0", borderBottom: l !== "Net Pay" ? "1px solid var(--slate-100)" : "none" }}>
-          <span style={{ fontSize: 12, color: "var(--slate-500)" }}>{l}</span>
-          <span style={{ fontSize: 12, fontWeight: 700, color: c }}>{v}</span>
+
+      {/* Salary Rows */}
+      {rows.map((row, i) => (
+        <div
+          key={i} 
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "6px 0",
+            borderBottom:
+              row.label !== "Net Pay"
+                ? "1px solid var(--slate-100)"
+                : "none",
+          }}
+        >
+          <span style={{ fontSize: 12, color: "var(--slate-500)" }}>
+            {row.label}
+          </span>
+
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: row.color,
+            }}
+          >
+            {row.value}
+          </span>
         </div>
       ))}
     </div>
@@ -970,18 +1169,50 @@ function Stats() {
     { value: "99.98%",    label: "On-time Payment Rate",      color: "var(--amber-600)" },
   ];
   return (
-    <section style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
-      <div style={{ maxWidth: "100%", margin: "0 auto", padding: "0 24px" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", borderLeft: "1px solid var(--border)" }}>
-          {stats.map((s, i) => (
-            <div key={i} style={{ padding: "32px 28px", borderRight: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 28, fontWeight: 700, fontFamily: "var(--font-display)", color: s.color, marginBottom: 4 }}>{s.value}</div>
-              <div style={{ fontSize: 13, color: "var(--slate-500)", fontWeight: 500 }}>{s.label}</div>
-            </div>
-          ))}
+  <section style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
+  <div style={{ width: "100%" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        borderLeft: "1px solid var(--border)",
+      }}
+    >
+      {stats.map((s, i) => (
+        <div
+          key={i}
+          style={{
+            padding: "32px 20px",
+            borderRight: "1px solid var(--border)",
+            textAlign: "center",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 28,
+              fontWeight: 700,
+              fontFamily: "var(--font-display)",
+              color: s.color,
+              marginBottom: 4,
+            }}
+          >
+            {s.value}
+          </div>
+
+          <div
+            style={{
+              fontSize: 13,
+              color: "var(--slate-500)",
+              fontWeight: 500,
+            }}
+          >
+            {s.label}
+          </div>
         </div>
-      </div>
-    </section>
+      ))}
+    </div>
+  </div>
+</section>
   );
 }
 
@@ -1035,35 +1266,55 @@ function Features() {
   ];
 
   return (
-    <section style={{ padding: "80px 24px", background: "var(--bg-base)" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
-          <span className="badge badge-blue" style={{ marginBottom: 16 }}>Platform Features</span>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px,4vw,40px)", color: "var(--slate-900)", marginBottom: 12 }}>
-            Everything payroll, in one platform
-          </h2>
-          <p style={{ fontSize: 16, color: "var(--slate-500)", maxWidth: 520, margin: "0 auto" }}>
-            Built for Indian HR and finance teams who need speed, accuracy, and full statutory compliance.
+   <section id="Features" className="features-section">
+  <div className="features-container">
+    
+    {/* Header */}
+    <div className="features-header">
+      <span className="badge badge-blue">Platform Features</span>
+
+      <h2 className="features-title">
+        Everything payroll, in one platform
+      </h2>
+
+      <p className="features-subtitle">
+        Built for Indian HR and finance teams who need speed, accuracy, and full statutory compliance.
+      </p>
+    </div>
+
+    {/* Grid */}
+    <div className="features-grid">
+      {features.map((f, i) => (
+        <div key={i} className="feature-card">
+          
+          <div className="feature-top">
+            <div
+              className="feature-icon-wrap"
+              style={{ background: f.iconBg, color: f.iconColor }}
+            >
+              {f.icon}
+            </div>
+
+            <div>
+              <span className={`badge ${f.tagClass}`}>
+                {f.tag}
+              </span>
+
+              <h3 className="feature-title">
+                {f.title}
+              </h3>
+            </div>
+          </div>
+
+          <p className="feature-desc">
+            {f.desc}
           </p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
-          {features.map((f, i) => (
-            <div key={i} className="pw-card" style={{ padding: "28px" }}>
-              <div style={{ display: "flex", gap: 16, marginBottom: 16 }}>
-                <div className="feature-icon-wrap" style={{ background: f.iconBg, color: f.iconColor }}>
-                  {f.icon}
-                </div>
-                <div>
-                  <span className={`badge ${f.tagClass}`} style={{ marginBottom: 6 }}>{f.tag}</span>
-                  <h3 style={{ fontSize: 16, fontWeight: 700, color: "var(--slate-900)" }}>{f.title}</h3>
-                </div>
-              </div>
-              <p style={{ fontSize: 14, color: "var(--slate-500)", lineHeight: 1.65 }}>{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+      ))}
+    </div>
+
+  </div>
+</section>
   );
 }
 
@@ -1082,24 +1333,80 @@ function ComplianceStrip() {
     { label: "Bonus Act", icon: "🎯" },
   ];
   return (
-    <section style={{ background: "var(--slate-200)", padding: "48px 24px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto", textAlign: "center" }}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--slate-900)", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 24 }}>
-          Full Statutory Compliance Coverage
+  <section id="compliancestrip"
+  style={{
+    background: "var(--slate-100)",
+    padding: "56px 0",
+    borderTop: "1px solid var(--border)",
+    borderBottom: "1px solid var(--border)",
+  }}
+>
+  <div
+    style={{
+      width: "100%",
+      padding: "0 clamp(20px, 6vw, 80px)", // ✅ full width responsive padding
+      textAlign: "center",
+    }}
+  >
+    {/* Heading */}
+    <div
+      style={{
+        fontSize: 12,
+        fontWeight: 700,
+        color: "var(--slate-700)",
+        textTransform: "uppercase",
+        letterSpacing: "1px",
+        marginBottom: 28,
+      }}
+    >
+      Full Statutory Compliance Coverage
+    </div>
+
+    {/* Pills */}
+    <div
+      style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: 14,
+        justifyContent: "center",
+      }}
+    >
+      {items.map((item, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "#ffffff", // ✅ FIX: visible card
+            border: "1px solid var(--border)",
+            borderRadius: 999, // ✅ pill style
+            padding: "10px 18px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: "var(--slate-700)",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+            transition: "all 0.2s ease",
+            cursor: "default",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = "translateY(-2px)";
+            e.currentTarget.style.boxShadow =
+              "0 6px 14px rgba(0,0,0,0.08)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = "translateY(0)";
+            e.currentTarget.style.boxShadow =
+              "0 2px 6px rgba(0,0,0,0.04)";
+          }}
+        >
+          <span style={{ fontSize: 14 }}>{item.icon}</span>
+          {item.label}
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 12, justifyContent: "center" }}>
-          {items.map((item, i) => (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 8,
-              background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 10, padding: "8px 16px", fontSize: 13, fontWeight: 600, color: "var(--slate-300)",
-            }}>
-              <span>{item.icon}</span> {item.label}
-            </div>
-          ))}
-        </div>
-      </div>
-    </section>
+      ))}
+    </div>
+  </div>
+</section>
   );
 }
 
@@ -1217,7 +1524,7 @@ function Pricing({ onLoginClick }) {
   ];
 
   return (
-    <section style={{ padding: "80px 24px", background: "var(--bg-base)" }}>
+    <section id="pricing" style={{ padding: "80px 24px", background: "var(--bg-base)" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 56 }}>
           <span className="badge badge-amber" style={{ marginBottom: 14 }}>Transparent Pricing</span>
@@ -1284,53 +1591,184 @@ function CTA({ onLoginClick }) {
 ───────────────────────────────────────────── */
 function Footer() {
   const cols = [
-    { heading: "Platform", links: ["Payroll Processing", "Tax Compliance", "Payslip Generator", "Employee Portal", "Attendance Module"] },
-    { heading: "Company", links: ["About Us", "Careers", "Blog", "Press", "Contact"] },
-    { heading: "Resources", links: ["Documentation", "API Reference", "Status Page", "Security", "Privacy Policy"] },
+    {
+      heading: "Platform",
+      links: [
+        "Payroll Processing",
+        "Tax Compliance",
+        "Payslip Generator",
+        "Employee Portal",
+        "Attendance Module",
+      ],
+    },
+    {
+      heading: "Company",
+      links: ["About Us", "Careers", "Blog", "Press", "Contact"],
+    },
+    {
+      heading: "Resources",
+      links: [
+        "Documentation",
+        "API Reference",
+        "Status Page",
+        "Security",
+        "Privacy Policy",
+      ],
+    },
   ];
+
   return (
-    <footer className="pw-footer" style={{ padding: "60px 24px 32px" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 40, marginBottom: 48 }}>
+    <footer
+      id="footer" className="pw-footer"
+      style={{
+        padding: "70px 0 30px",
+        background: "var(--slate-900)",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          padding: "0 clamp(20px, 6vw, 80px)", // ✅ full-width responsive
+        }}
+      >
+        {/* TOP GRID */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1.5fr 1fr 1fr 1fr", // ✅ better balance
+            gap: 48,
+            marginBottom: 50,
+          }}
+        >
+          {/* BRAND */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
               <img
-  src={logo}
-  alt="Brixigo"
-  style={{
-    height: 42,
-    width: "auto",
-    objectFit: "contain"
-  }}
-/>
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 20, color: "#fff" }}>BrixiGo</div>
+                src={logo1}
+                alt="Brixigo"
+                style={{ height: 42 }}
+              />
+
+              <div
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: 20,
+                  color: "#fff",
+                }}
+              >
+                BrixiGo
+              </div>
             </div>
-            <p style={{ fontSize: 14, color: "var(--slate-400)", lineHeight: 1.7, marginBottom: 20, maxWidth: 280 }}>
-              India's most reliable payroll automation platform. Built for compliance, designed for speed.
+
+            <p
+              style={{
+                fontSize: 14,
+                color: "var(--slate-400)",
+                lineHeight: 1.7,
+                marginBottom: 20,
+                maxWidth: 320,
+              }}
+            >
+              India's most reliable payroll automation platform. Built for
+              compliance, designed for speed.
             </p>
-            <div style={{ display: "flex", gap: 10 }}>
-              {["🇮🇳 Made in India", "ISO 27001 Certified"].map(t => (
-                <span key={t} style={{ fontSize: 11, fontWeight: 700, color: "var(--slate-400)", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 6, padding: "3px 8px" }}>{t}</span>
+
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              {["🇮🇳 Made in India", "ISO 27001 Certified"].map((t) => (
+                <span
+                  key={t}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--slate-300)",
+                    background: "rgba(255,255,255,0.06)",
+                    border: "1px solid rgba(255,255,255,0.08)",
+                    borderRadius: 999,
+                    padding: "4px 10px",
+                  }}
+                >
+                  {t}
+                </span>
               ))}
             </div>
           </div>
+
+          {/* LINKS */}
           {cols.map((col, i) => (
             <div key={i}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", textTransform: "uppercase", letterSpacing: "0.8px", marginBottom: 16 }}>{col.heading}</div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {col.links.map(l => (
-                  <a key={l} href="#" style={{ fontSize: 14, color: "var(--slate-400)", textDecoration: "none", transition: "color 0.15s" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#fff"}
-                    onMouseLeave={e => e.currentTarget.style.color = ""}
-                  >{l}</a>
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#fff",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.8px",
+                  marginBottom: 18,
+                }}
+              >
+                {col.heading}
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 12,
+                }}
+              >
+                {col.links.map((l) => (
+                  <a
+                    key={l}
+                    href="#"
+                    style={{
+                      fontSize: 14,
+                      color: "var(--slate-400)",
+                      textDecoration: "none",
+                      transition: "all 0.2s",
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = "#fff";
+                      e.currentTarget.style.transform = "translateX(4px)";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = "var(--slate-400)";
+                      e.currentTarget.style.transform = "translateX(0)";
+                    }}
+                  >
+                    {l}
+                  </a>
                 ))}
               </div>
             </div>
           ))}
         </div>
-        <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: 24, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
-          <span style={{ fontSize: 13, color: "var(--slate-500)" }}>© 2025 BrixiGo Technologies Pvt. Ltd. All rights reserved.</span>
-          <span style={{ fontSize: 13, color: "var(--slate-500)" }}>CIN: U74999TG2021PTC152341 | GSTIN: 36AABCP1234A1Z5</span>
+
+        {/* BOTTOM BAR */}
+        <div
+          style={{
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            paddingTop: 24,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+          }}
+        >
+          <span style={{ fontSize: 13, color: "var(--slate-500)" }}>
+            © 2025 BrixiGo Technologies Pvt. Ltd. All rights reserved.
+          </span>
+
+          <span style={{ fontSize: 13, color: "var(--slate-500)" }}>
+            CIN: U74999TG2021PTC152341 | GSTIN: 36AABCP1234A1Z5
+          </span>
         </div>
       </div>
     </footer>
@@ -1364,15 +1802,15 @@ function ForgotPasswordModal({ onClose, onBack }) {
           <>
             <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
              <img
-  src={logo}
+  src={logo1}
   alt="Brixigo"
   style={{
-    height: 42,
+    height: 50,
     width: "auto",
     objectFit: "contain"
   }}
 />
-              <div style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--slate-900)" }}>BrixiGo</div>
+             
             </div>
             <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--slate-900)", marginBottom: 6 }}>Reset Password</h2>
             <p style={{ fontSize: 14, color: "var(--slate-500)", marginBottom: 28 }}>Enter your work email to receive reset instructions.</p>
@@ -1404,7 +1842,7 @@ function ForgotPasswordModal({ onClose, onBack }) {
 /* ─────────────────────────────────────────────
    REGISTER MODAL
 ───────────────────────────────────────────── */
-function RegisterModal({ onClose, onSwitchToLogin }) {
+function RegsterModal({ onClose, onSwitchToLogin }) {
   const [form, setForm] = useState({ name: "", company: "", email: "", password: "" });
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -1446,18 +1884,15 @@ function RegisterModal({ onClose, onSwitchToLogin }) {
 
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24 }}>
           <img
-  src={logo}
+  src={logo1}
   alt="Brixigo"
   style={{
-    height: 42,
+    height: 50,
     width: "auto",
     objectFit: "contain"
   }}
 />
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--slate-900)" }}>BrixiGo</div>
-            <div style={{ fontSize: 11, color: "var(--slate-400)", fontWeight: 600 }}>Start your free 30-day trial</div>
-          </div>
+          
         </div>
 
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--slate-900)", marginBottom: 4 }}>Create your account</h2>
@@ -1556,18 +1991,15 @@ const handleSubmit = async () => {
         {/* Brand */}
         <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
           <img
-  src={logo}
+  src={logo1}
   alt="Brixigo"
   style={{
-    height: 42,
+    height: 50,
     width: "auto",
     objectFit: "contain"
   }}
 />
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 18, color: "var(--slate-900)", lineHeight: 1.1 }}>BrixiGo</div>
-            <div style={{ fontSize: 11, color: "var(--slate-400)", fontWeight: 600, letterSpacing: "0.5px" }}>Payroll Management Platform</div>
-          </div>
+          
         </div>
 
         <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--slate-900)", marginBottom: 4 }}>Welcome back</h2>
@@ -1589,7 +2021,7 @@ const handleSubmit = async () => {
         <div style={{ marginBottom: 16 }}>
           <label className="pw-label">Username</label>
           <div className="pw-input-wrap">
-            <span className="pw-input-icon"><Icon.Mail size={15} /></span>
+            <span className="pw-input-icon"><Icon.User size={15} /></span>
             <input
               className={`pw-input ${error && !email ? "error" : ""}`}
               type="text"
@@ -1632,7 +2064,7 @@ const handleSubmit = async () => {
               onMouseLeave={e => e.currentTarget.style.color = "var(--slate-400)"}
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
-              {showPassword ? <Icon.EyeOff size={15} /> : <Icon.Eye size={15} />}
+              
             </button>
           </div>
         </div>
@@ -1648,7 +2080,7 @@ const handleSubmit = async () => {
           }}>
             {rememberMe && <span style={{ color: "#fff" }}><Icon.Check size={11} /></span>}
           </div>
-          <span style={{ fontSize: 13, color: "var(--slate-600)", fontWeight: 500, userSelect: "none" }}>Keep me signed in for 30 days</span>
+          <span style={{ fontSize: 13, color: "var(--slate-600)", fontWeight: 500, userSelect: "none" }}></span>
         </div>
 
         {/* Submit */}
@@ -1683,7 +2115,26 @@ const handleSubmit = async () => {
 ───────────────────────────────────────────── */
 export default function PayWiseApp() {
   const [showLogin, setShowLogin] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
+  const [showRegister, setShowRegister] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
 
+  const handleLoginClick = () => {
+    navigate("/login"); 
+  };
+
+  // ✅ REGISTER CLICK
+  const handleRegisterClick = () => {
+    setShowRegister(true);
+    setShowResetPassword(false);
+  };
+
+  // ✅ RESET PASSWORD CLICK
+  const handleResetClick = () => {
+    setShowResetPassword(true);
+    setShowRegister(false);
+  };
   useEffect(() => {
     const id = "paywise-global-css";
     if (document.getElementById(id)) return;
@@ -1715,6 +2166,19 @@ export default function PayWiseApp() {
       </main>
       <Footer />
       {showLogin && <LoginModal onClose={closeLogin} />}
+      {showRegister && (
+        <RegisterModal
+          onClose={() => setShowRegister(false)}
+          onSwitchToReset={handleResetClick}   // optional if you use link inside modal
+        />
+      )}
+
+      {showResetPassword && (
+        <ResetPassword
+          onClose={() => setShowResetPassword(false)}
+        />
+      )}
     </div>
+    
   );
 }

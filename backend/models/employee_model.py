@@ -51,6 +51,7 @@ class Employee(Base):
     marital_status = Column(String(20))
     fathers_name = Column(String(100))
     date_of_joining = Column(Date)
+
     date_of_leaving = Column(Date)
     status = Column(String(20), nullable=False, server_default=text("'active'"))  # Matches employee_status_t enum
     department_id = Column(PGUUID(as_uuid=True), ForeignKey("departments.department_id", ondelete="SET NULL"))
@@ -79,11 +80,13 @@ class Employee(Base):
     salary_assignments = relationship(
         "EmployeeSalaryAssignment", back_populates="employee", cascade="all, delete-orphan"
     )
-    department = relationship("Department", foreign_keys=[department_id])
-    designation = relationship("Designation", foreign_keys=[designation_id])
-    location = relationship("WorkLocation", foreign_keys=[location_id])
-    pay_structure = relationship("PayStructure", foreign_keys=[pay_structure_id])
-    manager = relationship("Employee", remote_side=[employee_id], backref="subordinates")
+# employee_models.py
+
+    department = relationship("Department", foreign_keys=[department_id], lazy="selectin")
+    designation = relationship("Designation", foreign_keys=[designation_id], lazy="selectin")
+    location = relationship("WorkLocation", foreign_keys=[location_id], lazy="selectin")
+    pay_structure = relationship("PayStructure", foreign_keys=[pay_structure_id], lazy="selectin")
+    manager = relationship("Employee", remote_side=[employee_id], lazy="selectin")
 
     # Attendance and leave relationships — ensure matching related model names
     attendance_records = relationship("Attendance", back_populates="employee", cascade="all, delete-orphan")

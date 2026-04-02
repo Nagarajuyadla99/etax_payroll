@@ -2,12 +2,13 @@ import { useState, useContext, useEffect, useRef } from "react";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
 import "./auth.css";
 import { forgotPassword } from "../../Moduels/auth/auth";
+import logo1 from "../assets/images/logo_brixigo3.png"
 
 export default function RegisterModal({ onClose }) {
   const { register } = useContext(AuthContext);
 
   const [step, setStep] = useState(1); // 2-step registration
-const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState({
   fullName: "",
   email: "",
   organisationName: "",
@@ -153,15 +154,19 @@ const [formData, setFormData] = useState({
         ) : (
           <>
             <div className="brand" style={{ marginBottom: "0.25rem" }}>
-              <div className="brand-icon">
-                <svg width="24" height="24" viewBox="0 0 28 28" fill="none">
-                  <rect width="12" height="12" rx="3" fill="currentColor" />
-                  <rect x="16" width="12" height="12" rx="3" fill="currentColor" opacity="0.6" />
-                  <rect y="16" width="12" height="12" rx="3" fill="currentColor" opacity="0.6" />
-                  <rect x="16" y="16" width="12" height="12" rx="3" fill="currentColor" opacity="0.3" />
-                </svg>
-              </div>
-              <span className="brand-name">Payroll Management</span>
+              
+                 <img
+                        src={logo1}
+                        alt="Brixigo"
+                        style={{
+                          height: 50,
+                          width: "auto",
+                
+                          objectFit: "contain"
+                        }}
+                      />
+              
+              
             </div>
 
             <div className="auth-header">

@@ -156,7 +156,7 @@ export default function EmployeeSalaryStructure() {
       <button
 onClick={handleAssign}
 disabled={!employeeId || !templateId || !ctc || !effectiveFrom}
-className="mt-6 bg-red-600 text-white px-6 py-2 rounded disabled:bg-gray-400"
+className="mt-6 bg-indigo-600 text-white px-6 py-2 rounded disabled:bg-gray-400"
 >
 Assign Salary
 </button>

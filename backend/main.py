@@ -8,7 +8,10 @@ from api.salary_routes import router as salary_router
 from api.payroll_routes import router as payroll_router
 from api.payslip_routes import router as payslip_router
 from api.org_routes import router as org_router
+from api.on_boarding_routes import router as onboarding
 import uvicorn
+
+
 
 
 
@@ -22,12 +25,14 @@ API_PREFIX = "/api"
 origins = [
     "http://localhost:9999",
     "http://127.0.0.1:9999",
+    "http://localhost:9000",
+    "http://127.0.0.1:9000",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
+    allow_origins=["*"],       
+    allow_credentials=False, 
     allow_methods=["*"],
     allow_headers=["*"],
      expose_headers=["*"],
@@ -36,7 +41,7 @@ app.add_middleware(
 # include router
 app.include_router(attendance_router, prefix=API_PREFIX)
 app.include_router(employee_router, prefix=API_PREFIX)
-app.include_router(user_router, prefix=API_PREFIX)
+app.include_router(user_router, prefix=API_PREFIX )
 
 app.include_router(auth_router, prefix=API_PREFIX + "/auth", tags=["Authentication"])
 app.include_router(salary_router, prefix=API_PREFIX + "/salary", tags=["Salary"])
@@ -45,6 +50,7 @@ app.include_router(payroll_router, prefix=API_PREFIX)
 app.include_router(payslip_router, prefix=API_PREFIX)
 
 app.include_router(org_router, prefix=API_PREFIX + "/organisation")
+app.include_router(onboarding, prefix="/api")
 
 # create tables on startup
 @app.on_event("startup")

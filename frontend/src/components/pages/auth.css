@@ -366,20 +366,20 @@
 }
 
 .primary-btn {
-  background: var(--accent);
+  background: linear-gradient(135deg, #2563EB, #1D4ED8);
   color: #fff;
-  box-shadow: 0 4px 20px rgb(216, 38, 38);
+  box-shadow: 0 4px 20px rgb(38, 50, 216);
 }
 
 .primary-btn:hover:not(:disabled) {
-  background: var(--accent-hover);
-  box-shadow: 0 6px 28px rgba(241, 34, 34, 0.5);
+  background: linear-gradient(135deg, #1D4ED8, #1E40AF);
+  box-shadow: 0 6px 28px rgba(34, 89, 241, 0.5);
   transform: translateY(-1px);
 }
 
 .primary-btn:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 10px rgba(255, 104, 99, 0.3);
+  box-shadow: 0 2px 10px rgba(109, 99, 255, 0.3);
 }
 
 .primary-btn:disabled {

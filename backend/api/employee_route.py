@@ -1,17 +1,54 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
 from database import get_async_db
 from schemas.employee_schemas import EmployeeCreate, EmployeeOut
-from crud.employee_crud import create_employee, get_employee, list_employees
+from crud.employee_crud import (
+    create_employee,
+    get_employee,
+    list_employees,
+    bulk_create_employees
+)
 from utils.dependencies import get_current_user
-from fastapi import UploadFile, File
-from crud.employee_crud import bulk_create_employees
+from crud.org_crud import get_organisation
+
 router = APIRouter(
     prefix="/employees",
     tags=["Employees"]
 )
+
+# ============================================================
+# COMMON DEPENDENCY: REQUIRE ORG + SETUP
+# ============================================================
+async def require_org_setup(
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_current_user),
+):
+    organisation_id = getattr(current_user, "organisation_id", None)
+
+    if not organisation_id:
+        raise HTTPException(
+            status_code=400,
+            detail="Organisation not found"
+        )
+
+    org = await get_organisation(db, organisation_id)
+
+    if not org:
+        raise HTTPException(
+            status_code=404,
+            detail="Organisation not found"
+        )
+
+    if not org.is_setup_complete:
+        raise HTTPException(
+            status_code=400,
+            detail="Complete organisation setup first"
+        )
+
+    return current_user
+
 
 # ============================================================
 # CREATE EMPLOYEE
@@ -26,19 +63,14 @@ async def create_new_employee(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_current_user),
 ):
-    print(">>> CREATE EMPLOYEE API HIT")
-
-    if not getattr(current_user, "organisation_id", None):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organisation not found. Please create organisation first.",
-        )
-
+    
     return await create_employee(
         db=db,
-        emp=emp,   # ✅ keep schema (not dict)
-        organisation_id=current_user.organisation_id,  # ✅ REQUIRED
+        emp=emp,
+        organisation_id=current_user.organisation_id,
     )
+
+
 # ============================================================
 # LIST EMPLOYEES (ORG SCOPED)
 # ============================================================
@@ -50,18 +82,10 @@ async def get_all_employees(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_current_user),
 ):
-    if not getattr(current_user, "organisation_id", None):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organisation not found. Please create organisation first.",
-        )
-
-    # This now returns employees with nested references (department, designation, etc.)
-    employees = await list_employees(
+    return await list_employees(
         db=db,
         organisation_id=current_user.organisation_id,
     )
-    return employees
 
 
 # ============================================================
@@ -81,33 +105,35 @@ async def get_employee_by_id(
         emp_id=emp_id,
         organisation_id=current_user.organisation_id,
     )
+
     if not emp:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Employee not found",
         )
+
     return emp
 
+
 # ============================================================
-# BULK EMPLOYEE UPLOAD (CSV)
+# BULK EMPLOYEE UPLOAD (CSV/XLSX)
 # ============================================================
 @router.post("/bulk-upload")
 async def bulk_upload_employees(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_org_setup),
 ):
-
-    if not getattr(current_user, "organisation_id", None):
+    # ✅ Validate filename
+    if not file.filename:
         raise HTTPException(
             status_code=400,
-            detail="Organisation not found"
+            detail="File name missing"
         )
-
-    content = await file.read()
 
     filename = file.filename.lower()
 
+    # ✅ Validate file type
     if filename.endswith(".csv"):
         file_type = "csv"
     elif filename.endswith(".xlsx"):
@@ -118,17 +144,24 @@ async def bulk_upload_employees(
             detail="Only CSV or XLSX files are supported"
         )
 
-    result = await bulk_create_employees(
+    # ✅ Read file safely
+    content = await file.read()
+
+    if not content:
+        raise HTTPException(
+            status_code=400,
+            detail="Uploaded file is empty"
+        )
+
+    return await bulk_create_employees(
         db=db,
         file_content=content,
         file_type=file_type,
         organisation_id=current_user.organisation_id,
     )
 
-    return result
 
-
-    # ============================================================
+# ============================================================
 # DELETE EMPLOYEE (ORG SCOPED)
 # ============================================================
 @router.delete(
@@ -140,13 +173,6 @@ async def delete_employee_by_id(
     db: AsyncSession = Depends(get_async_db),
     current_user=Depends(get_current_user),
 ):
-
-    if not getattr(current_user, "organisation_id", None):
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Organisation not found"
-        )
-
     emp = await get_employee(
         db=db,
         emp_id=emp_id,
@@ -155,7 +181,7 @@ async def delete_employee_by_id(
 
     if not emp:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
+            status_code=404,
             detail="Employee not found"
         )
 

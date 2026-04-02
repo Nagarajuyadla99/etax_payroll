@@ -48,6 +48,7 @@ class Organisation(Base):
         server_default=func.now(),
         onupdate=func.now(),
     )
+    is_setup_complete = Column(Boolean, nullable=False, server_default=text("false"))
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 
     # Relationships

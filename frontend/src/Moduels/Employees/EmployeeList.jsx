@@ -10,6 +10,7 @@ export default function EmployeeList() {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(15);
+  const navigate = useNavigate();
 
   const nav = useNavigate();
 
@@ -82,7 +83,7 @@ export default function EmployeeList() {
 
           <button
             onClick={() => nav("/employeeCreate")}
-            className="bg-red-600 text-white px-4 py-2 rounded text-sm"
+            className="bg-indigo-600 text-white px-4 py-2 rounded text-sm"
           >
             Add Employee
           </button>
@@ -136,7 +137,7 @@ export default function EmployeeList() {
 
                     <button
                       onClick={() => nav(`/employees/edit/${emp.employee_id}`)}
-                      className="text-red-600"
+                      className="text-red-400"
                     >
                       Edit
                     </button>
@@ -201,7 +202,7 @@ export default function EmployeeList() {
               onClick={() => setCurrentPage(i + 1)}
               className={`px-3 py-1 rounded border ${
                 currentPage === i + 1
-                  ? "bg-red-600 text-white"
+                  ? "bg-indigo-600 text-white"
                   : ""
               }`}
             >
@@ -219,7 +220,12 @@ export default function EmployeeList() {
 
         </div>
       </div>
-
+      <button
+         onClick={() => navigate(-1)}
+          className="fixed  right-6 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full shadow-lg transition duration-300 flex items-center gap-2 z-50"
+              >
+             ← Back
+         </button>
     </div>
   );
 }

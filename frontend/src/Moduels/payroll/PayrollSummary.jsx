@@ -46,7 +46,7 @@ export default function PayrollSummary(){
 
           <button
             onClick={loadSummary}
-            className="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-md"
+            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-md"
           >
             Get Summary
           </button>
