@@ -1,9 +1,12 @@
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
+from models.employee_model import Employee
 from database import get_async_db
-from schemas.employee_schemas import EmployeeCreate, EmployeeOut
+from schemas.employee_schemas import EmployeeCreate, EmployeeOut,EmployeeUpdate
 from crud.employee_crud import (
     create_employee,
     get_employee,
@@ -12,6 +15,9 @@ from crud.employee_crud import (
 )
 from utils.dependencies import get_current_user
 from crud.org_crud import get_organisation
+from services.employee_service import bulk_create_employees
+
+
 
 router = APIRouter(
     prefix="/employees",
@@ -189,3 +195,45 @@ async def delete_employee_by_id(
     await db.commit()
 
     return {"message": "Employee deleted successfully"}
+
+
+   
+
+@router.put("/{employee_id}", response_model=EmployeeOut)
+async def update_employee(
+    employee_id: UUID,
+    data: EmployeeUpdate,
+    db: AsyncSession = Depends(get_async_db)
+):
+    # STEP 1: Get employee (simple fetch for update)
+    employee = await db.get(Employee, employee_id)
+
+    if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # STEP 2: Update fields
+    for key, value in data.dict(exclude_unset=True).items():
+        setattr(employee, key, value)
+
+    # STEP 3: Commit changes
+    await db.commit()
+
+    # ❗ IMPORTANT: DO NOT RETURN HERE
+
+    # STEP 4: Re-fetch with relationships (THIS IS YOUR NEW CODE)
+    result = await db.execute(
+        select(Employee)
+        .options(
+            selectinload(Employee.manager),
+            selectinload(Employee.department),
+            selectinload(Employee.designation),
+            selectinload(Employee.location),
+            selectinload(Employee.pay_structure),
+        )
+        .where(Employee.employee_id == employee_id)
+    )
+
+    employee = result.scalar_one_or_none()
+
+    # STEP 5: Return fully-loaded object
+    return employee
