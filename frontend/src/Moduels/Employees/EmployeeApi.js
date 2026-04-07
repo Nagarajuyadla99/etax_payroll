@@ -25,6 +25,11 @@ export const deleteEmployee = async (id) => {
   return data;
 };
 
+export const updateEmployee = async (id, data) => {
+  const { data: updatedEmployee } = await API.put(`/employees/${id}`, data, getAuthHeaders());
+  return updatedEmployee;
+};
+
 export const bulkUploadEmployees = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
