@@ -46,7 +46,15 @@ class EmployeeRef(BaseModel):
 # ============================================================
 # EMPLOYEE SCHEMAS
 # ============================================================
+class EmployeeCreateResponse(BaseModel):
+    employee_id: UUID
+    first_name: str
+    email: Optional[EmailStr]
+    date_of_birth: Optional[date]
+    created_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
+    
 class EmployeeBase(BaseModel):
     organisation_id: Optional[UUID] = None
     employee_code: Optional[str] = None

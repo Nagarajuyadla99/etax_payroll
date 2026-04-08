@@ -11,7 +11,7 @@ import { AuthContext } from "../../Moduels/Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import RegisterModal from "./RegisterModal";
 import ResetPassword from "./ResetPassword";
-
+import axios from "axios";
 
 
 /* ─────────────────────────────────────────────
@@ -1934,181 +1934,221 @@ function RegsterModal({ onClose, onSwitchToLogin }) {
 /* ─────────────────────────────────────────────
    LOGIN MODAL
 ───────────────────────────────────────────── */
+
+
 function LoginModal({ onClose }) {
   const [view, setView] = useState("login");
+
+  const [loginType, setLoginType] = useState("admin"); // 🔥 admin | employee
+
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
 
-const handleSubmit = async () => {
-  setError("");
+  // =========================
+  // HANDLE LOGIN
+  // =========================
+  const handleSubmit = async () => {
+    setError("");
 
-  if (!username.trim()) {
-    setError("Please enter your username.");
-    return;
+    // ------------------------
+    // VALIDATION
+    // ------------------------
+    if (loginType === "admin") {
+      if (!username.trim()) {
+        setError("Please enter your username.");
+        return;
+      }
+    } else {
+      if (!email.trim()) {
+        setError("Please enter your email.");
+        return;
+      }
+    }
+
+    if (!password.trim()) {
+      setError("Please enter your password.");
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      // =========================
+      // ADMIN LOGIN
+      // =========================
+      if (loginType === "admin") {
+        await login(username, password);
+      }
+
+      // =========================
+      // EMPLOYEE LOGIN
+      // =========================
+      else {
+        const formData = new URLSearchParams();
+        formData.append("username", email); // 👈 backend expects 'username'
+        formData.append("password", password);
+
+        const res = await axios.post(
+  "http://localhost:9000/api/employee-auth/login",
+  {
+    email: email,        // ✅ backend expects email
+    password: password,
   }
+);
 
-  if (!password.trim()) {
-    setError("Please enter your password.");
-    return;
-  }
+        // 🔴 FORCE PASSWORD CHANGE
+        if (res.data.force_password_change) {
+          navigate("/change-password", {
+            state: { employee_id: res.data.employee_id },
+          });
+          return;
+        }
 
-  setLoading(true);
+        // 🔐 STORE TOKEN
+        localStorage.setItem("token", res.data.access_token);
+      }
 
-  try {
-    await login(username, password); // ✅ correct
+      // =========================
+      // SUCCESS
+      // =========================
+      navigate("/dashboard");
+      onClose();
 
-    navigate("/dashboard");          // ✅ redirect works
-    onClose();                       // ✅ close modal
+    } catch (error) {
+      const err = error.response?.data?.detail;
 
-  } catch {
+  if (Array.isArray(err)) {
+    // Extract readable messages from FastAPI
+    const messages = err.map(e => e.msg).join(", ");
+    setError(messages);
+  } else if (typeof err === "string") {
+    setError(err);
+  } else {
     setError("Invalid credentials. Please try again.");
-  } finally {
-    setLoading(false);
   }
-};
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (view === "register") return <RegisterModal onClose={onClose} onSwitchToLogin={() => setView("login")} />;
-  if (view === "forgot") return <ForgotPasswordModal onClose={onClose} onBack={() => setView("login")} />;
+  if (view === "register") return null;
+  if (view === "forgot") return null;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "var(--slate-100)", border: "none", borderRadius: 8, color: "var(--slate-500)", cursor: "pointer", padding: 7, display: "flex", transition: "background 0.15s" }}
-          onMouseEnter={e => e.currentTarget.style.background = "var(--slate-200)"}
-          onMouseLeave={e => e.currentTarget.style.background = "var(--slate-100)"}
-        >
+      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+
+        {/* CLOSE */}
+        <button onClick={onClose} className="close-btn">
           <Icon.Close size={15} />
         </button>
 
-        {/* Brand */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-          <img
-  src={logo1}
-  alt="Brixigo"
-  style={{
-    height: 50,
-    width: "auto",
-    objectFit: "contain"
-  }}
-/>
-          
+        {/* TITLE */}
+        <h2>Welcome back</h2>
+        <p>Sign in to your payroll workspace</p>
+
+        {/* =========================
+            LOGIN TYPE SWITCH
+        ========================= */}
+        <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+          <button
+            onClick={() => setLoginType("admin")}
+            style={{
+              flex: 1,
+              background: loginType === "admin" ? "#2563eb" : "#e5e7eb",
+              color: loginType === "admin" ? "#fff" : "#000",
+              border: "none",
+              padding: "8px",
+              borderRadius: 6,
+            }}
+          >
+            Admin
+          </button>
+
+          <button
+            onClick={() => setLoginType("employee")}
+            style={{
+              flex: 1,
+              background: loginType === "employee" ? "#2563eb" : "#e5e7eb",
+              color: loginType === "employee" ? "#fff" : "#000",
+              border: "none",
+              padding: "8px",
+              borderRadius: 6,
+            }}
+          >
+            Employee
+          </button>
         </div>
 
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--slate-900)", marginBottom: 4 }}>Welcome back</h2>
-        <p style={{ fontSize: 14, color: "var(--slate-500)", marginBottom: 28 }}>Sign in to your payroll workspace</p>
-
-        {/* Error Banner */}
+        {/* ERROR */}
         {error && (
-          <div style={{
-            display: "flex", alignItems: "center", gap: 10,
-            background: "var(--red-100)", border: "1px solid #FECACA",
-            color: "var(--red-600)", borderRadius: 10, padding: "11px 14px",
-            fontSize: 13, fontWeight: 600, marginBottom: 20,
-          }} role="alert">
-            <Icon.Alert size={14} />{error}
+          <div style={{ color: "red", marginBottom: 10 }}>
+            {String(error)}
           </div>
         )}
 
-        {/* Email */}
+        {/* =========================
+            USERNAME / EMAIL
+        ========================= */}
         <div style={{ marginBottom: 16 }}>
-          <label className="pw-label">Username</label>
-          <div className="pw-input-wrap">
-            <span className="pw-input-icon"><Icon.User size={15} /></span>
-            <input
-              className={`pw-input ${error && !email ? "error" : ""}`}
-              type="text"
-              placeholder="Enter Username"
-              value={username}
-              onChange={e => { setUsername(e.target.value); setError(""); }}
-              autoFocus
-              autoComplete="username"
-              onKeyDown={e => e.key === "Enter" && handleSubmit()}
-            />
-          </div>
-        </div>
+          <label>
+            {loginType === "employee" ? "Email" : "Username"}
+          </label>
 
-        {/* Password */}
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-            <label className="pw-label" style={{ marginBottom: 0 }}>Password</label>
-            <button type="button" onClick={() => setView("forgot")} style={{ background: "none", border: "none", fontSize: 12, color: "var(--blue-600)", fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-body)", transition: "color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--blue-700)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--blue-600)"}
-            >Forgot password?</button>
-          </div>
-          <div className="pw-input-wrap">
-            <span className="pw-input-icon"><Icon.Lock size={15} /></span>
-            <input
-              className="pw-input"
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={password}
-              onChange={e => { setPassword(e.target.value); setError(""); }}
-              autoComplete="current-password"
-              style={{ paddingRight: 44 }}
-              onKeyDown={e => e.key === "Enter" && handleSubmit()}
-            />
-            <button type="button" onClick={() => setShowPassword(v => !v)} style={{
-              position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)",
-              background: "none", border: "none", color: "var(--slate-400)", cursor: "pointer", display: "flex", transition: "color 0.15s",
+          <input
+            type="text"
+            placeholder={
+              loginType === "employee"
+                ? "Enter email"
+                : "Enter username"
+            }
+            value={loginType === "employee" ? email : username}
+            onChange={(e) => {
+              if (loginType === "employee") setEmail(e.target.value);
+              else setUsername(e.target.value);
+              setError("");
             }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--slate-600)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--slate-400)"}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              
-            </button>
-          </div>
+          />
         </div>
 
-        {/* Remember Me */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24, cursor: "pointer" }} onClick={() => setRememberMe(v => !v)}>
-          <div style={{
-            width: 18, height: 18, borderRadius: 5, flexShrink: 0,
-            background: rememberMe ? "var(--blue-600)" : "transparent",
-            border: rememberMe ? "none" : "1.5px solid var(--slate-300)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "all 0.15s",
-          }}>
-            {rememberMe && <span style={{ color: "#fff" }}><Icon.Check size={11} /></span>}
-          </div>
-          <span style={{ fontSize: 13, color: "var(--slate-600)", fontWeight: 500, userSelect: "none" }}></span>
+        {/* =========================
+            PASSWORD
+        ========================= */}
+        <div style={{ marginBottom: 16 }}>
+          <label>Password</label>
+
+          <input
+            type={showPassword ? "text" : "password"}
+            placeholder="Enter password"
+            value={password}
+            onChange={(e) => {
+              setPassword(e.target.value);
+              setError("");
+            }}
+          />
         </div>
 
-        {/* Submit */}
-        <button
-          className="btn btn-primary btn-md"
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{ width: "100%", justifyContent: "center", fontSize: 15, opacity: loading ? 0.75 : 1, cursor: loading ? "not-allowed" : "pointer", marginBottom: 16 }}
-        >
-          {loading
-            ? <><span style={{ width: 15, height: 15, border: "2px solid rgba(255,255,255,0.35)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} /> Signing in…</>
-            : <>Sign In to BrixiGo <Icon.ArrowRight size={14} /></>
-          }
+        {/* =========================
+            SUBMIT
+        ========================= */}
+        <button onClick={handleSubmit} disabled={loading}>
+          {loading ? "Signing in..." : "Sign In"}
         </button>
 
-        <div className="divider" style={{ marginBottom: 16 }}>New to BrixiGo?</div>
-
-        <button className="btn btn-secondary btn-md" onClick={() => setView("register")} style={{ width: "100%", justifyContent: "center" }}>
-          <Icon.Users size={15} /> Create a Free Account
-        </button>
-
-        <p style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "var(--slate-400)" }}>
-          Protected by 256-bit TLS encryption · <a href="#" style={{ color: "var(--blue-600)", textDecoration: "none" }}>Privacy Policy</a>
-        </p>
       </div>
     </div>
   );
 }
+
+
 
 /* ─────────────────────────────────────────────
    ROOT APP
@@ -2151,6 +2191,7 @@ export default function PayWiseApp() {
 
   const openLogin = useCallback(() => setShowLogin(true), []);
   const closeLogin = useCallback(() => setShowLogin(false), []);
+  
 
   return (
     <div style={{ minHeight: "100vh" }}>

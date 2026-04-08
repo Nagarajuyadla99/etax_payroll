@@ -29,3 +29,30 @@ Payroll Management System
 
     fm = FastMail(conf)
     await fm.send_message(message)
+
+
+
+
+async def send_employee_credentials(email: str, password: str):
+    message = MessageSchema(
+        subject="Welcome to Company - Login Details",
+        recipients=[email],
+        body=f"""
+Welcome to the Company!
+
+Your account has been created successfully.
+
+Login Details:
+Email: {email}
+Password: {password}
+
+⚠️ Please change your password after first login.
+
+Regards,
+HR Team
+""",
+        subtype="plain"
+    )
+
+    fm = FastMail(conf)
+    await fm.send_message(message)

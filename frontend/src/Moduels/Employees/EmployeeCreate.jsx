@@ -479,11 +479,41 @@ export default function EmployeeCreate() {
 
     try {
       const payload = { ...form };
-      payload.annual_ctc = payload.annual_ctc ? parseFloat(payload.annual_ctc) : undefined;
-      payload.is_active = payload.is_active === "true";
-      Object.keys(payload).forEach((k) => {
-        if (payload[k] === "" || payload[k] === null || payload[k] === undefined) delete payload[k];
-      });
+
+// ✅ FIX 1: map email correctly
+if (!form.work_email) {
+  setSubmitError("Email is required");
+  setLoading(false);
+  return;
+}
+payload.email = form.work_email;
+
+// remove wrong field
+delete payload.work_email;
+
+// ✅ FIX 2: validate required fields
+if (!payload.first_name) {
+  setSubmitError("First name is required");
+  setLoading(false);
+  return;
+}
+
+if (!payload.date_of_birth) {
+  setSubmitError("Date of birth is required");
+  setLoading(false);
+  return;
+}
+
+// type conversions
+payload.annual_ctc = payload.annual_ctc ? parseFloat(payload.annual_ctc) : undefined;
+payload.is_active = payload.is_active === "true";
+
+// remove empty fields
+Object.keys(payload).forEach((k) => {
+  if (payload[k] === "" || payload[k] === null || payload[k] === undefined) {
+    delete payload[k];
+  }
+});
 
       await createEmployee(payload);
       setSubmitSuccess(true);

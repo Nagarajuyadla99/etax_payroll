@@ -72,7 +72,8 @@ class Employee(Base):
         onupdate=func.now(),
     )
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
-
+    password_hash = Column(Text, nullable=True)
+    is_password_changed = Column(Boolean, default=False)
     # ------------------ Relationships ------------------
     documents = relationship(
         "EmployeeDocument", back_populates="employee", cascade="all, delete-orphan"

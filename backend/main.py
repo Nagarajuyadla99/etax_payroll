@@ -4,6 +4,8 @@ from api.attendance_route import router as attendance_router
 from api.employee_route import router as employee_router
 from api.user_routes import router as user_router
 from api.auth_routes import router as auth_router
+from api.employee_auth_routes import router as employee_auth_router
+
 from api.salary_routes import router as salary_router
 from api.payroll_routes import router as payroll_router
 from api.payslip_routes import router as payslip_router
@@ -43,6 +45,7 @@ app.include_router(attendance_router, prefix=API_PREFIX)
 app.include_router(employee_router, prefix=API_PREFIX)
 app.include_router(user_router, prefix=API_PREFIX )
 
+app.include_router(employee_auth_router, prefix="/api")
 app.include_router(auth_router, prefix=API_PREFIX + "/auth", tags=["Authentication"])
 app.include_router(salary_router, prefix=API_PREFIX + "/salary", tags=["Salary"])
 

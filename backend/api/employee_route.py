@@ -6,13 +6,14 @@ from sqlalchemy.orm import selectinload
 
 from models.employee_model import Employee
 from database import get_async_db
-from schemas.employee_schemas import EmployeeCreate, EmployeeOut,EmployeeUpdate
+from schemas.employee_schemas import EmployeeCreate, EmployeeOut,EmployeeUpdate,EmployeeCreateResponse
 from crud.employee_crud import (
-    create_employee,
     get_employee,
     list_employees,
-    bulk_create_employees
+    
 )
+from services.employee_service import bulk_create_employees
+from services.employee_service import create_employee_with_auth
 from utils.dependencies import get_current_user
 from crud.org_crud import get_organisation
 from services.employee_service import bulk_create_employees
@@ -61,7 +62,7 @@ async def require_org_setup(
 # ============================================================
 @router.post(
     "/",
-    response_model=EmployeeOut,
+    response_model=EmployeeCreateResponse,
     status_code=status.HTTP_201_CREATED,
 )
 async def create_new_employee(
@@ -70,11 +71,11 @@ async def create_new_employee(
     current_user=Depends(get_current_user),
 ):
     
-    return await create_employee(
-        db=db,
-        emp=emp,
-        organisation_id=current_user.organisation_id,
-    )
+    return await create_employee_with_auth(
+    db=db,
+    emp=emp,
+    organisation_id=current_user.organisation_id,
+)
 
 
 # ============================================================
