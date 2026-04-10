@@ -1,6 +1,7 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import logo1 from "../assets/images/brixigo_logoo.png"
+import { AuthContext } from "../../Moduels/Context/AuthContext";
 import {
   Home,
   Users,
@@ -23,6 +24,7 @@ import {
 
 export default function Sidebar({ mobileOpen, onCollapsedChange }) {
   const location = useLocation();
+  const { role } = useContext(AuthContext);
   const [collapsed, setCollapsed] = useState(false);
   const [salaryOpen, setSalaryOpen] = useState(location.pathname.startsWith("/salary"));
   const [attendanceOpen, setAttendanceOpen] = useState(location.pathname.startsWith("/attendance"));
@@ -378,14 +380,18 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
 
           <SbItem to="/dashboard" label="Dashboard" icon={<Home size={14} />} color="ic-blue" collapsed={collapsed} />
 
-          <div className="sb-section">Payroll</div>
+          {role !== "employee" && <div className="sb-section">Payroll</div>}
 
-          <SbAccordion label="Salary Setup" icon={<Layers size={14} />} color="ic-red" open={salaryOpen && !collapsed} onToggle={() => !collapsed && setSalaryOpen(!salaryOpen)} collapsed={collapsed}>
-            <SbSub to="/salary/components" label="Components" icon={<Layers size={12} />} color="ic-red" />
-            <SbSub to="/salary/templates"  label="Templates"  icon={<FileText size={12} />} color="ic-purple" />
-          </SbAccordion>
+          {role !== "employee" && (
+            <SbAccordion label="Salary Setup" icon={<Layers size={14} />} color="ic-red" open={salaryOpen && !collapsed} onToggle={() => !collapsed && setSalaryOpen(!salaryOpen)} collapsed={collapsed}>
+              <SbSub to="/salary/components" label="Components" icon={<Layers size={12} />} color="ic-red" />
+              <SbSub to="/salary/templates"  label="Templates"  icon={<FileText size={12} />} color="ic-purple" />
+            </SbAccordion>
+          )}
 
-          <SbItem to="/payrollhome" label="Pay Runs" icon={<Wallet size={14} />} color="ic-blue" collapsed={collapsed} />
+          {role !== "employee" && (
+            <SbItem to="/payrollhome" label="Pay Runs" icon={<Wallet size={14} />} color="ic-blue" collapsed={collapsed} />
+          )}
 
           <div className="sb-section">Workforce</div>
 
@@ -398,20 +404,26 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           </SbAccordion>
 
           
-          <SbAccordion label="Employee" icon={<Users size={14} />} color="ic-blue" open={employeeOpen && !collapsed} onToggle={() => !collapsed && setEmployeeOpen(!employeeOpen)} collapsed={collapsed}>
-            <SbSub to="/Setup" label="Initial Setup" icon={<Zap size={12} />} color="ic-red" />
-            <SbSub to="/employeeList"        label="Employee List" icon={<Users size={12} />}     color="ic-blue" />
-            <SbSub to="/employeeCreate"      label="Add Employee"  icon={<UserCheck size={12} />} color="ic-green" />
-            <SbSub to="/employeebulkupload"  label="Bulk Upload"   icon={<Upload size={12} />}    color="ic-amber" />
-          </SbAccordion>
+          {role !== "employee" && (
+            <SbAccordion label="Employee" icon={<Users size={14} />} color="ic-blue" open={employeeOpen && !collapsed} onToggle={() => !collapsed && setEmployeeOpen(!employeeOpen)} collapsed={collapsed}>
+              {role === "admin" && <SbSub to="/Setup" label="Initial Setup" icon={<Zap size={12} />} color="ic-red" />}
+              <SbSub to="/employeeList"        label="Employee List" icon={<Users size={12} />}     color="ic-blue" />
+              <SbSub to="/employeeCreate"      label="Add Employee"  icon={<UserCheck size={12} />} color="ic-green" />
+              <SbSub to="/employeebulkupload"  label="Bulk Upload"   icon={<Upload size={12} />}    color="ic-amber" />
+            </SbAccordion>
+          )}
 
-          <div className="sb-section">Finance & Compliance</div>
+          {role !== "employee" && <div className="sb-section">Finance & Compliance</div>}
 
-          <SbItem to="/bank"         label="Bank Requests"  icon={<Wallet size={14} />}      color="ic-blue"   collapsed={collapsed} />
-          <SbItem to="/approvals"    label="Approvals"      icon={<CheckCircle size={14} />} color="ic-green"  collapsed={collapsed} />
-          <SbItem to="/loans"        label="Loans"          icon={<Briefcase size={14} />}   color="ic-amber"  collapsed={collapsed} />
-          <SbItem to="/audit"        label="Audit Logs"     icon={<Shield size={14} />}      color="ic-red"    collapsed={collapsed} />
-          <SbItem to="/statutorytax" label="Statutory & Tax"icon={<FileText size={14} />}    color="ic-purple" collapsed={collapsed} />
+          {role !== "employee" && (
+            <>
+              <SbItem to="/bank"         label="Bank Requests"  icon={<Wallet size={14} />}      color="ic-blue"   collapsed={collapsed} />
+              <SbItem to="/approvals"    label="Approvals"      icon={<CheckCircle size={14} />} color="ic-green"  collapsed={collapsed} />
+              <SbItem to="/loans"        label="Loans"          icon={<Briefcase size={14} />}   color="ic-amber"  collapsed={collapsed} />
+              {role === "admin" && <SbItem to="/audit"        label="Audit Logs"     icon={<Shield size={14} />}      color="ic-red"    collapsed={collapsed} />}
+              <SbItem to="/statutorytax" label="Statutory & Tax"icon={<FileText size={14} />}    color="ic-purple" collapsed={collapsed} />
+            </>
+          )}
 
           <div className="sb-section">Support</div>
 

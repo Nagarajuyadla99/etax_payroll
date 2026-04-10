@@ -9,6 +9,8 @@ import httpx
 import secrets
 from sqlalchemy.future import select
 from datetime import datetime
+from pydantic import BaseModel
+from sqlalchemy import select as sa_select
 from google.oauth2 import id_token as google_id_token
 from google.auth.transport import requests as google_requests
 from models.user_models import User
@@ -23,6 +25,7 @@ from crud.user_crud import (
 from database import get_async_db
 from utils.auth import create_access_token, verify_password
 from models.org_models import Organisation
+from models.employee_model import Employee
 
 router = APIRouter()
 
@@ -77,7 +80,8 @@ async def login(
     token = create_access_token(
     data={
         "sub": user.username,
-        "organisation_id": str(user.organisation_id)
+        "organisation_id": str(user.organisation_id),
+        "role": (getattr(user, "role", None) or ("admin" if getattr(user, "is_system_admin", False) else "admin")),
     },
     expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
 )
@@ -85,6 +89,92 @@ async def login(
     return {
         "access_token": token,
         "token_type": "bearer"
+    }
+
+
+# ==========================================================
+# UNIFIED LOGIN (JSON) — additive, backward compatible
+# ==========================================================
+class UnifiedLoginRequest(BaseModel):
+    identifier: str
+    password: str
+
+
+@router.post("/login-unified", tags=["Authentication"])
+async def login_unified(
+    payload: UnifiedLoginRequest,
+    db: AsyncSession = Depends(get_async_db),
+):
+    identifier = payload.identifier.strip()
+    password = payload.password
+
+    if not identifier or not password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Identifier and password are required",
+        )
+
+    # If identifier looks like email -> employee login flow (same as /employee-auth/login)
+    if "@" in identifier:
+        result = await db.execute(
+            sa_select(Employee).where(Employee.email == identifier)
+        )
+        employee = result.scalar_one_or_none()
+
+        if not employee or not employee.password_hash:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+
+        if not verify_password(password, employee.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+
+        token = create_access_token({
+            "sub": str(employee.employee_id),
+            "type": "employee",
+            "role": "employee",
+        })
+
+        return {
+            "message": "Login successful",
+            "access_token": token,
+            "token_type": "bearer",
+            "employee": {
+                "employee_id": str(employee.employee_id),
+                "email": employee.email,
+                "name": employee.first_name,
+            },
+        }
+
+    # Else -> admin login flow (same as /auth/login)
+    user = await get_user_by_username(db, identifier)
+    if not user or not verify_password(password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid credentials",
+        )
+    if user.status != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive",
+        )
+
+    token = create_access_token(
+        data={
+            "sub": user.username,
+            "organisation_id": str(user.organisation_id),
+            "role": (getattr(user, "role", None) or ("admin" if getattr(user, "is_system_admin", False) else "admin")),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
+
+    return {
+        "access_token": token,
+        "token_type": "bearer",
     }
 
 
@@ -141,7 +231,9 @@ async def register(
         email=user_in.email,
         password_hash=hash_password(user_in.password),
         full_name=user_in.full_name,
-        organisation_id=organisation.organisation_id
+        organisation_id=organisation.organisation_id,
+        role="admin",
+        is_system_admin=True,
     )
 
     db.add(user)
@@ -273,7 +365,7 @@ async def forgot_password(
 
     await db.commit()
 
-    reset_link = f"http://localhost:9999/reset-password?token={token}"
+    reset_link = f"{FRONTEND_URL}/reset-password?token={token}"
 
     await send_reset_email(email, reset_link)
 

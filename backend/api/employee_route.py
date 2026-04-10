@@ -15,6 +15,7 @@ from crud.employee_crud import (
 from services.employee_service import bulk_create_employees
 from services.employee_service import create_employee_with_auth
 from utils.dependencies import get_current_user
+from utils.rbac import require_roles
 from crud.org_crud import get_organisation
 from services.employee_service import bulk_create_employees
 
@@ -68,7 +69,7 @@ async def require_org_setup(
 async def create_new_employee(
     emp: EmployeeCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     
     return await create_employee_with_auth(
@@ -87,7 +88,7 @@ async def create_new_employee(
 )
 async def get_all_employees(
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     return await list_employees(
         db=db,
@@ -105,7 +106,7 @@ async def get_all_employees(
 async def get_employee_by_id(
     emp_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     emp = await get_employee(
         db=db,
@@ -129,8 +130,10 @@ async def get_employee_by_id(
 async def bulk_upload_employees(
     file: UploadFile = File(...),
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(require_org_setup),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
+    # Preserve existing org setup validation (now with RBAC applied first)
+    await require_org_setup(db=db, current_user=current_user)
     # ✅ Validate filename
     if not file.filename:
         raise HTTPException(
@@ -178,7 +181,7 @@ async def bulk_upload_employees(
 async def delete_employee_by_id(
     emp_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_current_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     emp = await get_employee(
         db=db,
@@ -204,12 +207,17 @@ async def delete_employee_by_id(
 async def update_employee(
     employee_id: UUID,
     data: EmployeeUpdate,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     # STEP 1: Get employee (simple fetch for update)
     employee = await db.get(Employee, employee_id)
 
     if not employee:
+        raise HTTPException(status_code=404, detail="Employee not found")
+
+    # STEP 1.5: Org-level row security
+    if str(employee.organisation_id) != str(current_user.organisation_id):
         raise HTTPException(status_code=404, detail="Employee not found")
 
     # STEP 2: Update fields

@@ -69,6 +69,9 @@ class User(Base):
     full_name = Column(Text)
     phone = Column(String(30))
     status = Column(String(20), nullable=False, server_default=text("'active'"))
+    # Canonical RBAC role for backend enforcement (extensible via mapping).
+    # Kept as a simple string to avoid introducing complex joins on hot paths.
+    role = Column(String(20), nullable=False, server_default=text("'admin'"))
     last_login = Column(TIMESTAMP(timezone=True))
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())

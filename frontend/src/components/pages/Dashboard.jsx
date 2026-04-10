@@ -21,19 +21,25 @@ import {
   Calendar,
   TrendingUp,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { getEmployees } from "../../Moduels/Employees/EmployeeApi";
 import { useNavigate } from "react-router-dom";
+import { AuthContext } from "../../Moduels/Context/AuthContext";
 
 export default function Dashboard() {
   const [employees, setEmployees] = useState([]);
   const navigate = useNavigate();
+  const { role } = useContext(AuthContext);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
 
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
+        if (role === "employee") {
+          setEmployees([]);
+          return;
+        }
         const data = await getEmployees();
         setEmployees(data);
       } catch (error) {
@@ -41,7 +47,7 @@ export default function Dashboard() {
       }
     };
     fetchEmployees();
-  }, []);
+  }, [role]);
 
   const handleComingSoon = (feature) => {
     setPopupMessage(`${feature} will be available soon`);

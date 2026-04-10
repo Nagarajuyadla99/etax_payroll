@@ -1,10 +1,12 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 import Login from "./components/pages/Login";
+import LoginPage from "./components/pages/Login";
 import Dashboard from "./components/pages/Dashboard";
 import Form16 from "./components/pages/Form16";
 import Layout from "./components/layout/Layout";
 import Protected from "./components/Protected";
+import ProtectedRoute from "./components/ProtecteRoute";
 import Approvals from "./components/pages/Approvals/Approvals";
 import Loans from "./components/pages/Loans/Loans";
 import EmployeeCreate from "./Moduels/Employees/EmployeeCreate";
@@ -67,6 +69,7 @@ export default function App() {
 
           {/* PUBLIC ROUTE */}
           <Route path="/" element={<Login />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route pathh="/registermodal" element={<RegisterModal />} />
 
@@ -81,11 +84,11 @@ export default function App() {
             <Route path="/dashboard" element={<Dashboard />} />
 
             {/* Employees */}
-            <Route path="/Setup" element={<Setup />} />
-            <Route path="/employeeCreate" element={<EmployeeCreate />} />
-            <Route path="/employeeList" element={<EmployeeList />} />
-            <Route path="/employeeForm" element={<EmployeeForm />} />
-            <Route path="/employeebulkupload" element={<EmployeeBulkUpload />} />
+            <Route path="/Setup" element={<ProtectedRoute allowedRoles={["admin"]}><Setup /></ProtectedRoute>} />
+            <Route path="/employeeCreate" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeCreate /></ProtectedRoute>} />
+            <Route path="/employeeList" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeList /></ProtectedRoute>} />
+            <Route path="/employeeForm" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeForm /></ProtectedRoute>} />
+            <Route path="/employeebulkupload" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeBulkUpload /></ProtectedRoute>} />
             {/* Payroll */}
             <Route path="/payrollhome" element={<PayrollHome />} />
 
@@ -103,13 +106,13 @@ export default function App() {
             <Route path="/leaveApproval" element={<LeaveApproval />} />
 
             {/* Payroll */}
-            <Route path="/pay-periods" element={<PayPeriods/>}/>
-            <Route path="/payroll-runs" element={<PayrollRuns/>}/>
-            <Route path="/process-payroll" element={<ProcessPayroll/>}/>
-            <Route path="/summary" element={<PayrollSummary/>}/>
-            <Route path="/register" element={<PayrollRegister/>}/>
-            <Route path="/salary-statement" element={<SalaryStatement/>}/>
-            <Route path="/tds-summary" element={<TdsSummary/>}/>
+            <Route path="/pay-periods" element={<ProtectedRoute allowedRoles={["admin","hr"]}><PayPeriods/></ProtectedRoute>}/>
+            <Route path="/payroll-runs" element={<ProtectedRoute allowedRoles={["admin","hr"]}><PayrollRuns/></ProtectedRoute>}/>
+            <Route path="/process-payroll" element={<ProtectedRoute allowedRoles={["admin","hr"]}><ProcessPayroll/></ProtectedRoute>}/>
+            <Route path="/summary" element={<ProtectedRoute allowedRoles={["admin","hr"]}><PayrollSummary/></ProtectedRoute>}/>
+            <Route path="/register" element={<ProtectedRoute allowedRoles={["admin","hr"]}><PayrollRegister/></ProtectedRoute>}/>
+            <Route path="/salary-statement" element={<ProtectedRoute allowedRoles={["admin","hr"]}><SalaryStatement/></ProtectedRoute>}/>
+            <Route path="/tds-summary" element={<ProtectedRoute allowedRoles={["admin","hr"]}><TdsSummary/></ProtectedRoute>}/>
             <Route path="/payslip" element={<PayslipDownload/>}/>
 
             {/* Bank */}

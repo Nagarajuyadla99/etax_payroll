@@ -66,7 +66,8 @@ async def employee_login(
     # ------------------------
     token = create_access_token({
         "sub": str(employee.employee_id),
-        "type": "employee"
+        "type": "employee",
+        "role": "employee",
     })
 
     # ------------------------

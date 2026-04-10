@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import "./auth.css";
+import API from "../../services/api";
 
 export default function ForgotPasswordModal({ onClose }) {
   const [email, setEmail] = useState("");
@@ -24,7 +25,7 @@ export default function ForgotPasswordModal({ onClose }) {
     if (e.target === overlayRef.current) onClose();
   };
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
   e.preventDefault();
   setError("");
 
@@ -33,29 +34,16 @@ export default function ForgotPasswordModal({ onClose }) {
     return;
   }
 
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    setError("Enter a valid email address.");
-    return;
-  }
-
   setIsLoading(true);
 
   try {
-    const res = await fetch("http://localhost:8000/auth/forgot-password", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email }),
+    await API.post("/auth/forgot-password", {
+      email: email,
     });
-
-    if (!res.ok) {
-      throw new Error("Request failed");
-    }
 
     setSent(true);
   } catch (err) {
-    setError("Something went wrong. Please try again.");
+    setError("Failed to send reset link.");
   } finally {
     setIsLoading(false);
   }

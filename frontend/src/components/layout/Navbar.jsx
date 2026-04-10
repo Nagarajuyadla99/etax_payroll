@@ -1,13 +1,16 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell, Search, Menu,
   User, LogOut, ShieldCheck, Building2,
   ChevronDown, Settings, X
 } from "lucide-react";
+import API from "../../services/api";
+import { AuthContext } from "../../Moduels/Context/AuthContext";
 
 export default function Navbar({ toggle }) {
   const nav = useNavigate();
+  const { role, principalType } = useContext(AuthContext);
 
   const [openProfile, setOpenProfile] = useState(false);
   const [openNotify, setOpenNotify] = useState(false);
@@ -29,26 +32,20 @@ export default function Navbar({ toggle }) {
       try {
         const token = localStorage.getItem("token");
         if (!token) return;
-        const res = await fetch("http://127.0.0.1:9000/api/users/me", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!res.ok) throw new Error("Failed");
-        const data = await res.json();
-        setUser(data);
-        if (data.organisation_id) {
-          try {
-            const orgRes = await fetch(`http://127.0.0.1:9000/api/organisation/${data.organisation_id}`, {
-              headers: { Authorization: `Bearer ${token}` },
-            });
-            if (orgRes.ok) setOrg(await orgRes.json());
-          } catch {}
+        // Employees shouldn't call /users/me; it will 401 and triggers noisy console errors.
+        if (principalType === "employee" || role === "employee") {
+          setUser({ role: "employee" });
+          return;
         }
+
+        const { data } = await API.get("/users/me");
+        setUser(data);
       } catch (err) {
         console.error("User load error:", err);
       }
     };
     fetchUser();
-  }, []);
+  }, [role, principalType]);
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 4);

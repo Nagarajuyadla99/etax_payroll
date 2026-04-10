@@ -1,20 +1,51 @@
-import { createContext, useEffect, useState } from "react";
-import { loginUser, getProfile, registerUser } from "../auth/auth";
+import { createContext, useEffect, useMemo, useState } from "react";
+import { getProfile, registerUser } from "../auth/auth";
+import { login as loginUnified } from "../../services/authService";
 
 export const AuthContext = createContext();
+
+function decodeJwtPayload(token) {
+  try {
+    const [, payload] = token.split(".");
+    if (!payload) return null;
+    const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const json = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => `%${`00${c.charCodeAt(0).toString(16)}`.slice(-2)}`)
+        .join("")
+    );
+    return JSON.parse(json);
+  } catch {
+    return null;
+  }
+}
 
 export default function AuthProvider({ children }) {
 
   const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState(null); // "admin" | "hr" | "employee"
+  const [principalType, setPrincipalType] = useState(null); // "user" | "employee"
 
   // LOGIN
-  const login = async (username, password) => {
-    const res = await loginUser(username, password);
-    console.log("LOGIN RESPONSE:", res);
-    localStorage.setItem("token", res.access_token);
+  const login = async ({ mode, identifier, password }) => {
+    const res = await loginUnified({ mode, identifier, password });
 
-    const profile = await getProfile();
-    setUser(profile);
+    const token = localStorage.getItem("token");
+    const payload = token ? decodeJwtPayload(token) : null;
+    setRole(payload?.role || (mode === "employee" ? "employee" : null));
+    setPrincipalType(payload?.type === "employee" || mode === "employee" ? "employee" : "user");
+
+    // Admin tokens support /users/me today; employee tokens may not.
+    if (mode === "admin") {
+      const profile = await getProfile();
+      setUser(profile);
+    } else {
+      setUser(res?.employee ? { employee: res.employee, role: "employee" } : null);
+    }
+
+    return res;
   };
 
   // REGISTER
@@ -27,16 +58,37 @@ export default function AuthProvider({ children }) {
   const logout = () => {
     localStorage.removeItem("token");
     setUser(null);
+    setRole(null);
+    setPrincipalType(null);
   };
 
   useEffect(() => {
-    if (localStorage.getItem("token")) {
-      getProfile().then(setUser).catch(logout);
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setLoading(false);
+      return;
     }
+
+    const payload = decodeJwtPayload(token);
+    setRole(payload?.role || null);
+    setPrincipalType(payload?.type === "employee" ? "employee" : "user");
+
+    getProfile()
+      .then(setUser)
+      .catch(() => {
+        // Token might be employee or invalid; don't hard-logout silently here.
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
+  const value = useMemo(
+    () => ({ user, role, principalType, loading, login, logout, register }),
+    [user, role, principalType, loading]
+  );
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, register }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

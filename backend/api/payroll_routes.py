@@ -22,7 +22,7 @@ from crud.payroll_crud import (
     get_payroll_summary
 )
 from services.payroll_report_service import generate_salary_statement,generate_tds_summary,generate_payroll_register
-from utils.dependencies import get_admin_user
+from utils.rbac import require_roles
 
 
 router = APIRouter(
@@ -44,7 +44,7 @@ router = APIRouter(
 async def create_pay_period_route(
     data: PayPeriodCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     try:
@@ -71,7 +71,7 @@ async def create_pay_period_route(
 async def create_new_payroll(
     data: PayrollRunCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     try:
@@ -97,7 +97,7 @@ async def create_new_payroll(
 async def get_pay_period_route(
     pay_period_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     period = await get_pay_period(db, pay_period_id)
@@ -123,7 +123,7 @@ async def get_pay_period_route(
 async def get_payroll(
     payroll_run_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     payroll = await get_payroll_by_id(db, payroll_run_id)
@@ -149,7 +149,7 @@ async def get_payroll(
 async def process_payroll(
     payroll_run_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
 
@@ -185,7 +185,7 @@ async def process_payroll(
 async def payroll_summary(
     payroll_run_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     payroll = await get_payroll_by_id(db, payroll_run_id)
@@ -207,7 +207,7 @@ async def payroll_summary(
 async def salary_statement(
     payroll_run_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     data = await generate_salary_statement(db, payroll_run_id)
@@ -224,7 +224,7 @@ async def salary_statement(
 async def tds_summary(
     payroll_run_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     data = await generate_tds_summary(db, payroll_run_id)
@@ -245,7 +245,7 @@ async def tds_summary(
 async def payroll_register(
     payroll_run_id: UUID,
     db: AsyncSession = Depends(get_async_db),
-    current_user = Depends(get_admin_user)
+    current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
     payroll = await get_payroll_by_id(db, payroll_run_id)

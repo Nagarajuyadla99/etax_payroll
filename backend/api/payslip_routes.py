@@ -8,6 +8,8 @@ from services.payslip_service import (
     generate_payslip_data,
     generate_payslip_pdf
 )
+from utils.dependencies import get_current_user
+from utils.rbac import get_principal_role, require_roles, ROLE_EMPLOYEE
 
 router = APIRouter(prefix="/payslips", tags=["Payslip"])
 
@@ -16,10 +18,19 @@ router = APIRouter(prefix="/payslips", tags=["Payslip"])
 async def download_payslip(
     payroll_run_id: UUID,
     employee_id: UUID,
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(get_current_user),
 ):
 
     try:
+        role = get_principal_role(current_user)
+        if role == ROLE_EMPLOYEE:
+            # Row-level enforcement: employees may only download their own payslip.
+            if str(getattr(current_user, "employee_id", "")) != str(employee_id):
+                raise HTTPException(status_code=403, detail="Not allowed")
+        else:
+            # Non-employee tokens must be admin/hr for any payslip download.
+            await require_roles(["admin", "hr"])(current_user=current_user)
 
         # get payslip data
         data = await generate_payslip_data(db, payroll_run_id, employee_id)
