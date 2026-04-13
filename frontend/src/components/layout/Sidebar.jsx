@@ -1,6 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
-import { useState, useEffect, useContext } from "react";
-import logo1 from "../assets/images/brixigo_logoo.png"
+import { useContext, useEffect, useMemo, useState } from "react";
+import logo1 from "../assets/images/brixigo_logoo.png";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
 import {
   Home,
@@ -19,31 +19,217 @@ import {
   UserCheck,
   ChevronDown,
   Zap,
-  Bell
+  Bell,
+  X,
 } from "lucide-react";
 
-export default function Sidebar({ mobileOpen, onCollapsedChange }) {
+const ICONS = {
+  home: Home,
+  users: Users,
+  wallet: Wallet,
+  briefcase: Briefcase,
+  "check-circle": CheckCircle,
+  calendar: Calendar,
+  "help-circle": HelpCircle,
+  layers: Layers,
+  shield: Shield,
+  "file-text": FileText,
+  upload: Upload,
+  "user-check": UserCheck,
+  zap: Zap,
+  bell: Bell,
+};
+
+export const SIDEBAR_CONFIG = [
+  {
+    section: "Overview",
+    items: [
+      { key: "dashboard", label: "Dashboard", icon: "home", path: "/dashboard", color: "ic-blue" },
+    ],
+  },
+  {
+    section: "Payroll",
+    roles: ["admin", "hr"],
+    items: [
+      {
+        key: "salary_setup",
+        label: "Salary Setup",
+        icon: "layers",
+        color: "ic-red",
+        children: [
+          { key: "salary_components", label: "Components", icon: "layers", path: "/salary/components", color: "ic-red" },
+          { key: "salary_templates", label: "Templates", icon: "file-text", path: "/salary/templates", color: "ic-purple" },
+        ],
+      },
+      { key: "pay_runs", label: "Pay Runs", icon: "wallet", path: "/payrollhome", color: "ic-blue" },
+    ],
+  },
+  {
+    section: "Workforce",
+    items: [
+      {
+        key: "attendance",
+        label: "Attendance",
+        icon: "calendar",
+        color: "ic-teal",
+        children: [
+          { key: "attendance_main", label: "Attendance", icon: "calendar", path: "/attendance", color: "ic-teal" },
+          { key: "attendance_summary", label: "Summary", icon: "file-text", path: "/attendanceSummary", color: "ic-blue" },
+          { key: "attendance_table", label: "Attendance Table", icon: "layers", path: "/attendanceTable", color: "ic-slate" },
+          { key: "leave_approval", label: "Leave Approval", icon: "check-circle", path: "/leaveApproval", color: "ic-green" },
+        ],
+      },
+      {
+        key: "employee",
+        label: "Employee",
+        icon: "users",
+        color: "ic-blue",
+        roles: ["admin", "hr"],
+        children: [
+          { key: "initial_setup", label: "Initial Setup", icon: "zap", path: "/Setup", color: "ic-red", roles: ["admin"] },
+          { key: "employee_list", label: "Employee List", icon: "users", path: "/employeeList", color: "ic-blue" },
+          { key: "employee_input", label: "Employee Input", icon: "user-check", path: "/employeeInput", color: "ic-green" },
+        ],
+      },
+    ],
+  },
+  {
+    section: "Finance & Compliance",
+    roles: ["admin", "hr"],
+    items: [
+      { key: "bank_requests", label: "Bank Requests", icon: "wallet", path: "/bank", color: "ic-blue" },
+      { key: "approvals", label: "Approvals", icon: "check-circle", path: "/approvals", color: "ic-green" },
+      { key: "loans", label: "Loans", icon: "briefcase", path: "/loans", color: "ic-amber" },
+      { key: "audit_logs", label: "Audit Logs", icon: "shield", path: "/audit", color: "ic-red", roles: ["admin"] },
+      { key: "statutory_tax", label: "Statutory & Tax", icon: "file-text", path: "/statutorytax", color: "ic-purple" },
+    ],
+  },
+  {
+    section: "Support",
+    items: [
+      { key: "notice_board", label: "Notice Board", icon: "bell", path: "/noticeboard", color: "ic-amber" },
+      { key: "help", label: "Help & Support", icon: "help-circle", path: "/help", color: "ic-slate" },
+    ],
+  },
+];
+
+function validateSidebar(config) {
+  const seenKeys = new Set();
+  const duplicates = new Set();
+
+  const walk = (items) => {
+    for (const item of items) {
+      if (!item?.key) continue;
+      if (seenKeys.has(item.key)) {
+        duplicates.add(item.key);
+        console.warn("Duplicate sidebar key:", item.key);
+        continue;
+      }
+      seenKeys.add(item.key);
+      if (Array.isArray(item.children)) walk(item.children);
+    }
+  };
+
+  for (const section of config) {
+    if (Array.isArray(section?.items)) walk(section.items);
+  }
+
+  return { duplicates };
+}
+
+function filterUniqueSidebar(config) {
+  const seenKeys = new Set();
+
+  const filterItems = (items) =>
+    items
+      .filter((it) => {
+        if (!it?.key) return false;
+        if (seenKeys.has(it.key)) return false;
+        seenKeys.add(it.key);
+        return true;
+      })
+      .map((it) => {
+        const children = Array.isArray(it.children) ? filterItems(it.children) : undefined;
+        return children ? { ...it, children } : it;
+      });
+
+  return config
+    .map((section) => ({
+      ...section,
+      items: Array.isArray(section.items) ? filterItems(section.items) : [],
+    }))
+    .filter((section) => section.items.length > 0);
+}
+
+// Validate once on module load, then ensure duplicates never render.
+validateSidebar(SIDEBAR_CONFIG);
+
+export default function Sidebar({ mobileOpen, onCollapsedChange, onRequestClose }) {
   const location = useLocation();
   const { role } = useContext(AuthContext);
   const [collapsed, setCollapsed] = useState(false);
-  const [salaryOpen, setSalaryOpen] = useState(location.pathname.startsWith("/salary"));
-  const [attendanceOpen, setAttendanceOpen] = useState(location.pathname.startsWith("/attendance"));
-  const [employeeOpen, setEmployeeOpen] = useState(location.pathname.startsWith("/employee"));
+  const [openMenus, setOpenMenus] = useState({});
+
+  const config = useMemo(() => {
+    const roleFiltered = SIDEBAR_CONFIG
+      .map((section) => {
+        if (Array.isArray(section.roles) && !section.roles.includes(role)) return null;
+        const items = (section.items || []).filter(Boolean);
+        return { ...section, items };
+      })
+      .filter(Boolean);
+
+    const applyRoles = (items) =>
+      items
+        .filter((it) => !Array.isArray(it.roles) || it.roles.includes(role))
+        .map((it) => {
+          const children = Array.isArray(it.children) ? applyRoles(it.children) : undefined;
+          return children ? { ...it, children } : it;
+        })
+        .filter((it) => !it.children || it.children.length > 0);
+
+    const withRoles = roleFiltered.map((section) => ({
+      ...section,
+      items: applyRoles(section.items || []),
+    }));
+
+    return filterUniqueSidebar(withRoles);
+  }, [role]);
 
   useEffect(() => {
-    if (location.pathname.startsWith("/salary")) setSalaryOpen(true);
-    if (location.pathname.startsWith("/attendance")) setAttendanceOpen(true);
-    if (location.pathname.startsWith("/employee")) setEmployeeOpen(true);
-  }, [location.pathname]);
+    // Open accordion if current route is inside it
+    const next = {};
+    const pathname = location.pathname;
+
+    const markOpen = (items) => {
+      for (const item of items) {
+        if (Array.isArray(item.children) && item.children.length) {
+          const anyChildActive = item.children.some(
+            (c) => pathname === c.path || (c.path && pathname.startsWith(c.path + "/"))
+          );
+          if (anyChildActive) next[item.key] = true;
+          markOpen(item.children);
+        }
+      }
+    };
+
+    for (const section of config) markOpen(section.items || []);
+    setOpenMenus((prev) => ({ ...prev, ...next }));
+  }, [location.pathname, config]);
 
   const handleCollapse = (val) => {
     setCollapsed(val);
     onCollapsedChange?.(val);
     if (val) {
-      setSalaryOpen(false);
-      setAttendanceOpen(false);
-      setEmployeeOpen(false);
+      setOpenMenus({});
     }
+  };
+
+  const toggleMenu = (key) => {
+    setOpenMenus((prev) => ({
+      ...prev,
+      [key]: !prev[key],
+    }));
   };
 
   return (
@@ -121,6 +307,22 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           color: var(--blue-600, #2563EB);
         }
 
+        .sb-close-btn {
+          width: 32px; height: 32px;
+          border-radius: var(--r-md, 8px);
+          border: 1px solid var(--border, #E2E8F0);
+          display: none;
+          align-items: center;
+          justify-content: center;
+          background: var(--bg-surface, #FFF);
+          cursor: pointer;
+          color: var(--slate-500, #64748B);
+          transition: all var(--dur-fast, 120ms) ease;
+          flex-shrink: 0;
+          outline: none;
+        }
+        .sb-close-btn:hover { background: var(--bg-hover, #F1F5F9); color: var(--slate-800, #1E293B); }
+
         /* ── Navigation ── */
         .sb-nav {
           flex: 1;
@@ -164,6 +366,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           background: var(--bg-hover, #F1F5F9);
           color: var(--slate-800, #1E293B);
           border-left-color: var(--slate-200, #E2E8F0);
+          transform: translateX(4px);
         }
         .sb-item.active {
           background: var(--blue-50, #EFF6FF);
@@ -179,6 +382,10 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           display: flex; align-items: center; justify-content: center;
           flex-shrink: 0;
           transition: all var(--dur-base, 200ms) ease;
+        }
+        .sb-item:hover .sb-icon,
+        .sb-acc-trigger:hover .sb-icon {
+          transform: scale(1.04);
         }
 
         /* Accordion */
@@ -224,6 +431,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
         .sb-acc-inner {
           padding-left: 12px;
           overflow: hidden;
+          transform-origin: top;
           animation: slideAccordion 200ms ease both;
         }
         @keyframes slideAccordion {
@@ -247,6 +455,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
           white-space: nowrap;
         }
         .sb-sub:hover { background: var(--bg-hover, #F1F5F9); color: var(--slate-800, #1E293B); }
+        .sb-sub:hover { transform: translateX(4px); }
         .sb-sub.active {
           background: var(--blue-50, #EFF6FF);
           color: var(--blue-700, #1D4ED8);
@@ -350,6 +559,11 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
         @media (max-width: 1024px) {
           .sb { width: 252px !important; }
         }
+
+        @media (max-width: 768px) {
+          .sb-collapse-btn { display: none; }
+          .sb-close-btn { display: inline-flex; }
+        }
       `}</style>
 
       <aside className={`sb ${mobileOpen ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
@@ -369,66 +583,40 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
               />
             </div>
           </div>
+          <button
+            className="sb-close-btn"
+            onClick={() => onRequestClose?.()}
+            title="Close"
+            aria-label="Close menu"
+            type="button"
+          >
+            <X size={14} />
+          </button>
           <button className="sb-collapse-btn" onClick={() => handleCollapse(!collapsed)} title={collapsed ? "Expand" : "Collapse"}>
             {collapsed ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="sb-nav">
-          <div className="sb-section">Overview</div>
+        <nav className="sb-nav" onClick={(e) => {
+          const a = e.target?.closest?.("a");
+          if (a && mobileOpen) onRequestClose?.();
+        }}>
+          {config.map((section) => (
+            <div key={section.section}>
+              <div className="sb-section">{section.section}</div>
 
-          <SbItem to="/dashboard" label="Dashboard" icon={<Home size={14} />} color="ic-blue" collapsed={collapsed} />
-
-          {role !== "employee" && <div className="sb-section">Payroll</div>}
-
-          {role !== "employee" && (
-            <SbAccordion label="Salary Setup" icon={<Layers size={14} />} color="ic-red" open={salaryOpen && !collapsed} onToggle={() => !collapsed && setSalaryOpen(!salaryOpen)} collapsed={collapsed}>
-              <SbSub to="/salary/components" label="Components" icon={<Layers size={12} />} color="ic-red" />
-              <SbSub to="/salary/templates"  label="Templates"  icon={<FileText size={12} />} color="ic-purple" />
-            </SbAccordion>
-          )}
-
-          {role !== "employee" && (
-            <SbItem to="/payrollhome" label="Pay Runs" icon={<Wallet size={14} />} color="ic-blue" collapsed={collapsed} />
-          )}
-
-          <div className="sb-section">Workforce</div>
-
-          <SbAccordion label="Attendance" icon={<Calendar size={14} />} color="ic-teal" open={attendanceOpen && !collapsed} onToggle={() => !collapsed && setAttendanceOpen(!attendanceOpen)} collapsed={collapsed}>
-            <SbSub to="/attendance"              label="Attendance"      icon={<Calendar size={12} />}    color="ic-teal" />
-            <SbSub to="/attendance-summary"      label="Summary"         icon={<FileText size={12} />}    color="ic-blue" />
-            <SbSub to="/attendance-table"        label="Attendance Table"icon={<Layers size={12} />}      color="ic-slate" />
-            <SbSub to="/attendance/leave-request"label="Leave Requests"  icon={<Users size={12} />}       color="ic-amber" />
-            <SbSub to="/leave-approval"          label="Leave Approval"  icon={<CheckCircle size={12} />} color="ic-green" />
-          </SbAccordion>
-
-          
-          {role !== "employee" && (
-            <SbAccordion label="Employee" icon={<Users size={14} />} color="ic-blue" open={employeeOpen && !collapsed} onToggle={() => !collapsed && setEmployeeOpen(!employeeOpen)} collapsed={collapsed}>
-              {role === "admin" && <SbSub to="/Setup" label="Initial Setup" icon={<Zap size={12} />} color="ic-red" />}
-              <SbSub to="/employeeList"        label="Employee List" icon={<Users size={12} />}     color="ic-blue" />
-              <SbSub to="/employeeCreate"      label="Add Employee"  icon={<UserCheck size={12} />} color="ic-green" />
-              <SbSub to="/employeebulkupload"  label="Bulk Upload"   icon={<Upload size={12} />}    color="ic-amber" />
-            </SbAccordion>
-          )}
-
-          {role !== "employee" && <div className="sb-section">Finance & Compliance</div>}
-
-          {role !== "employee" && (
-            <>
-              <SbItem to="/bank"         label="Bank Requests"  icon={<Wallet size={14} />}      color="ic-blue"   collapsed={collapsed} />
-              <SbItem to="/approvals"    label="Approvals"      icon={<CheckCircle size={14} />} color="ic-green"  collapsed={collapsed} />
-              <SbItem to="/loans"        label="Loans"          icon={<Briefcase size={14} />}   color="ic-amber"  collapsed={collapsed} />
-              {role === "admin" && <SbItem to="/audit"        label="Audit Logs"     icon={<Shield size={14} />}      color="ic-red"    collapsed={collapsed} />}
-              <SbItem to="/statutorytax" label="Statutory & Tax"icon={<FileText size={14} />}    color="ic-purple" collapsed={collapsed} />
-            </>
-          )}
-
-          <div className="sb-section">Support</div>
-
-          <SbItem to="/noticeboard" label="Notice Board"  icon={<Bell size={14} />}       color="ic-amber" collapsed={collapsed} />
-          <SbItem to="/help"        label="Help & Support" icon={<HelpCircle size={14} />} color="ic-slate" collapsed={collapsed} />
+              {(section.items || []).map((item) => (
+                <SidebarNode
+                  key={item.key}
+                  item={item}
+                  collapsed={collapsed}
+                  openMenus={openMenus}
+                  onToggle={toggleMenu}
+                />
+              ))}
+            </div>
+          ))}
         </nav>
 
         {/* Footer */}
@@ -454,11 +642,39 @@ export default function Sidebar({ mobileOpen, onCollapsedChange }) {
 }
 
 /* ── Sub-components ── */
-function SbItem({ to, label, icon, color, collapsed }) {
+function SidebarNode({ item, collapsed, openMenus, onToggle }) {
+  const hasChildren = Array.isArray(item.children) && item.children.length > 0;
+
+  if (hasChildren) {
+    return (
+      <SbAccordion
+        item={item}
+        open={!!openMenus[item.key] && !collapsed}
+        onToggle={() => !collapsed && onToggle(item.key)}
+        collapsed={collapsed}
+      />
+    );
+  }
+
+  return (
+    <SbItem
+      to={item.path}
+      label={item.label}
+      iconName={item.icon}
+      color={item.color}
+      collapsed={collapsed}
+    />
+  );
+}
+
+function SbItem({ to, label, iconName, color, collapsed }) {
+  const Icon = ICONS[iconName] || FileText;
   return (
     <div className="sb-tooltip-wrap">
       <NavLink to={to} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
-        <div className={`sb-icon ${color}`}>{icon}</div>
+        <div className={`sb-icon ${color}`}>
+          <Icon size={14} />
+        </div>
         <span>{label}</span>
       </NavLink>
       {collapsed && <div className="sb-tooltip">{label}</div>}
@@ -466,24 +682,42 @@ function SbItem({ to, label, icon, color, collapsed }) {
   );
 }
 
-function SbAccordion({ label, icon, color, open, onToggle, children, collapsed }) {
+function SbAccordion({ item, open, onToggle, collapsed }) {
+  const Icon = ICONS[item.icon] || Layers;
   return (
     <div className="sb-tooltip-wrap">
       <button className={`sb-acc-trigger ${open ? "open" : ""}`} onClick={onToggle}>
-        <div className={`sb-icon ${color}`}>{icon}</div>
-        <span>{label}</span>
+        <div className={`sb-icon ${item.color}`}>
+          <Icon size={14} />
+        </div>
+        <span>{item.label}</span>
         <ChevronDown size={12} className={`sb-chevron ${open ? "open" : ""}`} />
       </button>
-      {open && !collapsed && <div className="sb-acc-inner">{children}</div>}
-      {collapsed && <div className="sb-tooltip">{label}</div>}
+      {open && !collapsed && (
+        <div className="sb-acc-inner">
+          {(item.children || []).map((child) => (
+            <SbSub
+              key={child.key}
+              to={child.path}
+              label={child.label}
+              iconName={child.icon}
+              color={child.color}
+            />
+          ))}
+        </div>
+      )}
+      {collapsed && <div className="sb-tooltip">{item.label}</div>}
     </div>
   );
 }
 
-function SbSub({ to, label, icon, color }) {
+function SbSub({ to, label, iconName, color }) {
+  const Icon = ICONS[iconName] || FileText;
   return (
     <NavLink to={to} className={({ isActive }) => `sb-sub ${isActive ? "active" : ""}`}>
-      <div className={`sb-icon ${color}`} style={{ width: 22, height: 22, borderRadius: "6px" }}>{icon}</div>
+      <div className={`sb-icon ${color}`} style={{ width: 22, height: 22, borderRadius: "6px" }}>
+        <Icon size={12} />
+      </div>
       <span>{label}</span>
     </NavLink>
   );

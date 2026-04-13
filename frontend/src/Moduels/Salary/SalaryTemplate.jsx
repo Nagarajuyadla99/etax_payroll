@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useNavigate } from "react-router-dom";
 import {
+  createTemplate,
   getComponents,
   getTemplateComponents,
   addTemplateComponent,
@@ -15,6 +16,12 @@ export default function TemplateBuilder() {
   const [components, setComponents] = useState([]);
   const [selectedComponent, setSelectedComponent] = useState("");
   const [templateComponents, setTemplateComponents] = useState([]);
+
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+  const [templateDesc, setTemplateDesc] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
 
   // BUG FIX: added "fixed" as a valid calcMode.
   // Without it, components whose master calc_type is "fixed" could never be
@@ -51,6 +58,35 @@ export default function TemplateBuilder() {
       setTemplateComponents(data);
     } catch (err) {
       console.error("Failed to load template components:", err);
+    }
+  }
+
+  async function handleCreateTemplate() {
+    if (!templateName.trim()) {
+      setCreateError("Template name is required");
+      return;
+    }
+
+    try {
+      setCreating(true);
+      setCreateError("");
+
+      const data = await createTemplate({
+        name: templateName.trim(),
+        description: templateDesc.trim(),
+      });
+
+      // redirect to new template
+      navigate(`/templates/${data.template_id}`);
+
+      // reset modal
+      setShowCreateModal(false);
+      setTemplateName("");
+      setTemplateDesc("");
+    } catch (err) {
+      setCreateError(err?.detail || "Failed to create template");
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -137,9 +173,86 @@ export default function TemplateBuilder() {
     }
   }
 
+  if (!templateId) {
+    return (
+      <div className="p-6">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Template Builder</h2>
+          <button
+            onClick={() => {
+              setCreateError("");
+              setShowCreateModal(true);
+            }}
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+          >
+            + Create Template
+          </button>
+        </div>
+
+        <p className="text-gray-500 mt-4">
+          No template selected. Please create a template first.
+        </p>
+
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+            <div className="bg-white p-6 rounded w-96">
+              <h3 className="text-lg font-semibold mb-4">Create Template</h3>
+
+              <input
+                className="border p-2 w-full mb-3"
+                placeholder="Template Name"
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+              />
+
+              <input
+                className="border p-2 w-full mb-3"
+                placeholder="Description (optional)"
+                value={templateDesc}
+                onChange={(e) => setTemplateDesc(e.target.value)}
+              />
+
+              {createError && (
+                <p className="text-red-500 text-sm mb-2">{createError}</p>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-3 py-1 border rounded"
+                >
+                  Cancel
+                </button>
+
+                <button
+                  onClick={handleCreateTemplate}
+                  disabled={creating}
+                  className="bg-blue-600 text-white px-4 py-1 rounded"
+                >
+                  {creating ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="p-6">
-      <h2 className="text-lg font-semibold mb-4">Template Builder</h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold">Template Builder</h2>
+        <button
+          onClick={() => {
+            setCreateError("");
+            setShowCreateModal(true);
+          }}
+          className="bg-blue-600 text-white px-4 py-2 rounded"
+        >
+          + Create Template
+        </button>
+      </div>
 
       <div className="flex gap-2 mb-4 items-center flex-wrap">
         <select
@@ -245,6 +358,49 @@ export default function TemplateBuilder() {
           )}
         </tbody>
       </table>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center">
+          <div className="bg-white p-6 rounded w-96">
+            <h3 className="text-lg font-semibold mb-4">Create Template</h3>
+
+            <input
+              className="border p-2 w-full mb-3"
+              placeholder="Template Name"
+              value={templateName}
+              onChange={(e) => setTemplateName(e.target.value)}
+            />
+
+            <input
+              className="border p-2 w-full mb-3"
+              placeholder="Description (optional)"
+              value={templateDesc}
+              onChange={(e) => setTemplateDesc(e.target.value)}
+            />
+
+            {createError && (
+              <p className="text-red-500 text-sm mb-2">{createError}</p>
+            )}
+
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="px-3 py-1 border rounded"
+              >
+                Cancel
+              </button>
+
+              <button
+                onClick={handleCreateTemplate}
+                disabled={creating}
+                className="bg-blue-600 text-white px-4 py-1 rounded"
+              >
+                {creating ? "Creating..." : "Create"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

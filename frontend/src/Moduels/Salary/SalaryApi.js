@@ -25,10 +25,25 @@ const getAuthHeaders = () => {
 
 /* ── TEMPLATES ─────────────────────────────────────────────────────── */
 
-export const createTemplate = async (data) => {
-  const res = await axios.post(`${API}/templates/`, data, getAuthHeaders());
-  return res.data;
-};
+export async function createTemplate(payload) {
+  try {
+    const res = await axios.post(
+      `${API}/templates/`,
+      payload,
+      {
+        ...getAuthHeaders(),
+        headers: {
+          ...(getAuthHeaders()?.headers || {}),
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    return res.data;
+  } catch (err) {
+    const apiErr = err?.response?.data;
+    throw apiErr || err;
+  }
+}
 
 export const getTemplates = async () => {
   const res = await axios.get(`${API}/templates/`, getAuthHeaders());
@@ -44,6 +59,15 @@ export const createComponent = async (data) => {
 
 export const getComponents = async () => {
   const res = await axios.get(`${API}/components/`, getAuthHeaders());
+  return res.data;
+};
+
+export const updateComponent = async (componentId, data) => {
+  const res = await axios.put(
+    `${API}/components/${componentId}`,
+    data,
+    getAuthHeaders()
+  );
   return res.data;
 };
 

@@ -137,6 +137,7 @@ async def login_unified(
             "sub": str(employee.employee_id),
             "type": "employee",
             "role": "employee",
+            "organisation_id": str(employee.organisation_id),
         })
 
         return {
@@ -332,10 +333,17 @@ async def google_callback(
 
         user = await create_user(db, user_in)
 
-    # generate JWT token
+    # generate JWT token (same claims as password login for downstream RBAC / org resolution)
     token = create_access_token(
-        data={"sub": user.username},
-        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        data={
+            "sub": user.username,
+            "organisation_id": str(user.organisation_id),
+            "role": (
+                getattr(user, "role", None)
+                or ("admin" if getattr(user, "is_system_admin", False) else "admin")
+            ),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
 
     redirect_url = f"{FRONTEND_URL}/auth/google/callback?token={token}"
@@ -376,6 +384,7 @@ async def reset_password(
     payload: ResetPasswordRequest,
     db: AsyncSession = Depends(get_async_db)
 ):
+    
 
     token = payload.token
     new_password = payload.new_password

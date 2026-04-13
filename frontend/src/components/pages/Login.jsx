@@ -2574,14 +2574,7 @@ function LoginModal({ onClose }) {
             alt="BrixiGo"
             style={{ height: 44, width: "auto", objectFit: "contain", flexShrink: 0 }}
           />
-          <div>
-            <div style={{ fontFamily: "var(--font-display)", fontSize: 17, color: "var(--slate-900)", lineHeight: 1.1 }}>
-              BrixiGo
-            </div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--slate-400)", letterSpacing: "0.8px", textTransform: "uppercase", marginTop: 2 }}>
-              Payroll Platform
-            </div>
-          </div>
+          
         </div>
 
         {/* ── Title ── */}
@@ -2735,36 +2728,23 @@ function LoginModal({ onClose }) {
             </button>
           </div>
           <div className="lm-input-wrap">
-            <span className="lm-input-icon" aria-hidden="true">
-              <Icon.Lock size={15} />
-            </span>
-            <input
-              id="lm-password"
-              className={`lm-input lm-has-toggle${fieldErrors.password ? " lm-err" : ""}`}
-              type={showPassword ? "text" : "password"}
-              placeholder="Enter your password"
-              value={password}
-              onChange={e => {
-                setPassword(e.target.value);
-                setFieldErrors(p => ({ ...p, password: "" }));
-                setAuthError("");
-              }}
-              autoComplete="current-password"
-              aria-required="true"
-              aria-invalid={!!fieldErrors.password}
-              aria-describedby={fieldErrors.password ? "err-password" : undefined}
-              onKeyDown={onKey}
-              disabled={loading}
-            />
-            <button
-              type="button"
-              className="lm-eye-btn"
-              onClick={() => setShowPassword(v => !v)}
-              aria-label={showPassword ? "Hide password" : "Show password"}
-            >
-              {showPassword ? <Icon.EyeOff size={16} /> : <Icon.Eye size={16} />}
-            </button>
-          </div>
+  <span className="lm-input-icon">
+    <Icon.Lock size={15} />
+  </span>
+
+  <input
+    id="lm-password"
+    className={`lm-input${fieldErrors.password ? " lm-err" : ""}`}
+    type="password"
+    placeholder="Enter your password"
+    value={password}
+    onChange={e => {
+      setPassword(e.target.value);
+      setFieldErrors(p => ({ ...p, password: "" }));
+      setAuthError("");
+    }}
+  />
+</div>
           {fieldErrors.password && (
             <div id="err-password" className="field-error" role="alert" aria-live="polite">
               <Icon.Alert size={12} />

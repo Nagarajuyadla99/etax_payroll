@@ -5,10 +5,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
 from uuid import UUID
 
+from crud.org_crud import get_organisation
 from database import get_async_db
+from models.employee_model import Employee
+from models.user_models import User
 from schemas.user_schemas import UserRead
+from schemas.me_schemas import MeResponse, OrganisationMeSummary, EmployeeMeSummary
 from crud.user_crud import get_user_by_id, list_users
-from utils.dependencies import get_current_user, get_admin_user
+from utils.dependencies import AuthSubject, get_current_auth, get_admin_user, resolve_organisation_id
+from utils.rbac import get_principal_role
 
 
 # ✅ Keep prefix → avoids conflicts with /api/me, /api/setup, etc.
@@ -29,10 +34,52 @@ async def get_all_users(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/me", response_model=UserRead)
-async def get_my_profile(current_user=Depends(get_current_user)):
-    """Authenticated user profile"""
-    return current_user
+@router.get("/me", response_model=MeResponse)
+async def get_my_profile(
+    db: AsyncSession = Depends(get_async_db),
+    auth: AuthSubject = Depends(get_current_auth),
+):
+    """
+    Current principal with organisation summary.
+    Works for admin/HR (User) and Employee tokens.
+    """
+    principal = auth.principal
+    payload = auth.payload
+    role = get_principal_role(principal)
+    org_id = resolve_organisation_id(principal, payload)
+
+    organisation: OrganisationMeSummary | None = None
+    if org_id:
+        org = await get_organisation(db, org_id)
+        if org:
+            organisation = OrganisationMeSummary(
+                id=org.organisation_id,
+                name=org.name,
+                is_setup_complete=bool(org.is_setup_complete),
+            )
+
+    if isinstance(principal, Employee):
+        return MeResponse(
+            principal_type="employee",
+            role=role,
+            organisation=organisation,
+            employee=EmployeeMeSummary.model_validate(principal),
+            user=None,
+        )
+
+    if isinstance(principal, User):
+        return MeResponse(
+            principal_type="user",
+            role=role,
+            organisation=organisation,
+            user=UserRead.model_validate(principal),
+            employee=None,
+        )
+
+    raise HTTPException(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        detail="Unsupported principal type",
+    )
 
 
 # ✅ 2. DYNAMIC ROUTE LAST (CRITICAL)

@@ -5,6 +5,7 @@ from uuid import UUID
 
 from database import get_async_db
 from utils.dependencies import get_admin_user
+from utils.rbac import require_roles
 
 from services.salary_calculator import calculate_salary
 
@@ -14,6 +15,7 @@ from crud.salary_crud import (
     list_salary_templates,
     create_salary_component,
     list_salary_components,
+    update_salary_component,
     add_component_to_template,
     create_pay_structure,
     assign_salary_template,
@@ -29,6 +31,7 @@ from schemas.salary_schemas import (
     SalaryTemplateOut,
     SalaryComponentCreate,
     SalaryComponentOut,
+    SalaryComponentUpdate,
     SalaryTemplateComponentCreate,
     SalaryTemplateComponentUpdate,
     SalaryTemplateComponentOut,
@@ -88,7 +91,7 @@ async def get_salary_template_route(
 async def create_salary_component_route(
     component: SalaryComponentCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin"])),
 ):
     try:
         return await create_salary_component(db, component, current_user)
@@ -99,9 +102,25 @@ async def create_salary_component_route(
 @router.get("/components/", response_model=list[SalaryComponentOut], tags=["Salary"])
 async def list_salary_components_route(
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     return await list_salary_components(db, current_user)
+
+
+@router.put("/components/{component_id}", response_model=SalaryComponentOut, tags=["Salary"])
+async def update_salary_component_route(
+    component_id: UUID,
+    payload: SalaryComponentUpdate,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    try:
+        comp = await update_salary_component(db, component_id, payload, current_user)
+        if not comp:
+            raise HTTPException(status_code=404, detail="Salary component not found")
+        return comp
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
 # ============================================================

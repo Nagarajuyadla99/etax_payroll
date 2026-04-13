@@ -2,17 +2,21 @@ import { useState, useRef, useEffect, useContext } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell, Search, Menu,
-  User, LogOut, ShieldCheck, Building2,
-  ChevronDown, Settings, X
+  Building2,
+  X,
+  Wallet,
+  ClipboardList,
+  FileText,
+  AlertTriangle
 } from "lucide-react";
 import API from "../../services/api";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
+import UserDropdown from "../user/UserDropdown";
 
 export default function Navbar({ toggle }) {
   const nav = useNavigate();
   const { role, principalType } = useContext(AuthContext);
 
-  const [openProfile, setOpenProfile] = useState(false);
   const [openNotify, setOpenNotify] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [user, setUser] = useState(null);
@@ -31,17 +35,15 @@ export default function Navbar({ toggle }) {
     const fetchUser = async () => {
       try {
         const token = localStorage.getItem("token");
-        if (!token) return;
-        // Employees shouldn't call /users/me; it will 401 and triggers noisy console errors.
-        if (principalType === "employee" || role === "employee") {
-          setUser({ role: "employee" });
+        if (!token) {
+          setUser(null);
           return;
         }
-
         const { data } = await API.get("/users/me");
         setUser(data);
       } catch (err) {
-        console.error("User load error:", err);
+        console.error("User load error:", err?.response?.data || err.message);
+        setUser(null);
       }
     };
     fetchUser();
@@ -55,17 +57,29 @@ export default function Navbar({ toggle }) {
 
   useEffect(() => {
     const fn = (e) => {
-      if (profileRef.current && !profileRef.current.contains(e.target)) setOpenProfile(false);
       if (notifyRef.current  && !notifyRef.current.contains(e.target))  setOpenNotify(false);
     };
     document.addEventListener("mousedown", fn);
     return () => document.removeEventListener("mousedown", fn);
   }, []);
 
-  const getInitials = (name) => {
-    if (!name) return "U";
-    return name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase();
-  };
+  useEffect(() => {
+    const fetchOrg = async () => {
+      try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          setOrg(null);
+          return;
+        }
+        const res = await API.get("/organisation/me");
+        setOrg(res.data);
+      } catch (err) {
+        console.error("Organisation load error:", err?.response?.data || err.message);
+        setOrg(null);
+      }
+    };
+    fetchOrg();
+  }, [role, principalType]);
 
   const notifications = [
     { id: 1, type: "payroll", color: "var(--green-600)", bg: "var(--green-50)",  title: "Payroll Processed",       desc: "March 2025 payroll completed for 54 employees",  time: "2m ago",  unread: true  },
@@ -488,7 +502,7 @@ export default function Navbar({ toggle }) {
             <div className="nb-org">
               <div className="nb-org-icon"><Building2 size={11} /></div>
               <span className="nb-org-name">
-                {org?.name || org?.organisation_name || "Your Organisation"}
+                {org?.name || user?.organisation?.name || "Your Organisation"}
               </span>
             </div>
           </div>
@@ -522,7 +536,7 @@ export default function Navbar({ toggle }) {
             <div ref={notifyRef} style={{ position: "relative" }}>
               <button
                 className="nb-btn"
-                onClick={() => { setOpenNotify(!openNotify); setOpenProfile(false); }}
+                onClick={() => { setOpenNotify(!openNotify); }}
                 title="Notifications"
               >
                 <Bell size={16} />
@@ -538,7 +552,7 @@ export default function Navbar({ toggle }) {
                   {notifications.map(n => (
                     <div key={n.id} className={`nb-notif-item${n.unread ? " unread" : ""}`}>
                       <div className="nb-notif-icon-wrap" style={{ background: n.bg, color: n.color }}>
-                        {n.type === "payroll" ? "💰" : n.type === "leave" ? "📋" : n.type === "tax" ? "📑" : "⚠️"}
+                        <NotificationIcon type={n.type} />
                       </div>
                       <div className="nb-notif-body">
                         <div className="nb-notif-item-title">{n.title}</div>
@@ -558,36 +572,13 @@ export default function Navbar({ toggle }) {
 
             {/* Profile */}
             <div ref={profileRef} style={{ position: "relative" }}>
-              <button
-                className="nb-profile-trigger"
-                onClick={() => { setOpenProfile(!openProfile); setOpenNotify(false); }}
-              >
-                <div className="nb-avatar">{getInitials(user?.full_name || user?.username)}</div>
-                <div>
-                  <div className="nb-profile-name">{user?.full_name || user?.username || "Admin"}</div>
-                  <div className="nb-profile-role">{user?.role || "HR Manager"}</div>
-                </div>
-                <ChevronDown size={12} className={`nb-chevron${openProfile ? " open" : ""}`} />
-              </button>
-
-              {openProfile && (
-                <div className="nb-dropdown nb-profile-panel">
-                  <div className="nb-profile-header">
-                    <div className="nb-profile-header-avatar">
-                      {getInitials(user?.full_name || user?.username)}
-                    </div>
-                    <div className="nb-profile-header-name">{user?.full_name || user?.username || "Admin"}</div>
-                    <div className="nb-profile-header-role">{user?.email || "admin@company.com"}</div>
-                  </div>
-                  <div className="nb-drop-section">
-                    <NbDropItem icon={<User size={13} />}        label="My Profile" />
-                    <NbDropItem icon={<Settings size={13} />}    label="Settings" />
-                    <NbDropItem icon={<ShieldCheck size={13} />} label="Security" />
-                    <div className="nb-drop-divider" />
-                    <NbDropItem icon={<LogOut size={13} />} label="Sign Out" onClick={logout} danger />
-                  </div>
-                </div>
-              )}
+              <UserDropdown
+                me={user}
+                onLogout={() => {
+                  setOpenNotify(false);
+                  logout();
+                }}
+              />
             </div>
 
           </div>
@@ -597,10 +588,13 @@ export default function Navbar({ toggle }) {
   );
 }
 
-function NbDropItem({ icon, label, onClick, danger }) {
-  return (
-    <button className={`nb-drop-item${danger ? " danger" : ""}`} onClick={onClick}>
-      {icon}{label}
-    </button>
-  );
+function NotificationIcon({ type }) {
+  const map = {
+    payroll: Wallet,
+    leave: ClipboardList,
+    tax: FileText,
+    alert: AlertTriangle,
+  };
+  const Icon = map[type] || AlertTriangle;
+  return <Icon size={16} aria-hidden />;
 }

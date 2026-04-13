@@ -13,6 +13,7 @@ import EmployeeCreate from "./Moduels/Employees/EmployeeCreate";
 import EmployeeList from "./Moduels/Employees/EmployeeList";
 import EmployeeForm from "./Moduels/Employees/EmployeeForm";
 import EmployeeBulkUpload from "./Moduels/Employees/EmployeeBulkUpload";
+import EmployeeInput from "./Moduels/Employees/EmployeeInput";
 import Tax from "./components/pages/Tax";
 import NoticeBoard from "./components/layout/NoticeBoard";
 import Help from "./components/pages/Help";
@@ -60,6 +61,9 @@ import PayslipDownload from "./Moduels/payroll/paySlipDownload";
 //User Registration
 import RegisterModal from "./components/pages/RegisterModal";
 import TemplateBuilder from "./Moduels/Salary/SalaryTemplate";
+import ProfilePage from "./components/pages/ProfilePage";
+import SettingsPage from "./components/pages/SettingsPage";
+import SecurityPage from "./components/pages/SecurityPage";
 
 export default function App() {
   return (
@@ -85,6 +89,7 @@ export default function App() {
 
             {/* Employees */}
             <Route path="/Setup" element={<ProtectedRoute allowedRoles={["admin"]}><Setup /></ProtectedRoute>} />
+            <Route path="/employeeInput" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeInput /></ProtectedRoute>} />
             <Route path="/employeeCreate" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeCreate /></ProtectedRoute>} />
             <Route path="/employeeList" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeList /></ProtectedRoute>} />
             <Route path="/employeeForm" element={<ProtectedRoute allowedRoles={["admin","hr"]}><EmployeeForm /></ProtectedRoute>} />
@@ -99,6 +104,11 @@ export default function App() {
             <Route path="/salary/preview" element={<EmployeeSelector />} />
             <Route path="/salary/preview/:id" element={<SalaryPreview />} />
             <Route path="/employeesalarystructure" element={<EmployeeSalaryStructure />} />
+
+            {/* User & settings */}
+            <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/security" element={<SecurityPage />} />
             {/* Attendance */}
             <Route path="/attendance" element={<AttendancePage />} />
             <Route path="/attendanceSummary" element={<AttendanceSummary />} />

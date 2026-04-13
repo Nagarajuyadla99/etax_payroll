@@ -36,8 +36,7 @@ API.interceptors.response.use(
 
     // 🔒 Handle unauthorized
     if (status === 401) {
-      // Employee tokens may legitimately fail /users/me (admin profile endpoint).
-      // Avoid force-logging out in that case; let AuthContext decide.
+      // /users/me supports all principals; keep 401 handling scoped if needed.
       if (!url.includes("/users/me")) {
         localStorage.removeItem("token");
         if (window.location.pathname !== "/login") {

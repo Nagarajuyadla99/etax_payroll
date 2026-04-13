@@ -34,15 +34,19 @@ export default function AuthProvider({ children }) {
 
     const token = localStorage.getItem("token");
     const payload = token ? decodeJwtPayload(token) : null;
-    setRole(payload?.role || (mode === "employee" ? "employee" : null));
     setPrincipalType(payload?.type === "employee" || mode === "employee" ? "employee" : "user");
 
-    // Admin tokens support /users/me today; employee tokens may not.
-    if (mode === "admin") {
+    try {
       const profile = await getProfile();
       setUser(profile);
-    } else {
-      setUser(res?.employee ? { employee: res.employee, role: "employee" } : null);
+      setRole(profile?.role ?? payload?.role ?? null);
+    } catch {
+      setRole(payload?.role ?? (mode === "employee" ? "employee" : null));
+      setUser(
+        res?.employee
+          ? { legacy: true, employee: res.employee, role: "employee" }
+          : null
+      );
     }
 
     return res;
@@ -70,13 +74,15 @@ export default function AuthProvider({ children }) {
     }
 
     const payload = decodeJwtPayload(token);
-    setRole(payload?.role || null);
     setPrincipalType(payload?.type === "employee" ? "employee" : "user");
 
     getProfile()
-      .then(setUser)
+      .then((profile) => {
+        setUser(profile);
+        setRole(profile?.role ?? payload?.role ?? null);
+      })
       .catch(() => {
-        // Token might be employee or invalid; don't hard-logout silently here.
+        setRole(payload?.role ?? null);
         setUser(null);
       })
       .finally(() => setLoading(false));

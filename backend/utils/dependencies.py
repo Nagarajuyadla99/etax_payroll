@@ -1,29 +1,54 @@
 # payroll_system/utils/dependencies.py
 
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any
 from uuid import UUID
 
-from database import get_async_db
-from utils.auth import decode_token
+from fastapi import Depends, HTTPException, status
+from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from crud.user_crud import get_user_by_username
+from database import get_async_db
 from models.employee_model import Employee
+from utils.auth import decode_token
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
-# ============================================================
-# GET CURRENT USER
-# ============================================================
+@dataclass(frozen=True)
+class AuthSubject:
+    """JWT payload + loaded principal (User or Employee)."""
 
-async def get_current_user(
-    token: str = Depends(oauth2_scheme),
-    db: AsyncSession = Depends(get_async_db),
-):
-    payload = decode_token(token)
+    principal: Any
+    payload: dict[str, Any]
 
+
+def resolve_organisation_id(principal: Any, payload: dict[str, Any] | None) -> UUID | None:
+    """Resolve org id from ORM first, then JWT (legacy tokens)."""
+    raw = getattr(principal, "organisation_id", None)
+    if raw is not None:
+        if isinstance(raw, UUID):
+            return raw
+        try:
+            return UUID(str(raw))
+        except (ValueError, TypeError):
+            pass
+
+    if payload:
+        token_org = payload.get("organisation_id")
+        if token_org:
+            try:
+                return UUID(str(token_org))
+            except (ValueError, TypeError):
+                pass
+    return None
+
+
+async def _load_principal(db: AsyncSession, payload: dict[str, Any]):
     sub: str | None = payload.get("sub")
     token_type: str | None = payload.get("type")
 
@@ -33,7 +58,6 @@ async def get_current_user(
             detail="Invalid authentication credentials",
         )
 
-    # Employee tokens: { sub: employee_id(UUID-as-string), type: "employee" }
     if token_type == "employee":
         try:
             employee_id = UUID(str(sub))
@@ -54,27 +78,32 @@ async def get_current_user(
             )
         return employee
 
-    # Default/admin tokens: { sub: username }
     user = await get_user_by_username(db, sub)
-
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="User not found",
         )
-
     return user
 
 
-# ============================================================
-# ADMIN CHECK
-# ============================================================
+async def get_current_auth(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_async_db),
+) -> AuthSubject:
+    payload = decode_token(token)
+    principal = await _load_principal(db, payload)
+    return AuthSubject(principal=principal, payload=payload)
+
+
+async def get_current_user(auth: AuthSubject = Depends(get_current_auth)):
+    return auth.principal
+
 
 async def get_admin_user(
     current_user=Depends(get_current_user),
 ):
-    # ✅ SIMPLE + SAFE
-    if not current_user.is_system_admin:
+    if not getattr(current_user, "is_system_admin", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required",

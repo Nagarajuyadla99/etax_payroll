@@ -68,6 +68,7 @@ async def employee_login(
         "sub": str(employee.employee_id),
         "type": "employee",
         "role": "employee",
+        "organisation_id": str(employee.organisation_id),
     })
 
     # ------------------------

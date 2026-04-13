@@ -469,10 +469,11 @@ export default function EmployeeList() {
         body { font-family: var(--font); background: var(--bg); color: var(--text-primary); }
 
         /* ─── Page ─── */
-        .el-page { min-height: 100vh; padding: 28px 32px 80px; font-family: var(--font); background: var(--bg); }
+        .el-page { width: 100%; min-width: 0; min-height: 100vh; padding: 28px 32px 80px; font-family: var(--font); background: var(--bg); }
 
         /* ─── Header ─── */
-        .el-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .el-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 12px; }
+        .el-header > div { min-width: 0; }
         .el-title { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; color: var(--text-primary); }
         .el-subtitle { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
         .el-header-actions { display: flex; gap: 10px; align-items: center; }
@@ -488,7 +489,7 @@ export default function EmployeeList() {
           font-size: 0.85rem;
           font-family: var(--font);
           color: var(--text-primary);
-          width: 240px;
+          width: min(340px, 42vw);
           transition: border-color .15s, box-shadow .15s;
         }
         .search-input::placeholder { color: var(--text-muted); }
@@ -619,6 +620,28 @@ export default function EmployeeList() {
         .toast-close { background: none; border: none; cursor: pointer; color: inherit; opacity: .6; padding: 0; margin-left: 4px; display: flex; align-items: center; }
         .toast-close:hover { opacity: 1; }
 
+        /* ─── Responsive ─── */
+        @media (max-width: 1024px) {
+          .el-page { padding: 20px 18px 84px; }
+          .search-input { width: min(360px, 48vw); }
+          .btn-back { right: 16px; bottom: 16px; padding: 10px 16px; }
+        }
+
+        @media (max-width: 768px) {
+          .el-page { padding: 16px 14px 88px; }
+          .el-header { flex-direction: column; align-items: stretch; }
+          .el-header-actions { width: 100%; flex-wrap: wrap; }
+          .search-wrap { flex: 1; min-width: 220px; }
+          .search-input { width: 100%; }
+          .btn-primary, .btn-ghost, .btn-danger { min-height: 44px; }
+          .table-scroll { max-height: none; }
+          .drawer-grid { grid-template-columns: 1fr; }
+          .modal-box { padding: 22px; }
+        }
+
+        @media (max-width: 420px) {
+          .btn-back { width: calc(100% - 28px); left: 14px; right: 14px; justify-content: center; }
+        }
         /* ─── Modal ─── */
         .modal-overlay {
           position: fixed; inset: 0; z-index: 1000;

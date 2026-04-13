@@ -7,6 +7,7 @@ export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [viewport, setViewport] = useState({ isMobile: false, isTablet: false, isDesktop: true });
   const location = useLocation();
 
   useEffect(() => {
@@ -14,7 +15,34 @@ export default function Layout() {
     return () => clearTimeout(t);
   }, []);
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
+  useEffect(() => {
+    const compute = () => {
+      const w = window.innerWidth || 0;
+      const isMobile = w <= 768;
+      const isTablet = w > 768 && w <= 1024;
+      setViewport({ isMobile, isTablet, isDesktop: w > 1024 });
+      if (!isMobile) setSidebarOpen(false);
+      if (isMobile) setSidebarCollapsed(false);
+    };
+    compute();
+    window.addEventListener("resize", compute, { passive: true });
+    return () => window.removeEventListener("resize", compute);
+  }, []);
+
+  const toggleSidebar = () => {
+    if (viewport.isMobile) {
+      setSidebarOpen((v) => !v);
+      return;
+    }
+    setSidebarCollapsed((v) => {
+      const next = !v;
+      const main = document.getElementById("main-region");
+      if (main) {
+        next ? main.classList.add("sidebar-collapsed") : main.classList.remove("sidebar-collapsed");
+      }
+      return next;
+    });
+  };
 
   return (
     <>
@@ -209,7 +237,8 @@ export default function Layout() {
         .mobile-overlay.visible { display: block; }
 
         /* ── Responsive ── */
-        @media (max-width: 1024px) {
+        /* Mobile drawer */
+        @media (max-width: 768px) {
           .sidebar-region {
             transform: translateX(-100%);
             transition: transform var(--dur-slow) var(--ease-out), width var(--dur-slow) var(--ease-out);
@@ -218,6 +247,25 @@ export default function Layout() {
           .sidebar-region.mobile-open { transform: translateX(0); }
           .main-region { margin-left: 0 !important; width: 100% !important; }
         }
+
+        /* Tablet: docked, collapsible */
+        @media (min-width: 769px) and (max-width: 1024px) {
+          .sidebar-region {
+            transform: none !important;
+            width: var(--sidebar-width);
+          }
+          .sidebar-region.collapsed { width: var(--sidebar-collapsed); }
+          .main-region {
+            margin-left: var(--sidebar-width);
+            width: calc(100% - var(--sidebar-width));
+          }
+          .main-region.sidebar-collapsed {
+            margin-left: var(--sidebar-collapsed);
+            width: calc(100% - var(--sidebar-collapsed));
+          }
+        }
+
+        /* Desktop */
         @media (min-width: 1025px) {
           .sidebar-region { transform: none !important; }
           .main-region { margin-left: var(--sidebar-width); }
@@ -241,14 +289,18 @@ export default function Layout() {
 
       <div className="layout-shell">
         <div
-          className={`mobile-overlay ${sidebarOpen ? "visible" : ""}`}
+          className={`mobile-overlay ${viewport.isMobile && sidebarOpen ? "visible" : ""}`}
           onClick={() => setSidebarOpen(false)}
           aria-hidden="true"
         />
 
-        <div className={`sidebar-region ${sidebarOpen ? "mobile-open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`}>
+        <div
+          className={`sidebar-region ${viewport.isMobile && sidebarOpen ? "mobile-open" : ""} ${sidebarCollapsed ? "collapsed" : ""}`}
+        >
           <Sidebar
             mobileOpen={sidebarOpen}
+            isMobile={viewport.isMobile}
+            onRequestClose={() => setSidebarOpen(false)}
             onCollapsedChange={(c) => {
               setSidebarCollapsed(c);
               const main = document.getElementById("main-region");
