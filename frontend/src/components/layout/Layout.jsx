@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
+
 import { Outlet, useLocation } from "react-router-dom";
 
 export default function Layout() {
@@ -288,6 +289,7 @@ export default function Layout() {
       `}</style>
 
       <div className="layout-shell">
+        
         <div
           className={`mobile-overlay ${viewport.isMobile && sidebarOpen ? "visible" : ""}`}
           onClick={() => setSidebarOpen(false)}
