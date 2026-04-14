@@ -32,7 +32,10 @@ export default function Dashboard() {
   const { role } = useContext(AuthContext);
   const [showPopup, setShowPopup] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-
+  const currentPeriod = new Date().toLocaleDateString("en-IN", {
+  month: "long",
+  year: "numeric"
+});
   useEffect(() => {
     const fetchEmployees = async () => {
       try {
@@ -580,7 +583,7 @@ export default function Dashboard() {
           <div className="dash-header-right">
             <div className="dash-period-badge">
               <span className="dash-period-dot" />
-              March 2025 Active
+              {currentPeriod} Active
             </div>
             <button className="dash-run-btn" onClick={() => handleComingSoon("Run Payroll")}>
               <Play size={13} /> Run Payroll
