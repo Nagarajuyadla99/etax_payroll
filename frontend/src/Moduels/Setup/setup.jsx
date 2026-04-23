@@ -136,12 +136,7 @@ export default function Setup() {
         Complete Setup
       </button>
 
-      <button
-  onClick={() => navigate(-1)}
-  className="fixed  right-3 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full shadow-lg transition duration-300 flex items-center gap-2 z-50"
->
-  ← Back
-</button>
+      
     </div>
   );
 }

@@ -1,0 +1,63 @@
+backend/
+├── api/                      # FastAPI route handlers
+│   ├── attendance_route.py    # GET/POST/PUT attendance & leave
+│   ├── payroll_routes.py      # Pay period, payroll runs, processing
+│   ├── salary_routes.py       # Salary components, templates, structures
+│   ├── employee_route.py      # Employee CRUD
+│   ├── auth_routes.py         # Login, register, OAuth2 (Google)
+│   ├── payslip_routes.py      # Payslip download/generation
+│   ├── org_routes.py          # Organisation, departments, designations
+│   └── user_routes.py         # User management
+├── crud/                      # Data access layer (async)
+│   ├── attendance_crud.py     # Attendance & Leave CRUD
+│   ├── payroll_crud.py        # PayPeriod, PayrollRun, PayrollEntry CRUD
+│   ├── salary_crud.py         # Salary component & structure CRUD
+│   ├── employee_crud.py       # Employee CRUD
+│   ├── user_crud.py           # User CRUD
+│   └── org_crud.py            # Organisation CRUD
+├── models/                    # SQLAlchemy ORM models
+│   ├── attendance_models.py   # Attendance, Leave tables
+│   ├── payroll_models.py      # PayPeriod, PayrollRun, PayrollEntry
+│   ├── salary_models.py       # SalaryComponent, SalaryTemplate, PayStructure
+│   ├── employee_model.py      # Employee, EmployeeDocument, EmployeeSalaryAssignment
+│   ├── org_models.py          # Organisation, Department, Designation, WorkLocation
+│   ├── user_models.py         # User, Role, UserRole
+│   └── leave.py               # (Empty or legacy)
+├── schemas/                   # Pydantic request/response schemas
+│   ├── attendance_schemas.py  # AttendanceCreate, LeaveCreate, etc.
+│   ├── payroll_schemas.py     # PayPeriodCreate, PayrollRunCreate, etc.
+│   ├── salary_schemas.py      # SalaryComponentCreate, etc.
+│   ├── employee_schemas.py    # EmployeeCreate, etc.
+│   └── [others]
+├── services/                  # Business logic
+│   ├── salary_calculator.py   # Salary computation (fixed, %, formula)
+│   ├── payroll_report_service.py # Reports: salary statement, TDS, register
+│   ├── payslip_service.py     # Payslip generation/download
+│   └── email_service.py       # Email notifications
+├── utils/                     # Utilities
+│   ├── auth.py                # JWT encode/decode
+│   ├── dependencies.py        # FastAPI dependency injection (auth, org_id)
+│   ├── rbac.py                # Role-based access control (admin, hr, employee)
+│   └── email_config.py        # SMTP configuration
+├── alembic/                   # Database migrations
+│   └── versions/              # Migration files (Alembic)
+├── database.py                # AsyncSession factory & engine setup
+├── main.py                    # FastAPI app entry point
+└── requirements.txt           # Python dependencies
+
+frontend/
+├── src/
+│   ├── Moduels/               # (Typo in folder name)
+│   │   ├── Attendance/        # Attendance form, table, summary
+│   │   ├── Employee/          # Employee profile, documents
+│   │   ├── Employees/         # Employee list, bulk upload
+│   │   ├── Salary/            # Salary components, templates, structures
+│   │   ├── payroll/           # Payroll process, runs, registers, TDS
+│   │   └── Bank/              # Bank payment module
+│   ├── components/
+│   │   ├── pages/             # Dashboard, login, settings, approvals
+│   │   └── layout/            # Navbar, sidebar, layout wrapper
+│   ├── services/              # API service layer (axios)
+│   ├── App.js                 # Main app component
+│   └── index.js               # React entry point
+└── package.json               # Frontend dependencies

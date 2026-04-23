@@ -897,9 +897,7 @@ export default function EmployeeList() {
         </div>
 
         {/* Back button */}
-        <button className="btn-back" onClick={() => navigate(-1)}>
-          <IconArrowLeft /> Back
-        </button>
+       
       </div>
 
       {/* Edit Drawer */}

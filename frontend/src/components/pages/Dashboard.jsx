@@ -11,20 +11,18 @@ import {
   ArrowDownRight,
   Sparkles,
   Play,
-  FileText,
-  UserPlus,
-  Download,
   CheckCircle,
   XCircle,
   AlertCircle,
   ChevronRight,
   Calendar,
-  TrendingUp,
 } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { getEmployees } from "../../Moduels/Employees/EmployeeApi";
 import { useNavigate } from "react-router-dom";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
+import QuickActionCard from "../dashboard/QuickActionCard";
+import { getQuickActionsForRole } from "../../config/dashboardQuickActions";
 
 export default function Dashboard() {
   const [employees, setEmployees] = useState([]);
@@ -55,6 +53,13 @@ export default function Dashboard() {
   const handleComingSoon = (feature) => {
     setPopupMessage(`${feature} will be available soon`);
     setShowPopup(true);
+  };
+
+  const quickActions = useMemo(() => getQuickActionsForRole(role), [role]);
+
+  const runQuickAction = (action) => {
+    if (action.type === "navigate") navigate(action.path);
+    else handleComingSoon(action.feature);
   };
 
   const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -374,7 +379,7 @@ export default function Dashboard() {
           text-align: center;
           font-family: var(--font-body);
         }
-        .qa-btn:hover { transform: translateY(-2px); }
+        .qa-btn:hover { transform: translateY(-2px) scale(1.02); }
         .qa-btn .qa-icon {
           width: 32px; height: 32px;
           border-radius: var(--r-md, 8px);
@@ -680,42 +685,18 @@ export default function Dashboard() {
             </div>
             <div className="pw-card-body">
               <div className="qa-grid">
-                <QaBtn
-                  cls="qa-blue"
-                  icon={<UserPlus size={15} />}
-                  label="Add Employee"
-                  onClick={() => navigate("/employeeCreate")}
-                />
-                <QaBtn
-                  cls="qa-green"
-                  icon={<FileText size={15} />}
-                  label="Gen Payslip"
-                  onClick={() => handleComingSoon("Payslip Generation")}
-                />
-                <QaBtn
-                  cls="qa-teal"
-                  icon={<ShieldCheck size={15} />}
-                  label="Tax Decl."
-                  onClick={() => handleComingSoon("Tax Declaration")}
-                />
-                <QaBtn
-                  cls="qa-amber"
-                  icon={<Download size={15} />}
-                  label="Leave Import"
-                  onClick={() => handleComingSoon("Leave Import")}
-                />
-                <QaBtn
-                  cls="qa-purple"
-                  icon={<TrendingUp size={15} />}
-                  label="PF Report"
-                  onClick={() => handleComingSoon("PF Report")}
-                />
-                <QaBtn
-                  cls="qa-red"
-                  icon={<ShieldCheck size={15} />}
-                  label="ESI Report"
-                  onClick={() => handleComingSoon("ESI Report")}
-                />
+                {quickActions.map((item) => {
+                  const Icon = item.Icon;
+                  return (
+                    <QuickActionCard
+                      key={item.id}
+                      cls={item.cls}
+                      label={item.label}
+                      icon={<Icon size={15} strokeWidth={2} />}
+                      onClick={() => runQuickAction(item.action)}
+                    />
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -856,15 +837,6 @@ function AlertItem({ icon, text, level }) {
       <span className="alert-icon">{icon}</span>
       <span>{text}</span>
     </div>
-  );
-}
-
-function QaBtn({ cls, icon, label, onClick }) {
-  return (
-    <button className={`qa-btn ${cls}`} onClick={onClick}>
-      <div className="qa-icon">{icon}</div>
-      <span>{label}</span>
-    </button>
   );
 }
 
