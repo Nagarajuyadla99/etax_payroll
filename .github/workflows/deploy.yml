@@ -22,7 +22,13 @@ jobs:
           cd backend
           pip install -r requirements.txt
 
+      - name: Check migrations
+        run: |
+          cd backend
+          alembic upgrade head
+
       - name: Run basic check
         run: |
           cd backend
           python -c "print('Backend setup OK')"
+      
