@@ -1,4 +1,7 @@
+import os
+
 from dotenv import load_dotenv
+
 load_dotenv()
 
 from fastapi import FastAPI
@@ -27,20 +30,31 @@ import models
 
 app = FastAPI()
 API_PREFIX = "/api"
+
+# Explicit dev defaults; append CORS_ORIGINS="http://host:port,..." from .env for more hosts.
 origins = [
     "http://localhost:9999",
     "http://127.0.0.1:9999",
-    
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
 ]
+for _o in os.getenv("CORS_ORIGINS", "").split(","):
+    _o = _o.strip()
+    if _o and _o not in origins:
+        origins.append(_o)
+
+# Any localhost / loopback port (covers CRA port changes, IPv6 ::1, etc.)
+_local_origin_re = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
 
 app.add_middleware(
     CORSMiddleware,
-    # Explicit origins (avoids inconsistent behavior across localhost/127.0.0.1 in browsers)
     allow_origins=origins,
+    allow_origin_regex=_local_origin_re,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
-     expose_headers=["*"],
+    # Chrome: preflight may include Access-Control-Request-Private-Network for loopback targets.
+    allow_private_network=True,
 )
 
 # include router

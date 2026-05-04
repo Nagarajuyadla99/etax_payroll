@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createEmployee } from "./EmployeeApi";
 import API from "../../services/api";
 import { useNavigate } from "react-router-dom";
+import Select from "react-select";
 
 // ─── StepIndicator ────────────────────────────────────────────────────────────
 function StepIndicator({ currentStep, steps }) {
@@ -101,8 +102,15 @@ const errorInputCls = "w-full border border-red-300 rounded-lg px-3 py-2.5 text-
 function Step1BasicDetails({ form, handleChange, errors }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-      <FormField label="Employee Code">
-        <input className={inputCls} name="employee_code" placeholder="e.g. EMP-001" value={form.employee_code} onChange={handleChange} />
+      <FormField label="Employee Code" required error={errors.employee_code}>
+        <input
+          className={errors.employee_code ? errorInputCls : inputCls}
+          name="employee_code"
+          placeholder="e.g. EMP-001"
+          value={form.employee_code}
+          onChange={handleChange}
+          required
+        />
       </FormField>
 
       <FormField label="First Name" required error={errors.first_name}>
@@ -121,17 +129,31 @@ function Step1BasicDetails({ form, handleChange, errors }) {
         <input className={inputCls} name="display_name" placeholder="Display Name" value={form.display_name} onChange={handleChange} />
       </FormField>
 
-      <FormField label="Work Email">
-        <input className={inputCls} type="email" name="work_email" placeholder="name@company.com" value={form.work_email} onChange={handleChange} />
+      <FormField label="Work Email" required error={errors.work_email}>
+        <input
+          className={errors.work_email ? errorInputCls : inputCls}
+          type="email"
+          name="work_email"
+          placeholder="name@company.com"
+          value={form.work_email}
+          onChange={handleChange}
+          required
+        />
       </FormField>
 
       <FormField label="Mobile Phone">
         <input className={inputCls} name="mobile_phone" placeholder="+91 98765 43210" value={form.mobile_phone} onChange={handleChange} />
       </FormField>
 
-      <FormField label="Gender">
+      <FormField label="Gender" required error={errors.gender}>
         <div className="relative">
-          <select className={selectCls} name="gender" value={form.gender} onChange={handleChange}>
+          <select
+            className={errors.gender ? `${selectCls} border-red-300 bg-red-50` : selectCls}
+            name="gender"
+            value={form.gender}
+            onChange={handleChange}
+            required
+          >
             <option value="">Select Gender</option>
             <option value="Male">Male</option>
             <option value="Female">Female</option>
@@ -142,8 +164,15 @@ function Step1BasicDetails({ form, handleChange, errors }) {
         </div>
       </FormField>
 
-      <FormField label="Date of Birth">
-        <input className={inputCls} type="date" name="date_of_birth" value={form.date_of_birth} onChange={handleChange} />
+      <FormField label="Date of Birth" required error={errors.date_of_birth}>
+        <input
+          className={errors.date_of_birth ? errorInputCls : inputCls}
+          type="date"
+          name="date_of_birth"
+          value={form.date_of_birth}
+          onChange={handleChange}
+          required
+        />
       </FormField>
 
       <FormField label="Marital Status">
@@ -166,96 +195,237 @@ function Step1BasicDetails({ form, handleChange, errors }) {
   );
 }
 
-// ─── Step2Organization ────────────────────────────────────────────────────────
-function Step2Organization({ form, handleChange, errors, departments, designations, locations, managers, loading }) {
+
+
+function Step2Organization({
+  form,
+  handleChange,
+  errors,
+  departments,
+  designations,
+  locations,
+  managers,
+  loading
+}) {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16 gap-3">
         <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-        <p className="text-sm text-gray-400 font-medium">Loading organizational data…</p>
+        <p className="text-sm text-gray-400 font-medium">
+          Loading organizational data…
+        </p>
       </div>
     );
   }
 
+  // Convert data to react-select format
+  const deptOptions = departments.map((d) => ({
+    value: d.id,
+    label: d.name
+  }));
+
+  const designationOptions = designations.map((d) => ({
+    value: d.id,
+    label: d.name
+  }));
+
+  const locationOptions = locations.map((l) => ({
+    value: l.id,
+    label: l.name
+  }));
+
+  const managerOptions = managers.map((m) => ({
+    value: m.employee_id,
+    label: [m.first_name, m.last_name].filter(Boolean).join(" ")
+  }));
+
+  // Helper to update form like normal input
+  const handleSelectChange = (name, selected) => {
+    handleChange({
+      target: {
+        name,
+        value: selected ? selected.value : ""
+      }
+    });
+  };
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-      <FormField label="Department" required error={errors.department_id}>
-        <div className="relative">
-          <select
-            className={errors.department_id ? `${selectCls} border-red-300 bg-red-50` : selectCls}
-            name="department_id"
-            value={form.department_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Department</option>
-            {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
-        </div>
-        {errors.department_id && <p className="text-xs text-red-500 mt-0.5">{errors.department_id}</p>}
+
+      {/* Department */}
+      <FormField label="Department" error={errors.department_id}>
+        <Select
+          options={deptOptions}
+          value={deptOptions.find((o) => o.value === form.department_id) || null}
+          onChange={(selected) => handleSelectChange("department_id", selected)}
+          placeholder="Select or search Department"
+          isClearable
+        />
       </FormField>
 
-      <FormField label="Designation" required error={errors.designation_id}>
-        <div className="relative">
-          <select
-            className={errors.designation_id ? `${selectCls} border-red-300 bg-red-50` : selectCls}
-            name="designation_id"
-            value={form.designation_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Designation</option>
-            {designations.map((d) => (
-              <option key={d.id} value={d.id}>{d.name}</option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
-        </div>
-        {errors.designation_id && <p className="text-xs text-red-500 mt-0.5">{errors.designation_id}</p>}
+      {/* Designation */}
+      <FormField label="Designation" error={errors.designation_id}>
+        <Select
+          options={designationOptions}
+          value={
+            designationOptions.find((o) => o.value === form.designation_id) || null
+          }
+          onChange={(selected) =>
+            handleSelectChange("designation_id", selected)
+          }
+          placeholder="Select or search Designation"
+          isClearable
+        />
       </FormField>
 
-      <FormField label="Location" required error={errors.location_id}>
-        <div className="relative">
-          <select
-            className={errors.location_id ? `${selectCls} border-red-300 bg-red-50` : selectCls}
-            name="location_id"
-            value={form.location_id}
-            onChange={handleChange}
-            required
-          >
-            <option value="">Select Location</option>
-            {locations.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
-        </div>
-        {errors.location_id && <p className="text-xs text-red-500 mt-0.5">{errors.location_id}</p>}
+      {/* Location */}
+      <FormField label="Location" error={errors.location_id}>
+        <Select
+          options={locationOptions}
+          value={
+            locationOptions.find((o) => o.value === form.location_id) || null
+          }
+          onChange={(selected) => handleSelectChange("location_id", selected)}
+          placeholder="Select or search Location"
+          isClearable
+        />
       </FormField>
 
+      {/* Manager */}
       <FormField label="Reporting Manager">
-        <div className="relative">
-          <select className={selectCls} name="manager_id" value={form.manager_id} onChange={handleChange}>
-            <option value="">Select Manager (Optional)</option>
-            {managers.map((m) => (
-              <option key={m.employee_id} value={m.employee_id}>
-                {[m.first_name, m.last_name].filter(Boolean).join(" ")}
-              </option>
-            ))}
-          </select>
-          <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
-        </div>
+        <Select
+          options={managerOptions}
+          value={
+            managerOptions.find((o) => o.value === form.manager_id) || null
+          }
+          onChange={(selected) => handleSelectChange("manager_id", selected)}
+          placeholder="Select or search Manager"
+          isClearable
+        />
       </FormField>
 
+      {/* Business Unit */}
       <FormField label="Business Unit">
-        <input className={inputCls} name="business_unit" placeholder="e.g. Engineering, Sales" value={form.business_unit} onChange={handleChange} />
+        <input
+          className={inputCls}
+          name="business_unit"
+          placeholder="e.g. Engineering, Sales"
+          value={form.business_unit || ""}
+          onChange={handleChange}
+        />
       </FormField>
     </div>
   );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// // ─── Step2Organization ────────────────────────────────────────────────────────
+// function Step2Organization({ form, handleChange, errors, departments, designations, locations, managers, loading }) {
+//   if (loading) {
+//     return (
+//       <div className="flex flex-col items-center justify-center py-16 gap-3">
+//         <div className="w-10 h-10 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+//         <p className="text-sm text-gray-400 font-medium">Loading organizational data…</p>
+//       </div>
+//     );
+//   }
+
+//   return (
+//     <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+//       <FormField label="Department" required error={errors.department_id}>
+//         <div className="relative">
+//           <select
+//             className={errors.department_id ? `${selectCls} border-red-300 bg-red-50` : selectCls}
+//             name="department_id"
+//             value={form.department_id}
+//             onChange={handleChange}
+//             required
+//           >
+//             <option value="">Select Department</option>
+//             {departments.map((d) => (
+//               <option key={d.id} value={d.id}>{d.name}</option>
+//             ))}
+//           </select>
+//           <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
+//         </div>
+//         {errors.department_id && <p className="text-xs text-red-500 mt-0.5">{errors.department_id}</p>}
+//       </FormField>
+
+//       <FormField label="Designation" required error={errors.designation_id}>
+//         <div className="relative">
+//           <select
+//             className={errors.designation_id ? `${selectCls} border-red-300 bg-red-50` : selectCls}
+//             name="designation_id"
+//             value={form.designation_id}
+//             onChange={handleChange}
+//             required
+//           >
+//             <option value="">Select Designation</option>
+//             {designations.map((d) => (
+//               <option key={d.id} value={d.id}>{d.name}</option>
+//             ))}
+//           </select>
+//           <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
+//         </div>
+//         {errors.designation_id && <p className="text-xs text-red-500 mt-0.5">{errors.designation_id}</p>}
+//       </FormField>
+
+//       <FormField label="Location" required error={errors.location_id}>
+//         <div className="relative">
+//           <select
+//             className={errors.location_id ? `${selectCls} border-red-300 bg-red-50` : selectCls}
+//             name="location_id"
+//             value={form.location_id}
+//             onChange={handleChange}
+//             required
+//           >
+//             <option value="">Select Location</option>
+//             {locations.map((l) => (
+//               <option key={l.id} value={l.id}>{l.name}</option>
+//             ))}
+//           </select>
+//           <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
+//         </div>
+//         {errors.location_id && <p className="text-xs text-red-500 mt-0.5">{errors.location_id}</p>}
+//       </FormField>
+
+//       <FormField label="Reporting Manager">
+//         <div className="relative">
+//           <select className={selectCls} name="manager_id" value={form.manager_id} onChange={handleChange}>
+//             <option value="">Select Manager (Optional)</option>
+//             {managers.map((m) => (
+//               <option key={m.employee_id} value={m.employee_id}>
+//                 {[m.first_name, m.last_name].filter(Boolean).join(" ")}
+//               </option>
+//             ))}
+//           </select>
+//           <div className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-gray-400">▾</div>
+//         </div>
+//       </FormField>
+
+//       <FormField label="Business Unit">
+//         <input className={inputCls} name="business_unit" placeholder="e.g. Engineering, Sales" value={form.business_unit} onChange={handleChange} />
+//       </FormField>
+//     </div>
+//   );
+// }
 
 // ─── Step3Compensation ────────────────────────────────────────────────────────
 function Step3Compensation({ form, handleChange, errors }) {
@@ -434,12 +604,17 @@ export default function EmployeeCreate() {
   const validateStep = (step) => {
     const errors = {};
     if (step === 1) {
-      if (!form.first_name.trim()) errors.first_name = "First name is required";
+      if (!form.employee_code.trim()) errors.employee_code = "Employee Code is required";
+      if (!form.first_name.trim()) errors.first_name = "First Name is required";
+      if (!form.work_email.trim()) errors.work_email = "Work Email is required";
+      if (!form.gender.trim()) errors.gender = "Gender is required";
+      if (!form.date_of_birth.trim()) errors.date_of_birth = "Date of Birth is required";
     }
     if (step === 2) {
-      if (!form.department_id) errors.department_id = "Please select a department";
-      if (!form.designation_id) errors.designation_id = "Please select a designation";
-      if (!form.location_id) errors.location_id = "Please select a location";
+      // TEMP (testing): keep Organization fields optional
+      // if (!form.department_id) errors.department_id = "Please select a department";
+      // if (!form.designation_id) errors.designation_id = "Please select a designation";
+      // if (!form.location_id) errors.location_id = "Please select a location";
     }
     if (step === 3) {
       if (form.annual_ctc && isNaN(parseFloat(form.annual_ctc))) {
@@ -519,7 +694,21 @@ Object.keys(payload).forEach((k) => {
       setSubmitSuccess(true);
     } catch (error) {
       console.error(error);
-      setSubmitError("Something went wrong while creating the employee. Please try again.");
+      const detail = error?.response?.data?.detail;
+      // FastAPI/Pydantic 422 usually returns: { detail: [{loc, msg, type}, ...] }
+      if (Array.isArray(detail) && detail.length) {
+        const msg = detail
+          .map((d) => {
+            const path = Array.isArray(d?.loc) ? d.loc.join(".") : "";
+            return `${path ? `${path}: ` : ""}${d?.msg || "Invalid value"}`;
+          })
+          .join(" | ");
+        setSubmitError(msg);
+      } else if (typeof detail === "string" && detail.trim()) {
+        setSubmitError(detail);
+      } else {
+        setSubmitError("Something went wrong while creating the employee. Please try again.");
+      }
     } finally {
       setLoading(false);
     }
@@ -570,23 +759,45 @@ Object.keys(payload).forEach((k) => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-8">
-      {/* Back button */}
-      <button
-        onClick={() => navigate(-1)}
-        className="fixed bottom-6 right-6 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-full shadow-lg transition duration-300 flex items-center gap-2 z-50 text-sm font-semibold"
-      >
-        ← Back
-      </button>
+      <style>{`
+        .employee-create-scroll {
+          scrollbar-width: thin;
+          scrollbar-color: #9ca3af #e5e7eb;
+        }
+        .employee-create-scroll::-webkit-scrollbar {
+          width: 8px;
+        }
+        .employee-create-scroll::-webkit-scrollbar-track {
+          background: #e5e7eb;
+          border-radius: 9999px;
+        }
+        .employee-create-scroll::-webkit-scrollbar-thumb {
+          background: #9ca3af;
+          border-radius: 9999px;
+        }
+        .employee-create-scroll::-webkit-scrollbar-thumb:hover {
+          background: #6b7280;
+        }
+      `}</style>
 
       <div className="max-w-4xl mx-auto">
         {/* Page Header */}
         <div className="mb-6">
+          <button
+            onClick={() => navigate(-1)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 transition mb-4"
+          >
+            ← Back
+          </button>
           <h1 className="text-2xl font-bold text-gray-800">New Employee</h1>
           <p className="text-sm text-gray-400 mt-1">Complete all steps to onboard a new team member</p>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8">
+        <div
+          className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-8 employee-create-scroll overflow-y-auto scroll-smooth pr-1"
+          style={{ maxHeight: "calc(100vh - 11rem)" }}
+        >
           <StepIndicator currentStep={currentStep} steps={steps} />
 
           {/* Identity Banner (steps 1–3) */}

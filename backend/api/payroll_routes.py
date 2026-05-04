@@ -22,6 +22,7 @@ from crud.payroll_crud import (
     get_payroll_summary
 )
 from services.payroll_report_service import generate_salary_statement,generate_tds_summary,generate_payroll_register
+from services.payroll_attendance_summary_service import build_pay_period_attendance_summary
 from utils.rbac import require_roles
 
 
@@ -109,6 +110,22 @@ async def get_pay_period_route(
         )
 
     return period
+
+
+@router.get(
+    "/pay-periods/{pay_period_id}/attendance-summary",
+    status_code=status.HTTP_200_OK,
+    summary="Attendance + LOP leave summary for a pay period (read-only)",
+)
+async def pay_period_attendance_summary_route(
+    pay_period_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    try:
+        return await build_pay_period_attendance_summary(db, pay_period_id)
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
 # ============================================================

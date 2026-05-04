@@ -33,7 +33,12 @@ import Setup from "./Moduels/Setup/setup";
 // Attendance
 import AttendanceSummary from "./components/pages/Attendance/AttendancsSummary";
 import AttendanceTable from "../src/Moduels/attendance/AttendanceTable";
+import AttendanceTablePage from "./Moduels/attendance/AttendanceTablePage";
 import LeaveApproval from "./components/pages/Attendance/LeaveApproval";
+import CreateLeave from "./components/pages/Attendance/CreateLeave";
+import AttendanceBulkUpload from "./components/pages/Attendance/AttendanceBulkUpload";
+import DailyAttendance from "./components/pages/Attendance/DailyAttendance";
+import ApplyCalendar from "./components/pages/Attendance/ApplyCalendar";
 
 // Bank
 import BankPayments from "./Moduels/Bank/BankPayment";
@@ -111,8 +116,12 @@ export default function App() {
             <Route path="/security" element={<SecurityPage />} />
             {/* Attendance */}
             <Route path="/attendance" element={<AttendancePage />} />
+            <Route path="/attendanceCalendar" element={<DailyAttendance />} />
             <Route path="/attendanceSummary" element={<AttendanceSummary />} />
-            <Route path="/attendanceTable" element={<AttendanceTable/>} />
+            <Route path="/attendanceTable" element={<AttendanceTablePage />} />
+            <Route path="/attendanceBulkUpload" element={<AttendanceBulkUpload />} />
+            <Route path="/attendanceApplyCalendar" element={<ApplyCalendar />} />
+            <Route path="/create-leave" element={<CreateLeave />} />
             <Route path="/leaveApproval" element={<LeaveApproval />} />
 
             {/* Payroll */}

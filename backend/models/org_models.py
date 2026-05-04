@@ -11,7 +11,7 @@ from sqlalchemy import (
     text,
     SmallInteger,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from database import Base  # Absolute import for clarity
@@ -50,6 +50,7 @@ class Organisation(Base):
     )
     is_setup_complete = Column(Boolean, nullable=False, server_default=text("false"))
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    hr_settings = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     # Relationships
     departments = relationship("Department", back_populates="organisation", cascade="all, delete-orphan")

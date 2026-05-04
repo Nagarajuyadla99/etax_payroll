@@ -33,6 +33,7 @@ API.interceptors.response.use(
   (error) => {
     const status = error.response?.status;
     const url = error?.config?.url || "";
+    const method = (error?.config?.method || "get").toUpperCase();
 
     // 🔒 Handle unauthorized
     if (status === 401) {
@@ -47,7 +48,19 @@ API.interceptors.response.use(
 
     // Optional: log for debugging
     if (process.env.NODE_ENV === "development") {
-      console.error("API Error:", error.response?.data || error.message);
+      const requestId =
+        error.response?.headers?.["x-request-id"] ||
+        error.response?.headers?.["X-Request-Id"];
+
+      console.error("API Error", {
+        method,
+        baseURL: error?.config?.baseURL,
+        url,
+        status,
+        requestId,
+        data: error.response?.data,
+        message: error.message,
+      });
     }
 
     return Promise.reject(error);

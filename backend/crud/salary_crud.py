@@ -3,8 +3,8 @@
 from typing import Optional, List
 from uuid import UUID
 
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 
 from models.salary_models import (
@@ -77,6 +77,28 @@ async def get_salary_component(
         )
     )
 
+    return q.scalar_one_or_none()
+
+
+async def find_salary_component_by_name(
+    db: AsyncSession,
+    organisation_id: UUID,
+    name: str,
+    *,
+    component_type: Optional[str] = "deduction",
+) -> Optional[SalaryComponent]:
+    """Org-scoped lookup (case-insensitive name). Used for auto LOP payroll lines."""
+    name_l = (name or "").strip().lower()
+    if not name_l:
+        return None
+    conds = [
+        SalaryComponent.organisation_id == organisation_id,
+        SalaryComponent.is_active.is_(True),
+        func.lower(SalaryComponent.name) == name_l,
+    ]
+    if component_type:
+        conds.append(SalaryComponent.component_type == component_type)
+    q = await db.execute(select(SalaryComponent).where(*conds).limit(1))
     return q.scalar_one_or_none()
 
 

@@ -16,6 +16,9 @@ class PayPeriodBase(BaseModel):
     start_date: date
     end_date: date
     status: Optional[str] = "open"
+    attendance_leave_locked: Optional[bool] = False
+    locked_at: Optional[datetime] = None
+    locked_by_payroll_run_id: Optional[UUID] = None
 
 
 class PayPeriodCreate(PayPeriodBase):

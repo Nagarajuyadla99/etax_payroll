@@ -51,16 +51,16 @@ export const SIDEBAR_CONFIG = [
     section: "Payroll",
     roles: ["admin", "hr"],
     items: [
-      {
-        key: "salary_setup",
-        label: "Salary Setup",
-        icon: "layers",
-        color: "ic-red",
-        children: [
-          { key: "salary_components", label: "Components", icon: "layers", path: "/salary/components", color: "ic-red" },
-          { key: "salary_templates", label: "Templates", icon: "file-text", path: "/salary/templates", color: "ic-purple" },
-        ],
-      },
+      // {
+      //   key: "salary_setup",
+      //   label: "Salary Setup",
+      //   icon: "layers",
+      //   color: "ic-red",
+      //   children: [
+      //     { key: "salary_components", label: "Components", icon: "layers", path: "/salary/components", color: "ic-red" },
+      //     { key: "salary_templates", label: "Templates", icon: "file-text", path: "/salary/templates", color: "ic-purple" },
+      //   ],
+      // },
       { key: "pay_runs", label: "Pay Runs", icon: "wallet", path: "/payrollhome", color: "ic-blue" },
     ],
   },
@@ -74,8 +74,12 @@ export const SIDEBAR_CONFIG = [
         color: "ic-teal",
         children: [
           { key: "attendance_main", label: "Attendance", icon: "calendar", path: "/attendance", color: "ic-teal" },
+          { key: "attendance_calendar", label: "Calendar", icon: "calendar", path: "/attendanceCalendar", color: "ic-teal" },
           { key: "attendance_summary", label: "Summary", icon: "file-text", path: "/attendanceSummary", color: "ic-blue" },
           { key: "attendance_table", label: "Attendance Table", icon: "layers", path: "/attendanceTable", color: "ic-slate" },
+          { key: "attendance_bulk_upload", label: "Bulk Upload", icon: "upload", path: "/attendanceBulkUpload", color: "ic-purple" },
+          { key: "attendance_apply_calendar", label: "Apply Calendar", icon: "zap", path: "/attendanceApplyCalendar", color: "ic-amber" },
+          { key: "create_leave", label: "Create Leave", icon: "file-text", path: "/create-leave", color: "ic-purple" },
           { key: "leave_approval", label: "Leave Approval", icon: "check-circle", path: "/leaveApproval", color: "ic-green" },
         ],
       },

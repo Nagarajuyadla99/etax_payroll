@@ -1,27 +1,32 @@
 import { useEffect, useState } from "react";
 import AttendanceForm from "./AttendanceForm";
-import AttendanceTable from "./AttendanceTable";
-import { fetchAttendance } from "./attendanceApi";
+import { fetchMyOrganisationSummary } from "./attendanceApi";
 
 export default function AttendancePage() {
 
-  const [attendance, setAttendance] = useState([]);
-
-  const loadAttendance = async () => {
-    const data = await fetchAttendance();
-    setAttendance(data);
-  };
+  const [organisationId, setOrganisationId] = useState("");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    loadAttendance();
+    (async () => {
+      try {
+        const org = await fetchMyOrganisationSummary();
+        setOrganisationId(org?.id || "");
+      } catch (e) {
+        setError(e.message || "Failed to load organisation context");
+      }
+    })();
   }, []);
 
   return (
     <div className="p-6">
 
-      <AttendanceForm reload={loadAttendance} />
+      {error ? <div className="mb-3 text-sm text-red-600">{error}</div> : null}
 
-      <AttendanceTable data={attendance} />
+      <AttendanceForm
+        reload={() => {}}
+        defaultOrganisationId={organisationId}
+      />
 
     </div>
   );

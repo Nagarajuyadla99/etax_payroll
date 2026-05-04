@@ -131,13 +131,14 @@ export function getCanonicalBulkHeaders({ includeSecondaryNameColumns = true } =
   const headers = [];
   for (const f of getBulkTargetFields()) {
     headers.push(f.key);
-    if (includeSecondaryNameColumns && f.bulk?.secondaryNameKey) headers.push(f.bulk.secondaryNameKey);
+    if (includeSecondaryNameColumns && f.bulk?.secondaryNameKey) {
+      headers.push(f.bulk.secondaryNameKey);
+    }
   }
   return headers;
 }
 
 export function getSampleRows() {
-  // Keep examples realistic and copy-paste friendly.
   return [
     {
       employee_code: "EMP-001",
@@ -183,4 +184,3 @@ export function getSampleRows() {
     },
   ];
 }
-

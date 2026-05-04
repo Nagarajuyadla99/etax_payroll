@@ -1,5 +1,6 @@
 # payroll_mangment/models/payroll_models.py
 import uuid
+from sqlalchemy import Column, Integer, String, Date, Boolean, text
 from sqlalchemy import (
     Column,
     TIMESTAMP,
@@ -28,6 +29,15 @@ class PayPeriod(Base):
     end_date = Column(Date, nullable=False)
     status = Column(String(20), nullable=False, server_default=text("'open'"))  # maps to payroll_status_t
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    attendance_leave_locked = Column(
+        Boolean, nullable=False, server_default=text("false")
+    )
+    locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    locked_by_payroll_run_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("payroll_runs.payroll_run_id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("organisation_id", "start_date", "end_date", name="ux_pay_periods_org_dates"),

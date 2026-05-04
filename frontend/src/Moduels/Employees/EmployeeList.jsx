@@ -762,88 +762,34 @@ export default function EmployeeList() {
             <table>
               <thead>
                 <tr>
-                  <th>Employee</th>
-                  <th>Code</th>
-                  <th>Department</th>
-                  <th>Designation</th>
                   <th>Work Email</th>
-                  <th>Phone</th>
-                  <th>Joining Date</th>
-                  <th>Last Updated</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>Department</th>
+                  <th>Employee Status</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && (
                   <tr className="empty-row">
-                    <td colSpan="10">Loading employees…</td>
+                    <td colSpan="3">Loading employees…</td>
                   </tr>
                 )}
 
                 {!loading && currentEmployees.length === 0 && (
                   <tr className="empty-row">
-                    <td colSpan="10">No employees found.</td>
+                    <td colSpan="3">No employees found.</td>
                   </tr>
                 )}
 
                 {!loading &&
                   currentEmployees.map((emp) => {
-                    const name = fullName(emp);
                     const isUpdated = updatedRowId === emp.employee_id;
-                    const isLoading = actionLoadingId === emp.employee_id;
 
                     return (
                       <tr key={emp.employee_id} className={isUpdated ? "row-updated" : ""}>
-                        <td>
-                          <div className="emp-name-cell">
-                            <span className="emp-name">
-                              {name}
-                              {isUpdated && <span className="updated-badge">Updated</span>}
-                            </span>
-                            {emp.business_unit && <span className="emp-meta">{emp.business_unit}</span>}
-                          </div>
-                        </td>
-                        <td>
-                          <span className="mono">{emp.employee_code || "—"}</span>
-                        </td>
-                        <td className="muted">{emp.department?.name || "—"}</td>
-                        <td className="muted">{emp.designation?.title || "—"}</td>
                         <td className="muted">{emp.work_email || emp.email || "—"}</td>
-                        <td className="muted">{emp.phone || emp.mobile_phone || "—"}</td>
-                        <td className="muted">
-                          {emp.date_of_joining
-                            ? new Date(emp.date_of_joining).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                            : "—"}
-                        </td>
-                        <td className="muted">
-                          {emp.updated_at
-                            ? new Date(emp.updated_at).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
-                            : "—"}
-                        </td>
+                        <td className="muted">{emp.department?.name || "—"}</td>
                         <td>
                           <StatusBadge status={emp.status} />
-                        </td>
-                        <td>
-                          <div className="action-cell">
-                            <button
-                              className="act-btn act-edit"
-                              onClick={() => handleEditOpen(emp)}
-                              disabled={isLoading || !!actionLoadingId}
-                              title={`Edit ${name}`}
-                            >
-                              {isLoading ? <IconLoader /> : <IconEdit />}
-                              Edit
-                            </button>
-                            <button
-                              className="act-btn act-delete"
-                              onClick={() => setDeleteTarget(emp)}
-                              disabled={isLoading || !!actionLoadingId}
-                              title={`Delete ${name}`}
-                            >
-                              <IconTrash /> Delete
-                            </button>
-                          </div>
                         </td>
                       </tr>
                     );

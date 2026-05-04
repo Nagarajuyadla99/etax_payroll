@@ -2,7 +2,20 @@
 
 import uuid
 from sqlalchemy import (
-    Column, String, Date, DateTime, Numeric,Float,ForeignKey, Text, UniqueConstraint
+    Column,
+    String,
+    Date,
+    DateTime,
+    Numeric,
+    Float,
+    ForeignKey,
+    Text,
+    UniqueConstraint,
+    Boolean,
+    Integer,
+    CheckConstraint,
+    Index,
+    text,
 )
 from sqlalchemy.dialects.postgresql import UUID as PG_UUID
 from sqlalchemy.sql import func
@@ -54,6 +67,14 @@ class Attendance(Base):
     status = Column(String(20), default=AttendanceStatusEnum.present.value)
     remarks = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    day_fraction = Column(Numeric(5, 4), nullable=False, server_default="1.0")
+    is_locked = Column(Boolean, nullable=False, server_default="false")
+    updated_at = Column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
 
     salary_assignment_id = Column(
         PG_UUID(as_uuid=True),
@@ -65,6 +86,7 @@ class Attendance(Base):
 
     __table_args__ = (
         UniqueConstraint("employee_id", "work_date", name="uq_employee_workdate"),
+        Index("ix_attendances_org_emp_date", "organisation_id", "employee_id", "work_date"),
     )
 
     # Relationships
@@ -110,12 +132,79 @@ class Leave(Base):
     reviewed_at = Column(DateTime(timezone=True), nullable=True)
     notes = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    cancelled_at = Column(DateTime(timezone=True), nullable=True)
+    cancelled_by = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     __table_args__ = (
         UniqueConstraint("employee_id", "start_date", "end_date", name="uq_employee_leave_dates"),
+        Index("ix_leaves_org_emp_status", "organisation_id", "employee_id", "status"),
+        Index("ix_leaves_org_dates", "organisation_id", "start_date", "end_date"),
     )
 
     # Relationships
     employee = relationship("Employee", back_populates="leave_records")
     approver = relationship("User", foreign_keys=[approved_by], lazy="joined")
     reviewer = relationship("User", foreign_keys=[reviewed_by], lazy="joined")
+
+
+# ------------------------------------------------------------
+# ORGANISATION HOLIDAYS
+# ------------------------------------------------------------
+class OrganisationHoliday(Base):
+    __tablename__ = "organisation_holidays"
+
+    holiday_id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organisation_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("organisations.organisation_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    holiday_date = Column(Date, nullable=False)
+    name = Column(Text, nullable=True)
+    is_optional = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("organisation_id", "holiday_date", name="ux_org_holiday_date"),
+        Index("ix_org_holidays_org_date", "organisation_id", "holiday_date"),
+    )
+
+
+# ------------------------------------------------------------
+# EMPLOYEE LEAVE BALANCES (accrual / carry / encashment)
+# ------------------------------------------------------------
+class EmployeeLeaveBalance(Base):
+    __tablename__ = "employee_leave_balances"
+
+    balance_id = Column(PG_UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    organisation_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("organisations.organisation_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    employee_id = Column(
+        PG_UUID(as_uuid=True),
+        ForeignKey("employees.employee_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    leave_type = Column(String(10), nullable=False)
+    period_year = Column(Integer, nullable=False)
+    opening_balance = Column(Numeric(8, 2), nullable=False, server_default=text("0"))
+    accrued = Column(Numeric(8, 2), nullable=False, server_default=text("0"))
+    consumed = Column(Numeric(8, 2), nullable=False, server_default=text("0"))
+    carried_forward = Column(Numeric(8, 2), nullable=False, server_default=text("0"))
+    encashed = Column(Numeric(8, 2), nullable=False, server_default=text("0"))
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("employee_id", "leave_type", "period_year", name="ux_emp_leave_year"),
+        Index("ix_leave_balances_org_emp", "organisation_id", "employee_id"),
+        CheckConstraint(
+            "leave_type IN ('CL','SL','EL','LOP')",
+            name="ck_employee_leave_balances_leave_type",
+        ),
+    )

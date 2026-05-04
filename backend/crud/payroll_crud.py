@@ -3,15 +3,18 @@
 from typing import Optional
 from uuid import UUID
 from decimal import Decimal
+from types import SimpleNamespace
 
-from datetime import datetime
+from datetime import datetime, timezone
 
+from sqlalchemy import update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 
 from models.payroll_models import PayPeriod, PayrollRun, PayrollEntry
 from models.employee_model import Employee
+from models.org_models import Organisation
 from models.salary_models import SalaryComponent
 
 from schemas.payroll_schemas import (
@@ -23,10 +26,12 @@ from schemas.payroll_schemas import (
 from crud.salary_crud import (
     get_employee_salary_structure,
     get_template_components,
-    get_salary_component
+    get_salary_component,
+    find_salary_component_by_name,
 )
 
 from services.salary_calculator import calculate_salary
+from services.payroll_attendance_summary_service import aggregate_attendance_leave_units
 
 
 # ============================================================
@@ -267,12 +272,43 @@ async def process_payroll_run(
     )
 
     employees = q.scalars().all()
+    org_scope = SimpleNamespace(organisation_id=payroll.organisation_id)
+
+    pay_period = await get_pay_period(db, payroll.pay_period_id)
+    if not pay_period:
+        raise ValueError("Pay period not found for payroll run")
+
+    org_row = await db.execute(
+        select(Organisation).where(Organisation.organisation_id == payroll.organisation_id)
+    )
+    org = org_row.scalar_one_or_none()
+    hr_settings = (org.hr_settings or {}) if org else {}
+    payroll_cfg = hr_settings.get("payroll") or {}
+
+    apply_lop = bool(payroll_cfg.get("apply_lop_deduction", True))
+    lop_name = str(payroll_cfg.get("lop_component_name", "LOP"))
+    lop_half = bool(payroll_cfg.get("lop_include_half_day_units", False))
+    override_payable = payroll_cfg.get("payable_days_override")
+
+    units_agg, _att_rows = await aggregate_attendance_leave_units(
+        db,
+        payroll.organisation_id,
+        pay_period.start_date,
+        pay_period.end_date,
+    )
+
+    lop_comp = None
+    if apply_lop:
+        lop_comp = await find_salary_component_by_name(
+            db, payroll.organisation_id, lop_name, component_type="deduction"
+        )
 
     for emp in employees:
 
         salary_structure = await get_employee_salary_structure(
             db,
-            emp.employee_id
+            emp.employee_id,
+            org_scope,
         )
 
         if not salary_structure:
@@ -280,13 +316,16 @@ async def process_payroll_run(
 
         components = await get_template_components(
             db,
-            salary_structure.template_id
+            salary_structure.template_id,
+            org_scope,
         )
+
+        template_component_ids = {c.component_id for c in components}
 
         component_map = {}
 
         for c in components:
-            comp = await get_salary_component(db, c.component_id)
+            comp = await get_salary_component(db, c.component_id, org_scope)
             component_map[c.component_id] = comp
 
         salary = calculate_salary(
@@ -298,6 +337,8 @@ async def process_payroll_run(
         for comp in components:
 
             component = component_map[comp.component_id]
+            if not component:
+                continue
 
             value = salary["earnings"].get(component.component_id)
 
@@ -323,17 +364,66 @@ async def process_payroll_run(
                 )
             )
 
+        if apply_lop and lop_comp and lop_comp.component_id not in template_component_ids:
+            bucket = units_agg.get(emp.employee_id) or {}
+            absent_u = bucket.get("absent_units", Decimal("0"))
+            lop_lv = bucket.get("lop_leave_units", Decimal("0"))
+            half_u = bucket.get("half_day_units", Decimal("0"))
+            lop_units = absent_u + lop_lv
+            if lop_half:
+                lop_units += half_u
+
+            if override_payable is not None:
+                payable_days = Decimal(str(override_payable))
+            else:
+                payable_days = Decimal(
+                    (pay_period.end_date - pay_period.start_date).days + 1
+                )
+
+            gross_dec = Decimal(str(salary["gross_salary"]))
+            per_day = (gross_dec / payable_days) if payable_days > 0 else Decimal("0")
+            lop_amount = (lop_units * per_day).quantize(Decimal("0.01"))
+
+            if lop_amount > 0:
+                deduction_total += lop_amount
+                await add_payroll_entry(
+                    db,
+                    PayrollEntryCreate(
+                        payroll_run_id=payroll_run_id,
+                        employee_id=emp.employee_id,
+                        component_id=lop_comp.component_id,
+                        pay_period_id=payroll.pay_period_id,
+                        amount=lop_amount,
+                        meta={
+                            "kind": "lop_auto",
+                            "lop_units": float(lop_units),
+                            "per_day_rate": float(per_day),
+                            "payable_days": float(payable_days),
+                            "basis": "gross_salary",
+                        },
+                    ),
+                )
+
     net_total = gross_total - deduction_total
 
     payroll.status = "processed"
     payroll.gross_pay_total = gross_total
     payroll.net_pay_total = net_total
     payroll.processed_by = processed_by
-    payroll.processed_at = datetime.utcnow()
+    payroll.processed_at = datetime.now(timezone.utc)
 
     try:
         print("Processed By:", processed_by)
         db.add(payroll)
+        await db.execute(
+            update(PayPeriod)
+            .where(PayPeriod.pay_period_id == payroll.pay_period_id)
+            .values(
+                attendance_leave_locked=True,
+                locked_at=datetime.now(timezone.utc),
+                locked_by_payroll_run_id=payroll_run_id,
+            )
+        )
         await db.commit()
         await db.refresh(payroll)
 
