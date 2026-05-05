@@ -13,7 +13,13 @@ name: CI/CD
 
 on:
   push:
+    branches:
+      - master
+      - main
   pull_request:
+    branches:
+      - master
+      - main
 
 # Queue runs per ref; do not cancel in progress (avoids cutting a deploy mid-flight)
 concurrency:
@@ -102,7 +108,7 @@ jobs:
     needs:
       - backend-ci
       - frontend-ci
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
 
     steps:
       - name: Start ssh-agent
@@ -126,8 +132,8 @@ jobs:
           cd /var/www/yourapp
 
           # 2) Deterministic sync to remote main (avoids merge commits / conflict states)
-          git fetch origin main
-          git reset --hard origin/main
+          git fetch origin master
+          git reset --hard origin/master
 
           # 3) Backend virtualenv + dependencies
           source venv/bin/activate
