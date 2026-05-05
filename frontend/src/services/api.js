@@ -1,12 +1,15 @@
 import axios from "axios";
 
 // 🔥 Environment-aware base URL
+// Local dev: CRA on 9999 → API on 9000. Production behind nginx: same-origin /api.
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
   process.env.REACT_APP_API_URL ||
-  (window.location.hostname === "localhost"
-    ? "http://localhost:9000/api"   // ✅ local dev
-    : "https://api.brixigo.com/api"); // ✅ production
+  (typeof window !== "undefined" &&
+  (window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1")
+    ? "http://localhost:9000/api"
+    : `${window.location.origin}/api`);
 
 const API = axios.create({
   baseURL: BASE_URL,

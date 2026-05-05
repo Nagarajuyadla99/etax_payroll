@@ -26,15 +26,31 @@ import models  # noqa: F401
 
 target_metadata = Base.metadata
 
-database_url = os.getenv("DATABASE_URL")
-if database_url:
-    # Alembic env uses sync engine_from_config; convert async driver URL if needed.
-    config.set_main_option(
-        "sqlalchemy.url",
-        database_url.replace("+asyncpg", "+psycopg2"),
-    )
+# ---------------------------------------------------------------------------
+# Database URL — never hardcode secrets here.
+# - Production/staging: set DATABASE_URL (and optionally in .env loaded above).
+# - CI / offline checks: unset DATABASE_URL → SQLite file URL (no server needed).
+# Alembic uses a synchronous engine; async URLs are mapped to a sync driver below.
+# ---------------------------------------------------------------------------
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///./test.db",
+)
 
-# other values from the config, defined by the needs of env.py,
+
+def _sync_sqlalchemy_url_for_alembic(raw: str) -> str:
+    """Map app-style async URLs to a sync URL Alembic's engine can use."""
+    if "+asyncpg" in raw:
+        return raw.replace("+asyncpg", "+psycopg2")
+    return raw
+
+
+config.set_main_option(
+    "sqlalchemy.url",
+    _sync_sqlalchemy_url_for_alembic(DATABASE_URL),
+)
+
+# other values from the config file, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
@@ -48,8 +64,8 @@ def run_migrations_offline() -> None:
     here as well.  By skipping the Engine creation
     we don't even need a DBAPI to be available.
 
-    Calls to context.execute() here emit the given string to the
-    script output.
+    Calls to context.execute() here emit the given string to
+    the script output.
 
     """
     url = config.get_main_option("sqlalchemy.url")

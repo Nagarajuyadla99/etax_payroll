@@ -72,6 +72,13 @@ app.include_router(payslip_router, prefix=API_PREFIX)
 app.include_router(org_router, prefix=API_PREFIX + "/organisation")
 app.include_router(onboarding, prefix="/api")
 
+
+# Used by deploy pipeline / load balancers (health check on localhost:9000)
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
+
 # create tables on startup
 @app.on_event("startup")
 async def startup():

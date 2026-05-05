@@ -1,5 +1,8 @@
 # payroll_system/database.py
 
+import os
+
+from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import (
     AsyncSession,
     create_async_engine,
@@ -8,11 +11,15 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 from typing import AsyncGenerator
 
+load_dotenv()
 
 # ------------------------------------------------------------
-# PostgreSQL Connection URL
+# PostgreSQL connection (systemd can set DATABASE_URL via EnvironmentFile)
 # ------------------------------------------------------------
-DATABASE_URL = "postgresql+asyncpg://postgres:96188@localhost:5432/payroll_db"
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://postgres:96188@localhost:5432/payroll_db",
+)
 
 
 # ------------------------------------------------------------
