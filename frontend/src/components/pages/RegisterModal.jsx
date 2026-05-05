@@ -1,7 +1,6 @@
 import { useState, useContext, useEffect, useRef } from "react";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
 import "./auth.css";
-import { forgotPassword } from "../../Moduels/auth/auth";
 import logo1 from "../assets/images/logo_brixigo3.png"
 
 export default function RegisterModal({ onClose }) {
