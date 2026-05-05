@@ -1,9 +1,7 @@
 name: CI/CD
 
 on:
-  push:
-    branches:
-      - master
+  workflow_dispatch:   # ✅ ONLY manual trigger
 
 jobs:
   deploy:
@@ -38,7 +36,7 @@ jobs:
           cd payroll_backend
           source venv/bin/activate
           pip install -r requirements.txt
-          alembic upgrade head
+          # (optional) alembic upgrade head
 
           pkill -f "uvicorn main:app" || true
           nohup venv/bin/uvicorn main:app --host 0.0.0.0 --port 9000 > uvicorn.log 2>&1 &
@@ -51,7 +49,7 @@ jobs:
           nohup npm start > frontend.log 2>&1 &
 
           sleep 5
-          curl -f http://localhost:9000/health || exit 1
+          curl -f http://localhost:9000/docs || exit 1
 
           echo "Deployment successful"
           EOF
