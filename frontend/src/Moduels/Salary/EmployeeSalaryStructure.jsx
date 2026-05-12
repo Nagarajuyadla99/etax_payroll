@@ -4,7 +4,7 @@ import {
   assignEmployeeSalary,
   listEmployeeSalaryStructures
 } from "./SalaryApi";
-import axios from "axios";
+import API from "../../services/api";
 
 export default function EmployeeSalaryStructure() {
 
@@ -25,19 +25,8 @@ export default function EmployeeSalaryStructure() {
   },[])
 
   async function loadEmployees(){
-
-    const token = localStorage.getItem("token")
-
-    const res = await axios.get(
-      "http://127.0.0.1:9000/api/employees/",
-      {
-        headers:{
-          Authorization:`Bearer ${token}`
-        }
-      }
-    )
-
-    setEmployees(res.data)
+    const res = await API.get("/employees/");
+    setEmployees(res.data);
   }
 
   async function loadTemplates(){

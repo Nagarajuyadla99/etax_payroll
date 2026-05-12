@@ -20,35 +20,88 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 # ============================================================
 
 async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
-    q = await db.execute(
+    return await get_user_by_email_in_org(db, email=email, organisation_id=None)
+
+
+async def get_user_by_email_in_org(
+    db: AsyncSession,
+    *,
+    email: str,
+    organisation_id: UUID | None,
+) -> Optional[User]:
+    stmt = (
         select(User)
-        .options(selectinload(User.roles))   
-        .filter(User.email == email)
+        .options(selectinload(User.roles))
+        .where(User.email == email)
     )
-    return q.scalar_one_or_none()
+    if organisation_id is not None:
+        stmt = stmt.where(User.organisation_id == organisation_id)
+
+    q = await db.execute(stmt)
+    rows = q.scalars().all()
+    if not rows:
+        return None
+    if organisation_id is None and len(rows) > 1:
+        raise ValueError("Ambiguous email across organisations")
+    return rows[0]
 
 
 async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
-    q = await db.execute(
+    return await get_user_by_username_in_org(db, username=username, organisation_id=None)
+
+
+async def get_user_by_username_in_org(
+    db: AsyncSession,
+    *,
+    username: str,
+    organisation_id: UUID | None,
+) -> Optional[User]:
+    stmt = (
         select(User)
-        .options(selectinload(User.roles))  
-        .filter(User.username == username)
+        .options(selectinload(User.roles))
+        .where(User.username == username)
     )
-    return q.scalar_one_or_none()
+    if organisation_id is not None:
+        stmt = stmt.where(User.organisation_id == organisation_id)
+
+    q = await db.execute(stmt)
+    rows = q.scalars().all()
+    if not rows:
+        return None
+    if organisation_id is None and len(rows) > 1:
+        raise ValueError("Ambiguous username across organisations")
+    return rows[0]
 
 
 async def get_user_by_id(db: AsyncSession, user_id: UUID) -> Optional[User]:
-    q = await db.execute(
+    stmt = (
         select(User)
-        .options(selectinload(User.roles))   
-        .filter(User.user_id == user_id)
+        .options(selectinload(User.roles))
+        .where(User.user_id == user_id)
     )
+    q = await db.execute(stmt)
+    return q.scalar_one_or_none()
+
+
+async def get_user_by_id_in_org(db: AsyncSession, *, user_id: UUID, organisation_id: UUID) -> Optional[User]:
+    stmt = (
+        select(User)
+        .options(selectinload(User.roles))
+        .where(User.user_id == user_id, User.organisation_id == organisation_id)
+    )
+    q = await db.execute(stmt)
     return q.scalar_one_or_none()
 
 
 async def list_users(db: AsyncSession) -> List[User]:
+    raise RuntimeError("Use list_users_in_org() for tenant isolation")
+
+
+async def list_users_in_org(db: AsyncSession, *, organisation_id: UUID) -> List[User]:
     q = await db.execute(
-        select(User).options(selectinload(User.roles))  
+        select(User)
+        .options(selectinload(User.roles))
+        .where(User.organisation_id == organisation_id)
     )
     return q.scalars().all()
 

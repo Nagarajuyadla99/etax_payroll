@@ -570,14 +570,12 @@ export default function EmployeeCreate() {
 
   useEffect(() => {
     const fetchData = async () => {
-      const token = localStorage.getItem("token");
-      const headers = { Authorization: `Bearer ${token}` };
       try {
         const [dept, des, loc, mgr] = await Promise.all([
-          API.get("/setup/departments", { headers }),
-          API.get("/setup/designations", { headers }),
-          API.get("/setup/locations", { headers }),
-          API.get("/employees", { headers }),
+          API.get("/setup/departments"),
+          API.get("/setup/designations"),
+          API.get("/setup/locations"),
+          API.get("/employees"),
         ]);
         setDepartments(dept.data);
         setDesignations(des.data);

@@ -1,32 +1,22 @@
 import API from "../../services/api";
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("token");
-  return {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  };
-};
-
-
 export const getEmployees = async () => {
-  const { data } = await API.get("/employees/", getAuthHeaders());
+  const { data } = await API.get("/employees/");
   return data;
 };
 
 export const createEmployee = async (payload) => {
-  const { data } = await API.post("/employees/", payload, getAuthHeaders());
+  const { data } = await API.post("/employees/", payload);
   return data;
 };
 
 export const deleteEmployee = async (id) => {
-  const { data } = await API.delete(`/employees/${id}`, getAuthHeaders());
+  const { data } = await API.delete(`/employees/${id}`);
   return data;
 };
 
 export const updateEmployee = async (id, data) => {
-  const { data: updatedEmployee } = await API.put(`/employees/${id}`, data, getAuthHeaders());
+  const { data: updatedEmployee } = await API.put(`/employees/${id}`, data);
   return updatedEmployee;
 };
 
@@ -34,16 +24,7 @@ export const bulkUploadEmployees = async (file) => {
   const formData = new FormData();
   formData.append("file", file);
 
-  const { data } = await API.post(
-    "/employees/bulk-upload",
-    formData,
-    {
-      headers: {
-        ...getAuthHeaders().headers,
-        "Content-Type": "multipart/form-data",
-      },
-    }
-  );
+  const { data } = await API.post("/employees/bulk-upload", formData);
 
   return data;
 };
@@ -55,7 +36,7 @@ export const fetchFKData = async () => {
     API.get("/designations/"),
     API.get("/locations/"),
     API.get("/employees/"),
-    API.get("/pay_structures/")
+    API.get("/pay_structures/"),
   ]);
 
   return {

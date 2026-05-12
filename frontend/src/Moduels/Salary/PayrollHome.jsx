@@ -17,6 +17,8 @@ import {
   Search,
   BarChart3,
   ClipboardList,
+  LayoutList,
+  ShieldCheck,
 } from "lucide-react";
 import FeatureCard from "./components/FeatureCard";
 
@@ -89,6 +91,23 @@ const MODULES = [
     badge: "important",
   },
   {
+    id: "payroll-batch",
+    title: "Batch Process Payroll",
+    description: "Queue multiple payroll runs and track async status.",
+    route: "/payroll-batch",
+    icon: LayoutList,
+    section: "processing",
+  },
+  {
+    id: "payroll-finalize",
+    title: "Finalize Payroll",
+    description: "Verify, approve, and lock payroll (Phase 4).",
+    route: "/payroll-finalize",
+    icon: ShieldCheck,
+    section: "processing",
+    badge: "important",
+  },
+  {
     id: "payroll-summary",
     title: "Payroll Summary",
     description: "View payroll totals and statistics.",
@@ -107,7 +126,7 @@ const MODULES = [
   {
     id: "payslips",
     title: "Payslips",
-    description: "Download employee payslips.",
+    description: "View or download payslips (locked payroll only).",
     route: "/payslip",
     icon: Download,
     section: "processing",

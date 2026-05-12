@@ -1,6 +1,10 @@
 # payroll_management/api/payroll_routes.py
 
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import IntegrityError, ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
@@ -11,6 +15,7 @@ from schemas.payroll_schemas import (
     PayrollRunOut,
     PayPeriodCreate,
     PayPeriodOut,
+    PayrollBatchProcessRequest,
 )
 
 from crud.payroll_crud import (
@@ -19,17 +24,37 @@ from crud.payroll_crud import (
     process_payroll_run,
     create_pay_period,
     get_pay_period,
-    get_payroll_summary
+    get_payroll_summary,
+    compute_payroll_process_input_hash,
+    verify_payroll_run_replay,
+    build_payroll_execution_trace,
+    mark_payroll_run_queued,
 )
 from services.payroll_report_service import generate_salary_statement,generate_tds_summary,generate_payroll_register
 from services.payroll_attendance_summary_service import build_pay_period_attendance_summary
 from utils.rbac import require_roles
+from utils.idempotency import idempotency_replay_or_none, idempotency_store
+from services.payroll_lifecycle_service import (
+    approve_payroll_lifecycle,
+    deny_if_locked_with_audit,
+    list_lifecycle_audit_for_run,
+    lock_payroll_lifecycle,
+    verify_payroll_lifecycle,
+)
 
 
 router = APIRouter(
     prefix="/payrolls",
     tags=["Payroll"],
 )
+
+
+def _org_id(current_user):
+    return getattr(current_user, "organisation_id", None) or getattr(current_user, "org_id", None)
+
+
+def _user_id(current_user):
+    return getattr(current_user, "user_id", None) or getattr(current_user, "id", None)
 
 
 # ============================================================
@@ -129,6 +154,55 @@ async def pay_period_attendance_summary_route(
 
 
 # ============================================================
+# PAYROLL OBSERVABILITY (Phase 3b)
+# ============================================================
+
+
+@router.get(
+    "/{payroll_run_id}/execution-trace",
+    status_code=status.HTTP_200_OK,
+    summary="Trace viewer: DAG plan (introspection) + persisted component lines",
+)
+async def payroll_execution_trace(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    org_id = _org_id(current_user)
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        return await build_payroll_execution_trace(db, payroll_run_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post(
+    "/{payroll_run_id}/replay-verify",
+    status_code=status.HTTP_200_OK,
+    summary="Replay engine from stored input snapshot and compare to persisted entries",
+)
+async def payroll_replay_verify(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    org_id = _org_id(current_user)
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    try:
+        return await verify_payroll_run_replay(db, payroll_run_id)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+# ============================================================
 # GET PAYROLL RUN
 # ============================================================
 
@@ -151,7 +225,250 @@ async def get_payroll(
             detail="Payroll record not found"
         )
 
+    org_id = _org_id(current_user)
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
     return payroll
+
+
+# ============================================================
+# PHASE 4 — LIFECYCLE (verify → approve → lock)
+# ============================================================
+
+
+@router.post(
+    "/{payroll_run_id}/lifecycle/verify",
+    response_model=PayrollRunOut,
+    summary="Phase 4: verify payroll (draft → verified)",
+)
+async def payroll_lifecycle_verify(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    org_id = _org_id(current_user)
+    uid = _user_id(current_user)
+    if not uid:
+        raise HTTPException(status_code=401, detail="User id missing")
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return await verify_payroll_lifecycle(db, payroll_run_id, org_id, UUID(str(uid)))
+
+
+@router.post(
+    "/{payroll_run_id}/lifecycle/approve",
+    response_model=PayrollRunOut,
+    summary="Phase 4: approve payroll (verified → approved)",
+)
+async def payroll_lifecycle_approve(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    org_id = _org_id(current_user)
+    uid = _user_id(current_user)
+    if not uid:
+        raise HTTPException(status_code=401, detail="User id missing")
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return await approve_payroll_lifecycle(db, payroll_run_id, org_id, UUID(str(uid)))
+
+
+@router.post(
+    "/{payroll_run_id}/lifecycle/lock",
+    response_model=PayrollRunOut,
+    summary="Phase 4: lock payroll permanently (approved → locked); admin only",
+)
+async def payroll_lifecycle_lock(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin"])),
+):
+    org_id = _org_id(current_user)
+    uid = _user_id(current_user)
+    if not uid:
+        raise HTTPException(status_code=401, detail="User id missing")
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    return await lock_payroll_lifecycle(db, payroll_run_id, org_id, UUID(str(uid)))
+
+
+@router.get(
+    "/{payroll_run_id}/lifecycle/audit",
+    status_code=status.HTTP_200_OK,
+    summary="Phase 4: audit log entries for this payroll run",
+)
+async def payroll_lifecycle_audit_list(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    org_id = _org_id(current_user)
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+    items = await list_lifecycle_audit_for_run(
+        db, payroll_run_id, payroll.organisation_id
+    )
+    return {"payroll_run_id": str(payroll_run_id), "items": items}
+
+
+# ============================================================
+# BATCH PROCESS PAYROLL
+# ============================================================
+
+@router.post(
+    "/batch/process",
+    status_code=status.HTTP_200_OK,
+    summary="Process multiple payroll runs sequentially (same engine as single process)",
+)
+async def batch_process_payrolls(
+    body: PayrollBatchProcessRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+    parallelism: int | None = Query(None, ge=1, le=64),
+    shadow_legacy: bool = Query(False),
+):
+    org_id = _org_id(current_user)
+    uid = _user_id(current_user)
+    processed_by = UUID(str(uid)) if uid else None
+    sorted_ids = sorted(body.payroll_run_ids, key=lambda x: str(x))
+    first_payroll = await get_payroll_by_id(db, sorted_ids[0])
+    if not first_payroll:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Payroll run not found: {sorted_ids[0]}",
+        )
+    if org_id and str(first_payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    key = request.headers.get("Idempotency-Key")
+    path = str(request.url.path)
+    fingerprints: list[str] = []
+    for rid in sorted_ids:
+        fingerprints.append(await compute_payroll_process_input_hash(db, rid))
+    payload_dict = {
+        "payroll_run_ids": [str(x) for x in sorted_ids],
+        "input_fingerprints": fingerprints,
+    }
+    idempo_org = org_id or first_payroll.organisation_id
+    replay = await idempotency_replay_or_none(
+        db=db,
+        organisation_id=idempo_org,
+        key=key,
+        method="POST",
+        path=path,
+        payload_dict=payload_dict,
+    )
+    if replay:
+        if response is not None:
+            response.status_code = int(replay["status_code"])
+            response.headers["x-idempotent-replay"] = "true"
+        return replay["data"]
+
+    uid_uuid = processed_by
+    for pr_id in sorted_ids:
+        pr = await get_payroll_by_id(db, pr_id)
+        if not pr:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Payroll run not found: {pr_id}",
+            )
+        await deny_if_locked_with_audit(
+            db,
+            pr,
+            idempo_org,
+            uid_uuid,
+            "BATCH_PROCESS_PAYROLL",
+        )
+
+    use_celery = os.getenv("PAYROLL_USE_CELERY", "false").lower() == "true"
+    if use_celery:
+        from payroll.tasks import payroll_orchestrate_run_task
+
+        task_ids: list[str] = []
+        for pr_id in sorted_ids:
+            try:
+                await mark_payroll_run_queued(db, pr_id)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+            task_ids.append(
+                payroll_orchestrate_run_task.delay(
+                    str(pr_id),
+                    str(uid),
+                    shadow_legacy,
+                ).id
+            )
+        data = {
+            "queued": True,
+            "celery_task_ids": task_ids,
+            "payroll_run_ids": [str(x) for x in sorted_ids],
+        }
+        await idempotency_store(
+            db=db,
+            organisation_id=idempo_org,
+            key=key,
+            method="POST",
+            path=path,
+            payload_dict=payload_dict,
+            status_code=202,
+            response_json=data,
+        )
+        return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content=data)
+
+    results: list[dict] = []
+    for payroll_run_id in body.payroll_run_ids:
+        payroll = await get_payroll_by_id(db, payroll_run_id)
+        if not payroll:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Payroll run not found: {payroll_run_id}",
+            )
+        if str(payroll.organisation_id) != str(first_payroll.organisation_id):
+            raise HTTPException(
+                status_code=400,
+                detail="All payroll_run_ids must belong to the same organisation",
+            )
+        if org_id and str(payroll.organisation_id) != str(org_id):
+            raise HTTPException(status_code=403, detail="Forbidden")
+        try:
+            await process_payroll_run(
+                db,
+                payroll_run_id,
+                processed_by,
+                max_parallel=parallelism,
+                shadow_legacy=shadow_legacy,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        results.append({"payroll_run_id": str(payroll_run_id), "status": "processed"})
+
+    data = {"results": results}
+    await idempotency_store(
+        db=db,
+        organisation_id=idempo_org,
+        key=key,
+        method="POST",
+        path=path,
+        payload_dict=payload_dict,
+        status_code=200,
+        response_json=data,
+    )
+    return data
 
 
 # ============================================================
@@ -161,34 +478,129 @@ async def get_payroll(
 @router.post(
     "/{payroll_run_id}/process",
     status_code=status.HTTP_200_OK,
-    summary="Process payroll"
+    summary="Process payroll (Phase 2 engine via orchestration)"
 )
 async def process_payroll(
     payroll_run_id: UUID,
+    request: Request,
+    response: Response,
     db: AsyncSession = Depends(get_async_db),
     current_user = Depends(require_roles(["admin", "hr"])),
+    parallelism: int | None = Query(None, ge=1, le=64, description="Max concurrent employees"),
+    shadow_legacy: bool = Query(
+        False,
+        description="Optional legacy calculator comparison (observability only)",
+    ),
 ):
+    org_id = _org_id(current_user)
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
 
+    uid = _user_id(current_user)
+    processed_by = UUID(str(uid)) if uid else None
+    await deny_if_locked_with_audit(
+        db,
+        payroll,
+        org_id or payroll.organisation_id,
+        UUID(str(uid)) if uid else None,
+        "PROCESS_PAYROLL",
+    )
+
+    idempo_org = org_id or payroll.organisation_id
+    key = request.headers.get("Idempotency-Key")
+    path = str(request.url.path)
+    input_fp = await compute_payroll_process_input_hash(db, payroll_run_id)
+    payload_dict = {"payroll_run_id": str(payroll_run_id), "input_fingerprint": input_fp}
+    replay = await idempotency_replay_or_none(
+        db=db,
+        organisation_id=idempo_org,
+        key=key,
+        method="POST",
+        path=path,
+        payload_dict=payload_dict,
+    )
+    if replay:
+        if response is not None:
+            response.status_code = int(replay["status_code"])
+            response.headers["x-idempotent-replay"] = "true"
+        return replay["data"]
+
+    use_celery = os.getenv("PAYROLL_USE_CELERY", "false").lower() == "true"
+    if use_celery:
+        try:
+            await mark_payroll_run_queued(db, payroll_run_id)
+            from payroll.tasks import payroll_orchestrate_run_task
+
+            async_result = payroll_orchestrate_run_task.delay(
+                str(payroll_run_id),
+                str(uid),
+                shadow_legacy,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+
+        data = {
+            "message": "Payroll queued for distributed processing",
+            "payroll_run_id": str(payroll_run_id),
+            "queued": True,
+            "celery_task_id": async_result.id,
+            "processed_by": str(uid),
+        }
+        await idempotency_store(
+            db=db,
+            organisation_id=idempo_org,
+            key=key,
+            method="POST",
+            path=path,
+            payload_dict=payload_dict,
+            status_code=202,
+            response_json=data,
+        )
+        return JSONResponse(status_code=status.HTTP_202_ACCEPTED, content=data)
 
     try:
-
         await process_payroll_run(
             db,
             payroll_run_id,
-            current_user.user_id
+            processed_by,
+            max_parallel=parallelism,
+            shadow_legacy=shadow_legacy,
         )
-
-        return {
-            "message": "Payroll processed successfully",
-            "payroll_run_id": str(payroll_run_id),
-            "processed_by": str(current_user.user_id)
-        }
-
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except ProgrammingError:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Payroll database schema is missing required tables or columns. "
+                "Restart the backend after deploying the latest server."
+            ),
+        )
+    except IntegrityError:
         raise HTTPException(
             status_code=400,
-            detail=str(e)
+            detail="Could not finalize payroll run. Confirm your signed-in user exists in payroll.",
         )
+
+    data = {
+        "message": "Payroll processed successfully",
+        "payroll_run_id": str(payroll_run_id),
+        "processed_by": str(uid),
+    }
+    await idempotency_store(
+        db=db,
+        organisation_id=idempo_org,
+        key=key,
+        method="POST",
+        path=path,
+        payload_dict=payload_dict,
+        status_code=200,
+        response_json=data,
+    )
+    return data
 
 # ============================================================
 # PAYROLL SUMMARY

@@ -1,7 +1,15 @@
 import axios from "axios";
+import {
+  getStoredAccessToken,
+  isPublicAuthRequestUrl,
+  shouldRedirectToLoginOn401,
+  clearAuthSession,
+} from "../utils/authSession";
 
-// 🔥 Environment-aware base URL
-// Local dev: CRA on 9999 → API on 9000. Production behind nginx: same-origin /api.
+const AUTH_DEBUG =
+  typeof process !== "undefined" && process.env?.NODE_ENV === "development";
+
+// Environment-aware base URL: CRA dev → API :9000; production → same-origin /api.
 const BASE_URL =
   process.env.REACT_APP_API_BASE_URL ||
   process.env.REACT_APP_API_URL ||
@@ -16,12 +24,22 @@ const API = axios.create({
   withCredentials: false,
 });
 
-// 🔐 Attach token automatically
 API.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    const token = getStoredAccessToken();
+
+    if (AUTH_DEBUG) {
+      const rel = config.url || "";
+      console.debug("[auth][request]", {
+        method: (config.method || "get").toUpperCase(),
+        baseURL: config.baseURL,
+        url: rel,
+        hasBearer: Boolean(token),
+      });
+    }
 
     if (token) {
+      config.headers = config.headers || {};
       config.headers.Authorization = `Bearer ${token}`;
     }
 
@@ -30,7 +48,6 @@ API.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// 🚨 Global error handling
 API.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -38,24 +55,22 @@ API.interceptors.response.use(
     const url = error?.config?.url || "";
     const method = (error?.config?.method || "get").toUpperCase();
 
-    // 🔒 Handle unauthorized
-    if (status === 401) {
-      // /users/me supports all principals; keep 401 handling scoped if needed.
-      if (!url.includes("/users/me")) {
-        localStorage.removeItem("token");
-        if (window.location.pathname !== "/login") {
-          window.location.href = "/login";
-        }
+    if (status === 401 && !isPublicAuthRequestUrl(url)) {
+      const hadToken = Boolean(getStoredAccessToken());
+      clearAuthSession(
+        hadToken ? "401_unauthorized" : "401_no_valid_session"
+      );
+      if (shouldRedirectToLoginOn401()) {
+        window.location.replace("/login");
       }
     }
 
-    // Optional: log for debugging
-    if (process.env.NODE_ENV === "development") {
+    if (AUTH_DEBUG) {
       const requestId =
         error.response?.headers?.["x-request-id"] ||
         error.response?.headers?.["X-Request-Id"];
 
-      console.error("API Error", {
+      console.error("[api] error", {
         method,
         baseURL: error?.config?.baseURL,
         url,

@@ -62,6 +62,14 @@ export const SIDEBAR_CONFIG = [
       //   ],
       // },
       { key: "pay_runs", label: "Pay Runs", icon: "wallet", path: "/payrollhome", color: "ic-blue" },
+      {
+        key: "salary_v2",
+        label: "Salary Engine (v2)",
+        icon: "layers",
+        path: "/salary-v2",
+        color: "ic-purple",
+        roles: ["admin", "hr"],
+      },
     ],
   },
   {
@@ -79,7 +87,6 @@ export const SIDEBAR_CONFIG = [
           { key: "attendance_table", label: "Attendance Table", icon: "layers", path: "/attendanceTable", color: "ic-slate" },
           { key: "attendance_bulk_upload", label: "Bulk Upload", icon: "upload", path: "/attendanceBulkUpload", color: "ic-purple" },
           { key: "attendance_apply_calendar", label: "Apply Calendar", icon: "zap", path: "/attendanceApplyCalendar", color: "ic-amber" },
-          { key: "create_leave", label: "Create Leave", icon: "file-text", path: "/create-leave", color: "ic-purple" },
           { key: "leave_approval", label: "Leave Approval", icon: "check-circle", path: "/leaveApproval", color: "ic-green" },
         ],
       },
@@ -244,7 +251,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange, onRequestClose 
         ═══════════════════════════════════════ */
         .sb {
           height: 100vh;
-          width: 252px;
+          width: var(--sidebar-width, 240px);
           background: var(--bg-surface, #FFFFFF);
           border-right: 1px solid var(--border, #E2E8F0);
           display: flex;
@@ -377,6 +384,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange, onRequestClose 
           color: var(--blue-700, #1D4ED8);
           font-weight: 600;
           border-left-color: var(--blue-600, #2563EB);
+          box-shadow: inset 3px 0 0 var(--blue-600, #2563EB);
         }
 
         /* Icon */
@@ -580,7 +588,7 @@ export default function Sidebar({ mobileOpen, onCollapsedChange, onRequestClose 
                 src={logo1}
                 alt="Brixigo"
                 style={{
-                  height: 50,
+                  height: 40,
                   width: "auto",
                   objectFit: "contain"
                 }}
@@ -673,9 +681,16 @@ function SidebarNode({ item, collapsed, openMenus, onToggle }) {
 
 function SbItem({ to, label, iconName, color, collapsed }) {
   const Icon = ICONS[iconName] || FileText;
+  const location = useLocation();
   return (
     <div className="sb-tooltip-wrap">
-      <NavLink to={to} className={({ isActive }) => `sb-item ${isActive ? "active" : ""}`}>
+      <NavLink
+        to={to}
+        className={({ isActive }) => {
+          const active = isActive || (to !== "/dashboard" && location.pathname.startsWith(`${to}/`));
+          return `sb-item ${active ? "active" : ""}`;
+        }}
+      >
         <div className={`sb-icon ${color}`}>
           <Icon size={14} />
         </div>

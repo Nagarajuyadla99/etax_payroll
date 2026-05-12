@@ -11,9 +11,10 @@ from models.employee_model import Employee
 from models.user_models import User
 from schemas.user_schemas import UserRead
 from schemas.me_schemas import MeResponse, OrganisationMeSummary, EmployeeMeSummary
-from crud.user_crud import get_user_by_id, list_users
+from crud.user_crud import get_user_by_id_in_org, list_users_in_org
 from utils.dependencies import AuthSubject, get_current_auth, get_admin_user, resolve_organisation_id
 from utils.rbac import get_principal_role
+from utils.rbac import require_roles
 
 
 # ✅ Keep prefix → avoids conflicts with /api/me, /api/setup, etc.
@@ -25,11 +26,15 @@ router = APIRouter(prefix="/users", tags=["Users"])
 @router.get("/", response_model=list[UserRead])
 async def get_all_users(
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user)
+    auth: AuthSubject = Depends(get_current_auth),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     """Admin: Get list of all users"""
     try:
-        return await list_users(db)
+        org_id = resolve_organisation_id(auth.principal, auth.payload)
+        if not org_id:
+            raise HTTPException(status_code=400, detail="Organisation context missing")
+        return await list_users_in_org(db, organisation_id=org_id)
     except SQLAlchemyError as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -88,10 +93,14 @@ async def get_my_profile(
 async def get_user_by_id_route(
     user_id: UUID,   # ✅ FIX: enforce UUID (prevents 'employees' crash)
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user)
+    auth: AuthSubject = Depends(get_current_auth),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     try:
-        user = await get_user_by_id(db, user_id)
+        org_id = resolve_organisation_id(auth.principal, auth.payload)
+        if not org_id:
+            raise HTTPException(status_code=400, detail="Organisation context missing")
+        user = await get_user_by_id_in_org(db, user_id=user_id, organisation_id=org_id)
 
         if not user:
             raise HTTPException(

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { getPayrollSummary } from "../payroll/payrollApi";
+import { usePrefilledPayrollRunId } from "./payrollWorkflow";
 
 export default function PayrollSummary(){
 
   const [id,setId] = useState("");
   const [summary,setSummary] = useState(null);
+
+  usePrefilledPayrollRunId(setId);
 
   const loadSummary = async () => {
 

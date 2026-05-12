@@ -1,7 +1,7 @@
 # payroll_system/schemas/payroll_schemas.py
 
 from pydantic import BaseModel, ConfigDict, Field
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from datetime import date, datetime
 from decimal import Decimal
@@ -51,6 +51,18 @@ class PayrollRunBase(BaseModel):
     notes: Optional[str] = None
     gross_pay_total: Decimal = Field(default=Decimal("0.00"))
     net_pay_total: Decimal = Field(default=Decimal("0.00"))
+    execution_trace_id: Optional[UUID] = None
+    execution_meta: Optional[dict] = None
+    execution_status: Optional[str] = None
+    # Phase 4 lifecycle
+    lifecycle_status: Optional[str] = None
+    lifecycle_verified_at: Optional[datetime] = None
+    lifecycle_verified_by: Optional[UUID] = None
+    lifecycle_approved_at: Optional[datetime] = None
+    lifecycle_approved_by: Optional[UUID] = None
+    payroll_locked_at: Optional[datetime] = None
+    lifecycle_locked_by: Optional[UUID] = None
+    final_snapshot: Optional[dict] = None
 
 
 class PayrollRunCreate(BaseModel):
@@ -58,6 +70,10 @@ class PayrollRunCreate(BaseModel):
     organisation_id: UUID
     pay_period_id: UUID
     notes: Optional[str] = None
+
+
+class PayrollBatchProcessRequest(BaseModel):
+    payroll_run_ids: List[UUID]
 
 
 class PayrollRunUpdate(BaseModel):

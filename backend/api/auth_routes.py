@@ -55,7 +55,13 @@ async def login(
     db: AsyncSession = Depends(get_async_db)
 ):
 
-    user = await get_user_by_username(db, username)
+    try:
+        user = await get_user_by_username(db, username)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ambiguous username across organisations. Use a unique identifier.",
+        )
 
     if not user:
         raise HTTPException(
@@ -77,14 +83,23 @@ async def login(
             detail="User account is inactive"
         )
 
+    # RBAC contract (backward compatible):
+    # - canonical: user_id, org_id, role
+    # - legacy: sub, organisation_id
     token = create_access_token(
-    data={
-        "sub": user.username,
-        "organisation_id": str(user.organisation_id),
-        "role": (getattr(user, "role", None) or ("admin" if getattr(user, "is_system_admin", False) else "admin")),
-    },
-    expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-)
+        data={
+            "sub": user.username,  # legacy subject (username)
+            "type": "user",
+            "user_id": str(user.user_id),
+            "org_id": str(user.organisation_id),
+            "organisation_id": str(user.organisation_id),  # legacy key
+            "role": (
+                getattr(user, "role", None)
+                or ("admin" if getattr(user, "is_system_admin", False) else "admin")
+            ),
+        },
+        expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+    )
 
     return {
         "access_token": token,
@@ -134,10 +149,12 @@ async def login_unified(
             )
 
         token = create_access_token({
-            "sub": str(employee.employee_id),
+            "sub": str(employee.employee_id),  # legacy subject (employee_id)
             "type": "employee",
+            "user_id": str(employee.employee_id),
+            "org_id": str(employee.organisation_id),
+            "organisation_id": str(employee.organisation_id),  # legacy key
             "role": "employee",
-            "organisation_id": str(employee.organisation_id),
         })
 
         return {
@@ -152,7 +169,13 @@ async def login_unified(
         }
 
     # Else -> admin login flow (same as /auth/login)
-    user = await get_user_by_username(db, identifier)
+    try:
+        user = await get_user_by_username(db, identifier)
+    except ValueError:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ambiguous identifier across organisations. Use a unique identifier.",
+        )
     if not user or not verify_password(password, user.password_hash):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -166,9 +189,15 @@ async def login_unified(
 
     token = create_access_token(
         data={
-            "sub": user.username,
-            "organisation_id": str(user.organisation_id),
-            "role": (getattr(user, "role", None) or ("admin" if getattr(user, "is_system_admin", False) else "admin")),
+            "sub": user.username,  # legacy subject (username)
+            "type": "user",
+            "user_id": str(user.user_id),
+            "org_id": str(user.organisation_id),
+            "organisation_id": str(user.organisation_id),  # legacy key
+            "role": (
+                getattr(user, "role", None)
+                or ("admin" if getattr(user, "is_system_admin", False) else "admin")
+            ),
         },
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
@@ -195,7 +224,12 @@ async def register(
 ):
 
     # check email
-    existing_email = await get_user_by_email(db, user_in.email)
+    try:
+        existing_email = await get_user_by_email(db, user_in.email)
+    except ValueError:
+        # Same email exists in multiple orgs (should not happen if uniqueness is enforced),
+        # but in any case we must not allow a new tenant/admin with a reused identifier.
+        existing_email = True
     if existing_email:
         raise HTTPException(
             status_code=400,
@@ -203,11 +237,27 @@ async def register(
         )
 
     # check username
-    existing_user = await get_user_by_username(db, user_in.username)
+    try:
+        existing_user = await get_user_by_username(db, user_in.username)
+    except ValueError:
+        existing_user = True
     if existing_user:
         raise HTTPException(
             status_code=400,
             detail="Username already taken"
+        )
+
+    # prevent duplicate tenant creation (best-effort without DB unique constraint)
+    org_name = (user_in.organisation_name or "").strip()
+    if not org_name:
+        raise HTTPException(status_code=400, detail="Organisation name is required")
+    existing_org_q = await db.execute(
+        select(Organisation).where(Organisation.name == org_name)
+    )
+    if existing_org_q.scalar_one_or_none():
+        raise HTTPException(
+            status_code=400,
+            detail="Organisation name already exists",
         )
 
     # -------------------------
@@ -215,7 +265,7 @@ async def register(
     # -------------------------
 
     organisation = Organisation(
-        name=user_in.organisation_name
+        name=org_name
     )
 
     db.add(organisation)
@@ -336,8 +386,11 @@ async def google_callback(
     # generate JWT token (same claims as password login for downstream RBAC / org resolution)
     token = create_access_token(
         data={
-            "sub": user.username,
-            "organisation_id": str(user.organisation_id),
+            "sub": user.username,  # legacy subject (username)
+            "type": "user",
+            "user_id": str(user.user_id),
+            "org_id": str(user.organisation_id),
+            "organisation_id": str(user.organisation_id),  # legacy key
             "role": (
                 getattr(user, "role", None)
                 or ("admin" if getattr(user, "is_system_admin", False) else "admin")

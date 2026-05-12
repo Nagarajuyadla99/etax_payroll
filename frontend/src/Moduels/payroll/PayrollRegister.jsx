@@ -1,11 +1,14 @@
 import { useState } from "react";
-import { useNavigate, useNavigation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { getPayrollRegister } from "../payroll/payrollApi";
+import { usePrefilledPayrollRunId } from "./payrollWorkflow";
 
 export default function PayrollRegister(){
   const navigate = useNavigate()
   const [id,setId] = useState("");
   const [rows,setRows] = useState([]);
+
+  usePrefilledPayrollRunId(setId);
 
   const load = async () => {
 

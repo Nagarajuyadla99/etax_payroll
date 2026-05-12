@@ -60,6 +60,34 @@ class PayrollRun(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     gross_pay_total = Column(Numeric(18,2), server_default=text("0"))
     net_pay_total = Column(Numeric(18,2), server_default=text("0"))
+    execution_trace_id = Column(PGUUID(as_uuid=True), nullable=True)
+    execution_meta = Column(JSONB, nullable=True)
+    execution_status = Column(
+        String(32),
+        nullable=False,
+        server_default=text("'draft'"),
+    )
+    # Phase 4 lifecycle: NULL until execution completes, then draft → verified → approved → locked
+    lifecycle_status = Column(String(32), nullable=True)
+    lifecycle_verified_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    lifecycle_verified_by = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    lifecycle_approved_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    lifecycle_approved_by = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    payroll_locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    lifecycle_locked_by = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    final_snapshot = Column(JSONB, nullable=True)
     entries = relationship("PayrollEntry", back_populates="run", cascade="all, delete-orphan")
 
 

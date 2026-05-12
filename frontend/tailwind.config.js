@@ -5,6 +5,17 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["Inter", "-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+      },
+      fontSize: {
+        xs: ["0.75rem", { lineHeight: "1.25rem" }],
+        sm: ["0.8125rem", { lineHeight: "1.35rem" }],
+        base: ["0.875rem", { lineHeight: "1.5rem" }],
+        lg: ["1rem", { lineHeight: "1.55rem" }],
+        xl: ["1.125rem", { lineHeight: "1.6rem" }],
+        "2xl": ["1.25rem", { lineHeight: "1.65rem" }],
+      },
 
       /* ----------- COLORS (SaaS Palette) ----------- */
       colors: {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import API from "../../services/api";
 
 export default function EmployeeSelector() {
 
@@ -13,18 +13,9 @@ export default function EmployeeSelector() {
 
   async function loadEmployees() {
 
-    const token = localStorage.getItem("token");
-
     try {
 
-      const res = await axios.get(
-        "http://127.0.0.1:9000/api/employees/",
-        {
-          headers: {
-            Authorization: `Bearer ${token}`
-          }
-        }
-      );
+      const res = await API.get("/employees/");
 
       setEmployees(res.data);
 

@@ -7,6 +7,7 @@ from database import get_async_db
 from schemas.org_schemas import OrganisationCreate, OrganisationOut
 from schemas.me_schemas import OrganisationMeSummary
 from utils.dependencies import AuthSubject, get_current_auth, resolve_organisation_id
+from utils.rbac import require_roles
 
 router = APIRouter()
 
@@ -19,6 +20,7 @@ router = APIRouter()
 async def create_org(
     data: OrganisationCreate,
     db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin"])),
 ):
     org = await create_organisation(db, data)
     return org
@@ -62,6 +64,7 @@ async def get_my_org(
 async def read_org(
     org_id: UUID,
     db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin"])),
 ):
     org = await get_organisation(db, org_id)
     if not org:

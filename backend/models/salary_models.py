@@ -14,7 +14,7 @@ from sqlalchemy import (
     text,
     Date,
 )
-from sqlalchemy.dialects.postgresql import UUID as PGUUID
+from sqlalchemy.dialects.postgresql import UUID as PGUUID, JSONB
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 
@@ -46,6 +46,15 @@ class SalaryComponent(Base):
     code = Column(String(50))
     name = Column(Text, nullable=False)
     description = Column(Text)
+
+    # Phase 2 (V2) fields (additive). These co-exist with legacy columns below.
+    # They are used by /api/salary/v2/* endpoints and migrations are additive/idempotent.
+    component_category = Column(String(30))
+    calculation_type = Column(String(20))
+    formula_expression = Column(Text)
+    system_code = Column(String(30))
+    rounding_rule = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    meta = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     component_type = Column(String(50), nullable=False)
     calc_type = Column(String(20), nullable=False, server_default=text("'fixed'"))
@@ -249,6 +258,8 @@ class EmployeeSalaryStructure(Base):
     )
     ctc = Column(Numeric(18,2))
     effective_from = Column(Date)
+    # Phase 2 additive: per-employee overrides used by v2 payroll orchestration.
+    overrides = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     created_at = Column(
         TIMESTAMP(timezone=True),
@@ -257,3 +268,109 @@ class EmployeeSalaryStructure(Base):
     )
 
     template = relationship("SalaryTemplate")
+
+
+# --------------------------------------------------------------------
+# PHASE 2 (V2) — Additive Models (non-breaking)
+# --------------------------------------------------------------------
+class SalaryComponentGroup(Base):
+    __tablename__ = "salary_component_groups"
+
+    group_id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    organisation_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organisations.organisation_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    code = Column(String(50), nullable=False)
+    name = Column(Text, nullable=False)
+    description = Column(Text)
+    is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("organisation_id", "code", name="ux_salary_component_groups_org_code"),
+    )
+
+    items = relationship("SalaryComponentGroupItem", back_populates="group", cascade="all, delete-orphan")
+
+
+class SalaryComponentGroupItem(Base):
+    __tablename__ = "salary_component_group_items"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    group_id = Column(PGUUID(as_uuid=True), ForeignKey("salary_component_groups.group_id", ondelete="CASCADE"), nullable=False)
+    component_id = Column(PGUUID(as_uuid=True), ForeignKey("salary_components.component_id", ondelete="RESTRICT"), nullable=False)
+    sequence = Column(SmallInteger, nullable=False, server_default=text("1"))
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "component_id", name="ux_salary_component_group_items_group_component"),
+    )
+
+    group = relationship("SalaryComponentGroup", back_populates="items")
+    component = relationship("SalaryComponent")
+
+
+class SalaryDerivedVariable(Base):
+    __tablename__ = "salary_derived_variables"
+
+    variable_id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    organisation_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organisations.organisation_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    code = Column(String(50), nullable=False)
+    name = Column(Text, nullable=False)
+    expression = Column(Text, nullable=False)
+    data_type = Column(String(10), nullable=False, server_default=text("'number'"))
+    is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("organisation_id", "code", name="ux_salary_derived_variables_org_code"),
+    )
+
+
+class OrgStatutoryConfig(Base):
+    __tablename__ = "org_statutory_configs"
+
+    config_id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    organisation_id = Column(
+        PGUUID(as_uuid=True),
+        ForeignKey("organisations.organisation_id", ondelete="CASCADE"),
+        nullable=False,
+    )
+
+    statutory_code = Column(String(20), nullable=False)
+    is_enabled = Column(Boolean, nullable=False, server_default=text("true"))
+    effective_from = Column(Date, nullable=False)
+    effective_to = Column(Date, nullable=True)
+    settings = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("organisation_id", "statutory_code", "effective_from", name="ux_org_statutory_configs_org_code_from"),
+        CheckConstraint("effective_to IS NULL OR effective_to >= effective_from", name="ck_org_statutory_configs_effective_range"),
+    )
+
+
+class SalaryTemplateGroup(Base):
+    __tablename__ = "salary_template_groups"
+
+    id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    template_id = Column(PGUUID(as_uuid=True), ForeignKey("salary_templates.template_id", ondelete="CASCADE"), nullable=False)
+    group_id = Column(PGUUID(as_uuid=True), ForeignKey("salary_component_groups.group_id", ondelete="RESTRICT"), nullable=False)
+    sequence = Column(SmallInteger, nullable=False, server_default=text("1"))
+    is_active = Column(Boolean, nullable=False, server_default=text("true"))
+    created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
+    updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
+
+    __table_args__ = (
+        UniqueConstraint("template_id", "group_id", name="ux_salary_template_groups_template_group"),
+    )

@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { getSalaryStatement } from "../payroll/payrollApi";
+import { usePrefilledPayrollRunId } from "./payrollWorkflow";
 
 export default function SalaryStatementPage(){
 
   const [id,setId] = useState("");
   const [data,setData] = useState([]);
+
+  usePrefilledPayrollRunId(setId);
 
   const load = async () => {
 

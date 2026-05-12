@@ -3,6 +3,8 @@ html,
 body,
 #root {
   height: 100%;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
 }
 
@@ -15,7 +17,7 @@ body,
   width: 100%;
   max-width: 100vw;
   position: relative;
-  background: #ffffff;
+  background: var(--bg-app);
 }
 
 .sidebar-region {
@@ -37,11 +39,15 @@ body,
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #ffffff;
+  background: var(--bg-app);
 }
 
 .layout-navbar-wrap {
   flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: var(--z-navbar);
+  isolation: isolate;
 }
 
 .content-area {
@@ -50,11 +56,21 @@ body,
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
-  background: #ffffff;
+  background: var(--bg-app);
 }
 
 .page-wrapper {
   min-height: min-content;
+  width: 100%;
+  max-width: 100%;
+  padding: var(--content-padding);
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .page-wrapper {
+    padding: 16px;
+  }
 }
 
 .mobile-overlay {

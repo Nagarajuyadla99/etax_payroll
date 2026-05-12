@@ -75,10 +75,7 @@ export default function Layout() {
         </div>
 
         <div className="main-region" id="main-region">
-          <div
-            className={`layout-navbar-wrap ${mounted ? "enter-navbar" : ""}`}
-            style={{ position: "sticky", top: 0, zIndex: 100 }}
-          >
+          <div className={`layout-navbar-wrap ${mounted ? "enter-navbar" : ""}`}>
             <Navbar toggle={toggleSidebar} />
           </div>
           <main className={`content-area ${mounted ? "enter-content" : ""}`}>

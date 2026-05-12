@@ -65,10 +65,12 @@ async def employee_login(
     # GENERATE TOKEN
     # ------------------------
     token = create_access_token({
-        "sub": str(employee.employee_id),
+        "sub": str(employee.employee_id),  # legacy subject (employee_id)
         "type": "employee",
+        "user_id": str(employee.employee_id),
+        "org_id": str(employee.organisation_id),
+        "organisation_id": str(employee.organisation_id),  # legacy key
         "role": "employee",
-        "organisation_id": str(employee.organisation_id),
     })
 
     # ------------------------

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_async_db
-from utils.dependencies import get_admin_user
+from utils.rbac import require_roles
 from schemas.attendance_schemas import (
     AttendanceBulkPayload,
     AttendanceBulkResult,
@@ -43,12 +43,13 @@ router = APIRouter(prefix="/attendance", tags=["Attendance"])
 @router.get("/", response_model=List[AttendanceOut])
 async def list_attendance_route(
     db: AsyncSession = Depends(get_async_db),
-    organisation_id: Optional[UUID] = None,
+    current_user=Depends(require_roles(["admin", "hr"])),
     employee_id: Optional[UUID] = None,
     for_date: Optional[date] = None,
     from_date: Optional[date] = None,
     to_date: Optional[date] = None,
 ):
+    organisation_id: Optional[UUID] = getattr(current_user, "organisation_id", None)
     return await list_attendance(
         db,
         organisation_id=organisation_id,
@@ -63,7 +64,7 @@ async def list_attendance_route(
 async def create_attendance_route(
     data: AttendanceCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     print("Incoming data:", data)
     try:
@@ -76,7 +77,7 @@ async def create_attendance_route(
 async def bulk_attendance_route(
     data: AttendanceBulkPayload,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     return await bulk_upsert_attendance(db, data)
 
@@ -85,12 +86,12 @@ async def bulk_attendance_route(
 async def apply_calendar_job_route(
     data: AttendanceCalendarJobIn,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     try:
         return await apply_org_calendar_marks(
             db,
-            data.organisation_id,
+            getattr(current_user, "organisation_id", None),
             data.from_date,
             data.to_date,
             employee_ids=data.employee_ids,
@@ -104,7 +105,7 @@ async def leave_balance_route(
     employee_id: UUID,
     year: int,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     rows = await list_employee_leave_balances(db, employee_id, year)
     return rows
@@ -114,7 +115,7 @@ async def leave_balance_route(
 async def create_leave_route(
     data: LeaveCreate,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     try:
         return await create_leave(db, data)
@@ -125,6 +126,7 @@ async def create_leave_route(
 @router.get("/leave/", response_model=List[LeaveOut])
 async def list_leaves_route(
     db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
     employee_id: Optional[UUID] = None,
 ):
     return await list_leaves(db, employee_id)
@@ -135,7 +137,7 @@ async def approve_leave_route(
     leave_id: UUID,
     data: LeaveApproveIn,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     try:
         return await approve_or_reject_leave(
@@ -153,6 +155,7 @@ async def approve_leave_route(
 async def get_leave_route(
     leave_id: UUID,
     db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     leave = await get_leave(db, leave_id)
     if not leave:
@@ -168,7 +171,7 @@ async def update_attendance_route(
     attendance_id: UUID,
     data: AttendanceUpdate,
     db: AsyncSession = Depends(get_async_db),
-    current_user=Depends(get_admin_user),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     try:
         updated = await update_attendance(db, attendance_id, data)
@@ -183,6 +186,7 @@ async def update_attendance_route(
 async def get_attendance_route(
     attendance_id: UUID,
     db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
 ):
     attendance = await get_attendance(db, attendance_id)
     if not attendance:

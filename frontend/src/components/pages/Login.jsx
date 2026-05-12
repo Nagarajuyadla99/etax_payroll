@@ -1,1926 +1,731 @@
 /**
- * PayWise — Enterprise Payroll Management Platform
- * Premium fintech UI — light theme, multi-color design system
- * Production-ready React component
- * 
- * ✅ Enhanced UI/UX — Enterprise-grade visual refresh
- *    - Upgraded typography with Inter + Playfair Display
- *    - Refined spacing, alignment, and visual hierarchy
- *    - Polished animations and micro-interactions
- *    - Improved hero section with gradient mesh background
- *    - Enhanced card designs with glass-morphism effects
- *    - Better mobile responsiveness
- *    - All business logic & auth flow preserved exactly
+ * BrixiGo — Zoho Payroll Style Landing Page
+ * Visual DNA: Zoho's exact style — white bg, green hero tint, orange-red CTAs,
+ * Lato font, product screenshot mockups, left-nav sidebar tabs + right illustration,
+ * horizontal logo strip, shield compliance section, testimonial carousel, dark footer
  */
 
-import { useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useContext, useCallback } from "react";
 import logo1 from "../assets/images/logo_brixigo3.png";
-import { useState, useContext } from "react";
+import BrixigoLogo from "../common/BrixigoLogo";
 import { AuthContext } from "../../Moduels/Context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import RegisterModal from "./RegisterModal";
 import ResetPassword from "./ResetPassword";
 import api from "../../services/api";
 
-
-
-/* ─────────────────────────────────────────────
-   GLOBAL STYLES — ENHANCED ENTERPRISE UI
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════
+   GLOBAL CSS — Zoho visual DNA
+═══════════════════════════════════════ */
 const GLOBAL_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,400&display=swap');
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-/* ============================================
-   PAYWISE DESIGN SYSTEM — REFINED FINTECH PALETTE
-============================================ */
 :root {
-  /* Core Backgrounds */
-  --bg-base:        #F8FAFC;
-  --bg-card:        #FFFFFF;
-  --bg-subtle:      #F1F5F9;
-  --bg-muted:       #E2E8F0;
+  /* Zoho exact palette */
+  --z-orange:     #E8502A;
+  --z-orange-dk:  #C43D1A;
+  --z-orange-lt:  #FFF0EC;
+  --z-green:      #1A7340;
+  --z-green-lt:   #E8F5EE;
+  --z-green-mid:  #D0EDD8;
+  --z-blue:       #1565C0;
+  --z-blue-lt:    #E3F0FB;
+  --z-navy:       #1C2B4B;
+  --z-navy-dk:    #111827;
+  --z-text:       #333333;
+  --z-text-md:    #555555;
+  --z-text-lt:    #777777;
+  --z-text-xs:    #999999;
+  --z-border:     #E0E0E0;
+  --z-border-lt:  #EEEEEE;
+  --z-bg:         #FFFFFF;
+  --z-bg-grey:    #F7F8FA;
+  --z-bg-green:   #F0FAF3;
+  --z-bg-hero:    #EBF8F0;
 
-  /* Primary Slate (text/headers) */
-  --slate-900:      #0F172A;
-  --slate-800:      #1E293B;
-  --slate-700:      #334155;
-  --slate-600:      #475569;
-  --slate-500:      #64748B;
-  --slate-400:      #94A3B8;
-  --slate-300:      #CBD5E1;
-  --slate-200:      #E2E8F0;
-  --slate-100:      #F1F5F9;
+  /* Typography — Zoho uses Lato + system fonts */
+  --font: 'Lato', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 
-  /* Action Blue */
-  --blue-700:       #1D4ED8;
-  --blue-600:       #2563EB;
-  --blue-500:       #3B82F6;
-  --blue-400:       #60A5FA;
-  --blue-100:       #DBEAFE;
-  --blue-50:        #EFF6FF;
-
-  /* Secondary Teal */
-  --teal-700:       #0F766E;
-  --teal-600:       #0D9488;
-  --teal-500:       #14B8A6;
-  --teal-100:       #CCFBF1;
-  --teal-50:        #F0FDFA;
-
-  /* Success Green (salary/payments) */
-  --green-700:      #15803D;
-  --green-600:      #16A34A;
-  --green-500:      #22C55E;
-  --green-100:      #DCFCE7;
-  --green-50:       #F0FDF4;
-
-  /* Warning Amber */
-  --amber-700:      #B45309;
-  --amber-600:      #D97706;
-  --amber-500:      #F59E0B;
-  --amber-100:      #FEF3C7;
-  --amber-50:       #FFFBEB;
-
-  /* Danger Red */
-  --red-600:        #DC2626;
-  --red-100:        #FEE2E2;
-
-  /* Borders */
-  --border:         #E2E8F0;
-  --border-focus:   #2563EB;
-
-  /* Shadows — refined depth system */
-  --shadow-xs:      0 1px 2px rgba(15,23,42,0.04);
-  --shadow-sm:      0 2px 8px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-md:      0 4px 16px rgba(15,23,42,0.08), 0 2px 4px rgba(15,23,42,0.04);
-  --shadow-lg:      0 12px 40px rgba(15,23,42,0.10), 0 4px 12px rgba(15,23,42,0.05);
-  --shadow-xl:      0 24px 64px rgba(15,23,42,0.12), 0 8px 24px rgba(15,23,42,0.06);
-  --shadow-card:    0 1px 3px rgba(15,23,42,0.06), 0 1px 2px rgba(15,23,42,0.04);
-  --shadow-card-hover: 0 20px 50px rgba(15,23,42,0.10), 0 6px 16px rgba(15,23,42,0.05);
-
-  /* Typography */
-  --font-display:   'DM Serif Display', Georgia, serif;
-  --font-body:      'Plus Jakarta Sans', 'DM Sans', system-ui, sans-serif;
-
-  /* Transitions */
-  --ease-out-expo:  cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring:    cubic-bezier(0.34, 1.56, 0.64, 1);
+  /* Shadows */
+  --sh-sm: 0 2px 8px rgba(0,0,0,0.08);
+  --sh-md: 0 4px 20px rgba(0,0,0,0.10);
+  --sh-lg: 0 8px 40px rgba(0,0,0,0.12);
+  --sh-card: 0 1px 4px rgba(0,0,0,0.06), 0 2px 10px rgba(0,0,0,0.04);
 }
 
 html { scroll-behavior: smooth; }
-
 body {
-  background: var(--bg-base);
-  color: var(--slate-900);
-  font-family: var(--font-body);
-  overflow-x: hidden;
+  font-family: var(--font);
+  background: var(--z-bg);
+  color: var(--z-text);
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+  font-size: 15px;
+  line-height: 1.6;
 }
 
-/* ============================================
-   SELECTION
-============================================ */
-::selection {
-  background: rgba(37,99,235,0.12);
-  color: var(--slate-900);
-}
-
-/* ============================================
-   NAVBAR — Refined glass header
-============================================ */
-.pw-nav {
+/* ── NAV ── */
+.zn-nav {
+  background: #fff;
+  border-bottom: 1px solid var(--z-border);
   position: sticky;
   top: 0;
-  z-index: 100;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom: 1px solid rgba(226,232,240,0.6);
-  transition: all 0.3s var(--ease-out-expo);
+  z-index: 200;
+  transition: box-shadow .3s;
 }
+.zn-nav.scrolled { box-shadow: 0 2px 12px rgba(0,0,0,.08); }
 
-.pw-nav.scrolled {
-  box-shadow: 0 1px 12px rgba(15,23,42,0.06);
-}
-
-.nav-links button {
-  position: relative;
-}
-
-.nav-links button::after {
-  content: "";
-  position: absolute;
-  left: 12px;
-  bottom: 4px;
-  height: 2px;
-  width: 0%;
-  background: linear-gradient(90deg, var(--blue-600), var(--blue-400));
-  border-radius: 2px;
-  transition: width 0.3s var(--ease-out-expo);
-}
-
-.nav-links button:hover::after,
-.nav-links button.active::after {
-  width: calc(100% - 24px);
-}
-
-/* ============================================
-   BUTTONS — Enhanced with better depth
-============================================ */
-.btn {
+/* ── BUTTONS ── */
+.zb {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  font-family: var(--font-body);
-  font-weight: 600;
+  font-family: var(--font);
+  font-weight: 700;
   cursor: pointer;
   border: none;
-  outline: none;
   text-decoration: none;
-  transition: all 0.25s var(--ease-out-expo);
+  transition: all .22s;
   white-space: nowrap;
-  letter-spacing: -0.01em;
 }
-
-.btn-primary {
-  background: linear-gradient(135deg, var(--blue-600) 0%, var(--blue-700) 100%);
+.zb-primary {
+  background: var(--z-orange);
   color: #fff;
-  box-shadow: 0 4px 14px rgba(37,99,235,0.28), 0 1px 3px rgba(37,99,235,0.12);
-}
-.btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 28px rgba(37,99,235,0.35), 0 2px 6px rgba(37,99,235,0.18);
-}
-.btn-primary:active:not(:disabled) {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(37,99,235,0.25);
-}
-
-.btn-secondary {
-  background: var(--bg-card);
-  color: var(--slate-700);
-  border: 1.5px solid var(--border);
-  box-shadow: var(--shadow-xs);
-}
-.btn-secondary:hover:not(:disabled) {
-  border-color: var(--blue-400);
-  color: var(--blue-600);
-  box-shadow: var(--shadow-sm), 0 0 0 3px rgba(59,130,246,0.06);
-  transform: translateY(-1px);
-}
-
-.btn-success {
-  background: linear-gradient(135deg, var(--green-600), var(--green-700));
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(22,163,74,0.28);
-}
-.btn-success:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(22,163,74,0.38);
-}
-
-.btn-teal {
-  background: linear-gradient(135deg, var(--teal-500), var(--teal-700));
-  color: #fff;
-  box-shadow: 0 4px 14px rgba(20,184,166,0.28);
-}
-.btn-teal:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(20,184,166,0.38);
-}
-
-.btn-sm  { padding: 8px 16px; font-size: 13px; border-radius: 8px; }
-.btn-md  { padding: 11px 22px; font-size: 14px; border-radius: 10px; }
-.btn-lg  { padding: 14px 28px; font-size: 15px; border-radius: 12px; }
-.btn-xl  { padding: 16px 36px; font-size: 15px; border-radius: 12px; letter-spacing: 0; }
-
-/* ============================================
-   CARDS — Refined with subtle glass effect
-============================================ */
-.pw-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 18px;
-  box-shadow: var(--shadow-card);
-  transition: all 0.35s var(--ease-out-expo);
-}
-.pw-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-card-hover);
-  border-color: rgba(226,232,240,0.4);
-}
-
-.pw-card-flat {
-  background: rgba(255,255,255,0.9);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  border: 1px solid rgba(226,232,240,0.7);
-  border-radius: 18px;
-  box-shadow: var(--shadow-card);
-}
-
-/* ============================================
-   FORM INPUTS — Refined feel
-============================================ */
-.pw-input-wrap { position: relative; }
-
-.pw-label {
-  display: block;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--slate-500);
-  text-transform: uppercase;
-  letter-spacing: 0.7px;
-  margin-bottom: 6px;
-}
-
-.pw-input {
-  width: 100%;
-  background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  padding: 12px 14px 12px 42px;
-  font-family: var(--font-body);
+  border-radius: 4px;
+  padding: 11px 24px;
   font-size: 14px;
-  color: var(--slate-900);
-  outline: none;
-  transition: all 0.2s var(--ease-out-expo);
+  box-shadow: 0 2px 8px rgba(232,80,42,.25);
 }
-.pw-input::placeholder { color: var(--slate-400); }
-.pw-input:focus {
-  border-color: var(--blue-500);
-  box-shadow: 0 0 0 3.5px rgba(59,130,246,0.12);
-}
-.pw-input.error {
-  border-color: var(--red-600);
-  box-shadow: 0 0 0 3px rgba(220,38,38,0.10);
-}
-.pw-input.success {
-  border-color: var(--green-500);
-  box-shadow: 0 0 0 3px rgba(34,197,94,0.10);
-}
-.pw-input-icon {
-  position: absolute;
-  left: 14px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--slate-400);
-  pointer-events: none;
-  display: flex;
-  transition: color 0.2s;
-}
+.zb-primary:hover { background: var(--z-orange-dk); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(232,80,42,.35); }
+.zb-primary:active { transform: none; }
 
-/* ============================================
-   BADGES — More refined
-============================================ */
-.badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  padding: 4px 11px;
-  border-radius: 999px;
+.zb-outline {
+  background: transparent;
+  color: var(--z-orange);
+  border: 1.5px solid var(--z-orange);
+  border-radius: 4px;
+  padding: 10px 22px;
+  font-size: 14px;
 }
-.badge-blue   { background: var(--blue-50);  color: var(--blue-700); border: 1px solid var(--blue-100); }
-.badge-green  { background: var(--green-50); color: var(--green-700); border: 1px solid var(--green-100); }
-.badge-teal   { background: var(--teal-50);  color: var(--teal-700); border: 1px solid var(--teal-100); }
-.badge-amber  { background: var(--amber-50); color: var(--amber-700); border: 1px solid var(--amber-100); }
-.badge-slate  { background: var(--slate-100); color: var(--slate-700); border: 1px solid var(--slate-200); }
+.zb-outline:hover { background: var(--z-orange-lt); }
 
-/* ============================================
-   STAT PILLS
-============================================ */
-.stat-up   { color: var(--green-600); background: var(--green-50); border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 700; }
-.stat-down { color: var(--red-600);   background: var(--red-100);  border-radius: 6px; padding: 2px 7px; font-size: 12px; font-weight: 700; }
+.zb-ghost {
+  background: transparent;
+  color: var(--z-text-md);
+  border: 1.5px solid var(--z-border);
+  border-radius: 4px;
+  padding: 10px 22px;
+  font-size: 14px;
+}
+.zb-ghost:hover { border-color: var(--z-orange); color: var(--z-orange); }
 
-/* ============================================
-   MODAL — Enhanced with better backdrop
-============================================ */
-.modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15,23,42,0.45);
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
-  z-index: 1000;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20px;
-  animation: fadeIn 0.25s var(--ease-out-expo);
-  overflow-y: auto;
+.zb-green {
+  background: var(--z-green);
+  color: #fff;
+  border-radius: 4px;
+  padding: 11px 24px;
+  font-size: 14px;
 }
-.modal-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(226,232,240,0.6);
-  border-radius: 22px;
-  box-shadow: 0 32px 80px rgba(15,23,42,0.18), 0 12px 32px rgba(15,23,42,0.08);
-  width: 100%;
-  max-width: 440px;
-  padding: 36px 40px 32px;
-  position: relative;
-  animation: modalSlideUp 0.35s var(--ease-out-expo);
-  margin: auto;
-}
+.zb-green:hover { background: #15603A; transform: translateY(-1px); }
 
-/* ============================================
-   ANIMATIONS — Refined timing
-============================================ */
-@keyframes fadeIn {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-@keyframes slideUp {
-  from { opacity: 0; transform: translateY(16px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes modalSlideUp {
-  from { opacity: 0; transform: translateY(24px) scale(0.97); }
-  to   { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
-}
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50%       { transform: translateY(-10px); }
-}
-@keyframes countUp {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-@keyframes scaleIn {
-  from { opacity: 0; transform: scale(0.92); }
-  to   { opacity: 1; transform: scale(1); }
-}
-
-.float-card { animation: float 6s ease-in-out infinite; }
-.float-card-2 { animation: float 6s ease-in-out infinite; animation-delay: 2s; }
-.float-card-3 { animation: float 6s ease-in-out infinite; animation-delay: 4s; }
-
-.fade-in-up { animation: fadeInUp 0.6s var(--ease-out-expo) both; }
-.fade-in-up-1 { animation: fadeInUp 0.6s var(--ease-out-expo) 0.1s both; }
-.fade-in-up-2 { animation: fadeInUp 0.6s var(--ease-out-expo) 0.2s both; }
-.fade-in-up-3 { animation: fadeInUp 0.6s var(--ease-out-expo) 0.3s both; }
-
-/* ============================================
-   HERO SECTION — Refined gradient mesh
-============================================ */
-.hero-section {
-  background: linear-gradient(165deg, #FFFFFF 0%, #F0F7FF 35%, #F0FDFA 70%, #FAFBFF 100%);
-  border-bottom: 1px solid var(--border);
-  position: relative;
-  overflow: hidden;
-}
-.hero-section::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 600px 500px at 75% 15%, rgba(37,99,235,0.07) 0%, transparent 70%),
-    radial-gradient(ellipse 500px 400px at 25% 75%, rgba(20,184,166,0.06) 0%, transparent 70%),
-    radial-gradient(ellipse 400px 300px at 50% 50%, rgba(139,92,246,0.03) 0%, transparent 70%);
-  pointer-events: none;
-}
-.hero-grid {
-  background-image:
-    linear-gradient(rgba(37,99,235,0.035) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(37,99,235,0.035) 1px, transparent 1px);
-  background-size: 48px 48px;
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  mask-image: radial-gradient(ellipse 70% 60% at 60% 40%, black 20%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 60% 40%, black 20%, transparent 70%);
-}
-.hero-cols {
-  display: flex;
-  gap: 72px;
-}
-
-.hero-left {
-  flex: 1;
-  min-width: 300px;
-}
-
-.hero-right {
-  flex: 1;
-  min-width: 280px;
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .hero-cols {
-    flex-direction: column;
-    gap: 36px;
-  }
-  .nav-links {
-    display: flex;
-    gap: 8px;
-  }
-
-  .mobile-menu {
-    display: none;
-  }
-}
-
-/* Mobile */
-@media (max-width: 768px) {
-  .nav-links {
-    display: none;
-  }
-
-  .mobile-menu {
-    display: block;
-  }
-
-  .hero-right {
-    align-items: center !important;
-  }
-
-  .hero-section {
-    padding: 60px 20px 70px !important;
-  }
-}
-
-/* ============================================
-   FEATURES — Enhanced card grid
-============================================ */
-.feature-icon-wrap {
-  width: 52px;
-  height: 52px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  transition: transform 0.25s var(--ease-out-expo);
-}
-
-.feature-card:hover .feature-icon-wrap {
-  transform: scale(1.08) rotate(-2deg);
-}
-
-/* ============================================
-   PRICING
-============================================ */
-.pricing-popular {
-  border: 2px solid var(--blue-500);
-  position: relative;
-  background: linear-gradient(180deg, rgba(239,246,255,0.4) 0%, #FFFFFF 40%);
-}
-.pricing-popular-badge {
-  position: absolute;
-  top: -12px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, var(--blue-600), var(--blue-700));
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 16px;
-  border-radius: 999px;
-  white-space: nowrap;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 12px rgba(37,99,235,0.25);
-}
-
-/* ============================================
-   FOOTER
-============================================ */
-.pw-footer {
-  background: var(--slate-900);
-  color: var(--slate-400);
-}
-
-/* ============================================
-   DIVIDER
-============================================ */
-.divider {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: var(--slate-400);
+/* ── SECTION HEADER ── */
+.z-sec-label {
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--z-orange);
+  margin-bottom: 8px;
 }
-.divider::before, .divider::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--border);
+.z-sec-h2 {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--z-text);
+  line-height: 1.25;
+  margin-bottom: 14px;
 }
-
-/* Section */
-.features-section {
-  padding: 96px 24px;
-  background: var(--bg-base);
-  position: relative;
+.z-sec-h3 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--z-text);
+  line-height: 1.3;
+  margin-bottom: 10px;
 }
-
-/* Container */
-.features-container {
-  max-width: 100%;
-  margin: 0 48px;
-}
-
-/* Header */
-.features-header {
-  text-align: center;
-  margin-bottom: 64px;
-}
-
-.features-title {
-  font-family: var(--font-display);
-  font-size: clamp(28px, 4vw, 42px);
-  color: var(--slate-900);
-  margin: 14px 0;
-  letter-spacing: -0.01em;
-}
-
-.features-subtitle {
+.z-sec-sub {
   font-size: 16px;
-  color: var(--slate-500);
-  max-width: 520px;
-  margin: 0 auto;
+  color: var(--z-text-md);
   line-height: 1.7;
+  max-width: 600px;
 }
 
-/* Grid */
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 24px;
-  width: 100%;
-}
-
-/* Card */
-.feature-card {
-  padding: 30px;
-  border-radius: 16px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  height: 100%;
-  transition: all 0.35s var(--ease-out-expo);
-  position: relative;
+/* ── FEATURE LEFT-NAV TABS (Zoho style) ── */
+.zfeat-wrap {
+  display: flex;
+  gap: 0;
+  background: var(--z-bg);
+  border: 1px solid var(--z-border);
+  border-radius: 8px;
   overflow: hidden;
+  box-shadow: var(--sh-card);
+}
+.zfeat-nav {
+  width: 240px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--z-border);
+  background: var(--z-bg-grey);
+}
+.zfeat-nav-item {
+  padding: 18px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--z-text-md);
+  cursor: pointer;
+  border-left: 3px solid transparent;
+  border-bottom: 1px solid var(--z-border-lt);
+  transition: all .2s;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.zfeat-nav-item:last-child { border-bottom: none; }
+.zfeat-nav-item:hover { background: var(--z-bg-green); color: var(--z-green); }
+.zfeat-nav-item.active {
+  background: #fff;
+  color: var(--z-green);
+  border-left-color: var(--z-orange);
+  font-weight: 700;
+}
+.zfeat-content {
+  flex: 1;
+  padding: 32px 36px;
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.feature-card::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, transparent, var(--blue-500), transparent);
-  opacity: 0;
-  transition: opacity 0.35s ease;
-}
-
-.feature-card:hover::before {
-  opacity: 1;
-}
-
-/* Hover effect */
-.feature-card:hover {
-  transform: translateY(-6px);
-  box-shadow: var(--shadow-card-hover);
-  border-color: rgba(226,232,240,0.3);
-}
-
-/* Top section */
-.feature-top {
+/* ── COMPLIANCE ITEMS ── */
+.zcomp-item {
   display: flex;
   gap: 16px;
-  margin-bottom: 16px;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--z-border-lt);
 }
-
-/* Title */
-.feature-title {
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--slate-900);
-  letter-spacing: -0.01em;
-}
-
-/* Description */
-.feature-desc {
-  font-size: 14px;
-  color: var(--slate-500);
-  line-height: 1.7;
-}
-
-/* Responsive */
-@media (max-width: 1024px) {
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-@media (max-width: 640px) {
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* ============================================
-   SCROLLBAR
-============================================ */
-::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--slate-200); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: var(--slate-300); }
-
-/* ============================================
-   RESPONSIVE
-============================================ */
-@media (max-width: 768px) {
-  .hero-cols { flex-direction: column !important; }
-  .hide-mobile { display: none !important; }
-  .nav-links { display: none !important; }
-  .modal-card { padding: 28px 24px; }
-}
-
-/* Better responsive container */
-.container {
-  width: 100%;
-  padding: 0 48px;
-}
-
-@media (max-width: 1200px) {
-  .container { padding: 0 32px; }
-}
-
-@media (max-width: 768px) {
-  .container { padding: 0 20px; }
-}
-
-@media (max-width: 480px) {
-  .container { padding: 0 16px; }
-}
-
-@media (max-width: 480px) {
-  .btn-xl {
-    width: 100%;
-    justify-content: center;
-  }
-}
-
-@media (min-width: 768px) {
-  .nav-container {
-    padding: 0 32px !important;
-  }
-}
-
-@media (min-width: 1200px) {
-  .nav-container {
-    padding: 0 48px !important;
-  }
-}
-
-/* ============================================
-   DUAL LOGIN ROLE SWITCHER — Polished
-============================================ */
-.role-tab-wrap {
-  display: flex;
-  background: var(--bg-subtle);
-  border: 1.5px solid var(--border);
-  border-radius: 13px;
-  padding: 4px;
-  margin-bottom: 24px;
-  gap: 4px;
-}
-
-.role-tab {
-  flex: 1;
-  padding: 10px 8px;
-  font-size: 13px;
-  font-weight: 600;
-  font-family: var(--font-body);
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.25s var(--ease-out-expo);
+.zcomp-item:last-child { border-bottom: none; }
+.zcomp-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  background: var(--z-green-lt);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  background: transparent;
-  color: var(--slate-500);
-  white-space: nowrap;
+  color: var(--z-green);
+  flex-shrink: 0;
 }
 
-.role-tab.active {
-  background: var(--bg-card);
-  color: var(--blue-700);
-  box-shadow: 0 2px 8px rgba(15,23,42,0.08), 0 0 0 0.5px rgba(15,23,42,0.03);
-}
-
-.role-tab.active.emp-tab {
-  color: var(--teal-700);
-}
-
-.role-tab:not(.active):hover {
-  color: var(--slate-700);
-  background: rgba(255,255,255,0.65);
-}
-
-/* Field-level inline error */
-.field-error {
+/* ── ESS TABS (Zoho pill tabs) ── */
+.zess-tabs {
   display: flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 6px;
-  font-size: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+}
+.zess-tab {
+  padding: 8px 20px;
+  border-radius: 20px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--red-600);
-  animation: slideUp 0.15s ease;
-}
-
-/* Employee info helper banner */
-.emp-info-banner {
-  display: flex;
-  align-items: flex-start;
-  gap: 9px;
-  background: var(--teal-50);
-  border: 1px solid var(--teal-100);
-  border-radius: 10px;
-  padding: 12px 14px;
-  margin-bottom: 20px;
-  font-size: 12.5px;
-  color: var(--teal-700);
-  font-weight: 500;
-  line-height: 1.55;
-  animation: slideUp 0.2s ease;
-}
-
-.emp-info-banner svg { flex-shrink: 0; margin-top: 1px; }
-
-/* Role chip in subtitle */
-.role-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 10px;
-  border-radius: 999px;
-  letter-spacing: 0.3px;
-}
-.role-chip-admin { background: var(--blue-50);  color: var(--blue-700);  border: 1px solid var(--blue-100); }
-.role-chip-emp   { background: var(--teal-50);  color: var(--teal-700);  border: 1px solid var(--teal-100); }
-
-/* ── Fixed input wrap — icons always centred ── */
-.lm-input-wrap {
-  position: relative;
-}
-
-.lm-input-icon {
-  position: absolute;
-  left: 13px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--slate-400);
-  pointer-events: none;
-  display: flex;
-  align-items: center;
-  transition: color 0.2s var(--ease-out-expo);
-  z-index: 1;
-}
-
-.lm-input-wrap:focus-within .lm-input-icon {
-  color: var(--blue-500);
-}
-
-.lm-input {
-  width: 100%;
-  height: 46px;
-  padding: 0 14px 0 40px;
-  font-family: var(--font-body);
-  font-size: 14px;
-  color: var(--slate-900);
-  background: var(--bg-card);
-  border: 1.5px solid var(--border);
-  border-radius: 10px;
-  outline: none;
-  transition: all 0.2s var(--ease-out-expo);
-  display: block;
-}
-
-.lm-input::placeholder { color: var(--slate-400); }
-
-.lm-input:focus {
-  border-color: var(--blue-500);
-  box-shadow: 0 0 0 3.5px rgba(59,130,246,0.10);
-}
-
-.lm-input.lm-err {
-  border-color: var(--red-600) !important;
-  box-shadow: 0 0 0 3px rgba(220,38,38,0.08) !important;
-}
-
-.lm-input.lm-has-toggle {
-  padding-right: 44px;
-}
-
-.lm-eye-btn {
-  position: absolute;
-  right: 11px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
+  background: #fff;
+  border: 1.5px solid var(--z-border);
+  color: var(--z-text-md);
   cursor: pointer;
-  color: var(--slate-400);
-  display: flex;
-  align-items: center;
-  padding: 3px;
-  border-radius: 4px;
-  transition: color 0.15s;
-  z-index: 1;
+  transition: all .2s;
+}
+.zess-tab.active {
+  background: var(--z-orange);
+  border-color: var(--z-orange);
+  color: #fff;
+}
+.zess-tab:not(.active):hover {
+  border-color: var(--z-orange);
+  color: var(--z-orange);
 }
 
-.lm-eye-btn:hover { color: var(--slate-600); }
+/* ── TESTIMONIAL CAROUSEL ── */
+.ztesti-card {
+  background: #fff;
+  border: 1px solid var(--z-border);
+  border-radius: 8px;
+  padding: 28px 30px;
+  box-shadow: var(--sh-card);
+}
 
-/* ── Modal responsive — Enhanced ── */
-.modal-backdrop {
+/* ── MODAL ── */
+.zm-bg {
   position: fixed;
   inset: 0;
-  background: rgba(15,23,42,0.45);
-  backdrop-filter: blur(8px) saturate(150%);
-  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(4px);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
-  animation: fadeIn 0.25s var(--ease-out-expo);
+  animation: zFadeIn .25s ease;
   overflow-y: auto;
 }
-
-.modal-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(226,232,240,0.6);
-  border-radius: 22px;
-  box-shadow: 0 32px 80px rgba(15,23,42,0.18), 0 12px 32px rgba(15,23,42,0.08);
+.zm-card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.2);
   width: 100%;
   max-width: 440px;
   padding: 36px 40px 32px;
   position: relative;
-  animation: modalSlideUp 0.35s var(--ease-out-expo);
+  animation: zSlideUp .3s ease;
   margin: auto;
 }
 
-/* Tablet */
-@media (max-width: 520px) {
-  .modal-card {
-    padding: 28px 22px 24px;
-    border-radius: 18px;
-    max-width: 100%;
-  }
-  .role-tab { font-size: 12px; gap: 5px; padding: 9px 6px; }
+/* ── ROLE TABS ── */
+.zrole-wrap {
+  display: flex;
+  border: 1px solid var(--z-border);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 20px;
 }
+.zrole-tab {
+  flex: 1;
+  padding: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: var(--font);
+  border: none;
+  background: var(--z-bg-grey);
+  color: var(--z-text-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all .2s;
+  border-right: 1px solid var(--z-border);
+}
+.zrole-tab:last-child { border-right: none; }
+.zrole-tab.active { background: var(--z-orange); color: #fff; }
+.zrole-tab:not(.active):hover { background: var(--z-orange-lt); color: var(--z-orange); }
 
-/* Small mobile */
-@media (max-width: 360px) {
-  .modal-card { padding: 22px 18px 20px; }
-  .role-tab { font-size: 11.5px; }
+/* ── INPUTS ── */
+.zf-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--z-text-md);
+  margin-bottom: 5px;
+  text-transform: uppercase;
+  letter-spacing: .5px;
 }
-
-/* ============================================
-   SECTION REVEAL ANIMATION (Intersection Observer)
-============================================ */
-.reveal-section {
-  opacity: 0;
-  transform: translateY(24px);
-  transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+.zf-wrap { position: relative; }
+.zf-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 12px 0 38px;
+  font-family: var(--font);
+  font-size: 14px;
+  color: var(--z-text);
+  background: #fff;
+  border: 1.5px solid var(--z-border);
+  border-radius: 4px;
+  outline: none;
+  transition: all .2s;
 }
-.reveal-section.visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-
-/* ============================================
-   STAT CARD HOVER ENHANCEMENT
-============================================ */
-.stat-cell {
-  transition: all 0.25s var(--ease-out-expo);
-  position: relative;
-}
-.stat-cell::after {
-  content: "";
+.zf-input::placeholder { color: var(--z-text-xs); }
+.zf-input:focus { border-color: var(--z-orange); box-shadow: 0 0 0 3px rgba(232,80,42,.1); }
+.zf-input.err { border-color: #D32F2F; box-shadow: 0 0 0 3px rgba(211,47,47,.08); }
+.zf-icon {
   position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(37,99,235,0.03), rgba(20,184,166,0.03));
-  opacity: 0;
-  transition: opacity 0.25s ease;
+  left: 11px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--z-text-xs);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  transition: color .2s;
 }
-.stat-cell:hover::after {
-  opacity: 1;
+.zf-wrap:focus-within .zf-icon { color: var(--z-orange); }
+.zf-err-msg {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #D32F2F;
 }
-.stat-cell:hover {
-  background: rgba(248,250,252,0.6);
+.zf-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--z-text-xs);
+  font-size: 12px;
+  margin: 16px 0;
+}
+.zf-divider::before, .zf-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--z-border);
 }
 
-/* ============================================
-   TESTIMONIAL QUOTE MARK
-============================================ */
-.testimonial-card {
+/* ── ANIMATIONS ── */
+@keyframes zFadeIn { from{opacity:0} to{opacity:1} }
+@keyframes zSlideUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:none} }
+@keyframes zSpin { to{transform:rotate(360deg)} }
+@keyframes zFadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:none} }
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){
+  .zfeat-nav{width:180px}
+  .z-sec-h2{font-size:24px}
+}
+@media(max-width:768px){
+  .zfeat-wrap{flex-direction:column}
+  .zfeat-nav{width:100%;border-right:none;border-bottom:1px solid var(--z-border);display:flex;overflow-x:auto}
+  .zfeat-nav-item{border-left:none;border-bottom:3px solid transparent;border-right:1px solid var(--z-border-lt);white-space:nowrap}
+  .zfeat-nav-item.active{border-left:none;border-bottom-color:var(--z-orange)}
+  .hide-mob{display:none!important}
+  .zm-card{padding:28px 22px}
+}
+@media(max-width:520px){.zm-card{max-width:100%;border-radius:8px}}
+
+/* ── LOGO TICKER ── */
+.zlogo-track { display:flex; gap:48px; animation:zTicker 18s linear infinite; align-items:center; }
+@keyframes zTicker { 0%{transform:translateX(0)} 100%{transform:translateX(-50%)} }
+.zlogo-wrap { overflow:hidden; mask-image:linear-gradient(90deg,transparent,black 10%,black 90%,transparent); }
+
+/* ── FOOTER ── */
+.zfooter { background: var(--z-navy-dk); color: #ccc; }
+.zfooter a { color:#ccc; text-decoration:none; font-size:13px; transition:color .15s; }
+.zfooter a:hover { color:#fff; }
+.zfooter-head { font-size:13px; font-weight:700; color:#fff; text-transform:uppercase; letter-spacing:.6px; margin-bottom:14px; }
+
+/* ── PRICING CARD ── */
+.zprice-card {
+  background: #fff;
+  border: 1px solid var(--z-border);
+  border-radius: 8px;
+  padding: 32px 28px;
+  box-shadow: var(--sh-card);
+  transition: all .3s;
   position: relative;
+}
+.zprice-card:hover { transform: translateY(-4px); box-shadow: var(--sh-md); }
+.zprice-popular { border-color: var(--z-orange); border-width: 2px; }
+.zprice-badge {
+  position: absolute;
+  top: -12px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--z-orange);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 16px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: .4px;
+}
+
+/* ── DASHBOARD ILLUSTRATION ── */
+.zdash {
+  background: #fff;
+  border: 1px solid var(--z-border);
+  border-radius: 10px;
+  box-shadow: var(--sh-md);
   overflow: hidden;
 }
-.testimonial-card::before {
-  content: "\\201C";
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  font-size: 64px;
-  font-family: Georgia, serif;
-  color: rgba(37,99,235,0.06);
-  line-height: 1;
-  pointer-events: none;
+.zdash-bar {
+  background: var(--z-green);
+  color: #fff;
+  padding: 10px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
+.zdash-dot { width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.5);display:inline-block; }
 
-/* ============================================
-   CTA SECTION ENHANCED BACKGROUND
-============================================ */
-.cta-section {
-  position: relative;
-  overflow: hidden;
-}
-.cta-section::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 500px 400px at 20% 50%, rgba(37,99,235,0.08) 0%, transparent 70%),
-    radial-gradient(ellipse 400px 300px at 80% 50%, rgba(20,184,166,0.06) 0%, transparent 70%);
-  pointer-events: none;
-}
+/* scrollbar */
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#ddd;border-radius:99px}
 `;
 
-/* ─────────────────────────────────────────────
-   SVG ICONS
-───────────────────────────────────────────── */
-const Icon = {
-  Logo: () => (
-    <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
-      <rect width="32" height="32" rx="8" fill="#2563EB"/>
-      <rect x="7" y="13" width="18" height="12" rx="3" fill="white" fillOpacity="0.9"/>
-      <rect x="11" y="7" width="10" height="8" rx="2" fill="white" fillOpacity="0.6"/>
-      <rect x="10" y="19" width="4" height="3" rx="1" fill="#2563EB"/>
-      <rect x="15" y="19" width="4" height="3" rx="1" fill="#2563EB"/>
-    </svg>
-  ),
-  User: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-      <circle cx="12" cy="7" r="4"/>
-    </svg>
-  ),
-  Lock: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-    </svg>
-  ),
-  Eye: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-      <circle cx="12" cy="12" r="3"/>
-    </svg>
-  ),
-  EyeOff: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
-      <line x1="1" y1="1" x2="23" y2="23"/>
-    </svg>
-  ),
-  Mail: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-      <polyline points="22,6 12,13 2,6"/>
-    </svg>
-  ),
-  Check: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-      <polyline points="20 6 9 17 4 12"/>
-    </svg>
-  ),
-  ArrowRight: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="5" y1="12" x2="19" y2="12"/>
-      <polyline points="12 5 19 12 12 19"/>
-    </svg>
-  ),
-  Close: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="6" x2="6" y2="18"/>
-      <line x1="6" y1="6" x2="18" y2="18"/>
-    </svg>
-  ),
-  Alert: ({size=16}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <line x1="12" y1="8" x2="12" y2="12"/>
-      <line x1="12" y1="16" x2="12.01" y2="16"/>
-    </svg>
-  ),
-  Salary: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="12" y1="1" x2="12" y2="23"/>
-      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-    </svg>
-  ),
-  Users: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-      <circle cx="9" cy="7" r="4"/>
-      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-    </svg>
-  ),
-  Shield: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    </svg>
-  ),
-  FileText: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-      <polyline points="14 2 14 8 20 8"/>
-      <line x1="16" y1="13" x2="8" y2="13"/>
-      <line x1="16" y1="17" x2="8" y2="17"/>
-      <polyline points="10 9 9 9 8 9"/>
-    </svg>
-  ),
-  Clock: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10"/>
-      <polyline points="12 6 12 12 16 14"/>
-    </svg>
-  ),
-  Chart: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="18" y1="20" x2="18" y2="10"/>
-      <line x1="12" y1="20" x2="12" y2="4"/>
-      <line x1="6" y1="20" x2="6" y2="14"/>
-    </svg>
-  ),
-  Send: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="22" y1="2" x2="11" y2="13"/>
-      <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-    </svg>
-  ),
-  Building: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <path d="M3 9h18M9 21V9"/>
-    </svg>
-  ),
-  Star: ({size=14}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor">
-      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-    </svg>
-  ),
-  Menu: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <line x1="3" y1="12" x2="21" y2="12"/>
-      <line x1="3" y1="6" x2="21" y2="6"/>
-      <line x1="3" y1="18" x2="21" y2="18"/>
-    </svg>
-  ),
-  Play: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="5 3 19 12 5 21 5 3"/>
-    </svg>
-  ),
-  Zap: ({size=20}) => (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
-    </svg>
-  ),
+/* ═══════════════════════════════════════
+   ICONS
+═══════════════════════════════════════ */
+const I = {
+  User: ({s=16}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+  Lock: ({s=16}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,
+  Mail: ({s=16}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>,
+  Eye: ({s=15}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>,
+  EyeOff: ({s=15}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>,
+  Check: ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>,
+  Arrow: ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>,
+  Close: ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Alert: ({s=13}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,
+  Shield: ({s=20}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  Send: ({s=20}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+  Star: ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  ChevL: ({s=18}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  ChevR: ({s=18}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  Play: ({s=14}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>,
+  Info: ({s=13}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>,
 };
 
-/* ─────────────────────────────────────────────
-   NAVBAR — Enhanced with refined glass effect
-───────────────────────────────────────────── */
-function Navbar({ onLoginClick }) {
-  const [scrolled, setScrolled] = useState(false);
-  const [active, setActive] = useState("features");
- useEffect(() => {
-  const handleScroll = () => {
-    const sections = navLinks.map(l => document.getElementById(l.id));
-
-    sections.forEach((sec, i) => {
-      if (!sec) return;
-
-      const rect = sec.getBoundingClientRect();
-
-      if (rect.top <= 120 && rect.bottom >= 120) {
-        setActive(navLinks[i].id);
-      }
-    });
-  };
-
-  window.addEventListener("scroll", handleScroll);
-  return () => window.removeEventListener("scroll", handleScroll);
-}, []);
-
-const scrollToSection = (id) => {
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  window.scrollTo({
-    top: el.offsetTop - 70, // navbar offset
-    behavior: "smooth"
-  });
-};
-
-  const navLinks = [
-  { label: "Features", id: "Features" },
-  { label: "Pricing", id: "pricing" },
-  { label: "Compliance", id: "compliancestrip" },
-  { label: "Integrations", id: "features" },
-  { label: "About", id: "footer" }
-];
-
+/* ═══════════════════════════════════════
+   DASHBOARD ILLUSTRATION (replaces Zoho screenshot)
+═══════════════════════════════════════ */
+function DashboardMockup() {
   return (
-   
-
-<nav
-  className="pw-nav"
-  style={{
-    transition: "all 0.3s cubic-bezier(0.16, 1, 0.3, 1)",
-    background: "rgba(255,255,255,0.88)",
-    backdropFilter: "blur(20px) saturate(180%)",
-    WebkitBackdropFilter: "blur(20px) saturate(180%)",
-    borderBottom: "1px solid rgba(226,232,240,0.6)",
-    boxShadow: "0 1px 8px rgba(15,23,42,0.04)"
-  }}
->
-  <div
-    style={{
-      width: "100%",
-      margin: "0 auto",
-      padding: "0 clamp(16px, 4vw, 48px)",
-      height: 68,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between"
-    }}
-  >
-   
-    {/* Logo */}
-    <a
-      href="#"
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        textDecoration: "none"
-      }}
-    >
-      {/* ✅ REAL LOGO */}
-      <img
-        src={logo1}
-        alt="Brixigo"
-        style={{
-          height: 46,
-          width: "auto",
-          objectFit: "contain",
-          transition: "transform 0.3s ease"
-        }}
-        onMouseEnter={e => e.currentTarget.style.transform = "scale(1.03)"}
-        onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-      />
-    </a>
-
-    {/* Nav Links */}
-    <div className="nav-links" style={{ display: "flex", gap: 4 }}>
-  {navLinks.map((l) => (
-    <button
-      key={l.id}
-      onClick={() => scrollToSection(l.id)}
-      style={{
-        padding: "8px 16px",
-        borderRadius: 9,
-        fontSize: 14,
-        fontWeight: 600,
-        border: "none",
-        cursor: "pointer",
-        background: active === l.id ? "var(--blue-50)" : "transparent",
-        color: active === l.id ? "var(--blue-600)" : "var(--slate-600)",
-        transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-        letterSpacing: "-0.01em"
-      }}
-      onMouseEnter={e => {
-        if (active !== l.id) {
-          e.currentTarget.style.background = "var(--slate-100)";
-          e.currentTarget.style.color = "var(--slate-700)";
-        }
-      }}
-      onMouseLeave={e => {
-        if (active !== l.id) {
-          e.currentTarget.style.background = "transparent";
-          e.currentTarget.style.color = "var(--slate-600)";
-        }
-      }}
-    >
-      {l.label}
-    </button>
-  ))}
-</div>
-
-    {/* CTA */}
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      
-
-      <button
-        onClick={onLoginClick}
-        style={{
-          padding: "9px 22px",
-          borderRadius: 10,
-          border: "none",
-          background: "linear-gradient(135deg, var(--blue-600) 0%, var(--blue-700) 100%)",
-          color: "#ffffff",
-          fontWeight: 700,
-          fontSize: 14,
-          fontFamily: "var(--font-body)",
-          cursor: "pointer",
-          boxShadow: "0 4px 14px rgba(37,99,235,0.28), 0 1px 3px rgba(37,99,235,0.12)",
-          transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-          letterSpacing: "-0.01em",
-          display: "flex",
-          alignItems: "center",
-          gap: 6
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.transform = "translateY(-2px)";
-          e.currentTarget.style.boxShadow = "0 8px 24px rgba(37,99,235,0.35), 0 2px 6px rgba(37,99,235,0.18)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.transform = "translateY(0)";
-          e.currentTarget.style.boxShadow = "0 4px 14px rgba(37,99,235,0.28), 0 1px 3px rgba(37,99,235,0.12)";
-        }}
-      >
-        Sign In
-        <Icon.ArrowRight size={14} />
-      </button>
-    </div>
-  </div>
-</nav>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   HERO — Enhanced floating UI cards
-───────────────────────────────────────────── */
-function SalaryCard() {
-  return (
-    <div id="salarycard" className="pw-card-flat float-card" style={{ padding: "20px 24px", minWidth: "100%" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 5 }}>Total Payroll — March 2025</div>
-          <div style={{ fontSize: 30, fontWeight: 700, color: "var(--slate-900)", fontFamily: "var(--font-display)", letterSpacing: "-0.02em" }}>₹24,58,400</div>
+    <div className="zdash" style={{ width: "100%", maxWidth: 560 }}>
+      <div className="zdash-bar">
+        <span>BrixiGo Payroll · April 2025</span>
+        <div style={{ display: "flex", gap: 6 }}>
+          <span className="zdash-dot" />
+          <span className="zdash-dot" />
+          <span className="zdash-dot" />
         </div>
-        <span className="badge badge-green" style={{ fontSize: 11 }}>✓ Processed</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
-        {[["Employees", "142"], ["Avg. CTC", "₹1.73L"], ["Tax Deducted", "₹3.2L"]].map(([l, v]) => (
-  <div key={l} style={{ padding: "8px 0" }}>
-    <div style={{ fontSize: 10.5, color: "var(--slate-400)", fontWeight: 600, marginBottom: 3, textTransform: "uppercase", letterSpacing: "0.3px" }}>
-      {l}
-    </div>
-    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--slate-800)", letterSpacing: "-0.01em" }}>
-      {v}
-    </div>
-  </div>
-))}
-      </div>
-      <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(226,232,240,0.7)", display: "flex", gap: 6 }}>
-        <div style={{ flex: 0.6, height: 5, borderRadius: 99, background: "linear-gradient(90deg, var(--blue-600), var(--blue-500))" }} />
-        <div style={{ flex: 0.2, height: 5, borderRadius: 99, background: "linear-gradient(90deg, var(--teal-600), var(--teal-500))" }} />
-        <div style={{ flex: 0.2, height: 5, borderRadius: 99, background: "linear-gradient(90deg, var(--amber-600), var(--amber-500))" }} />
-      </div>
-      <div style={{ marginTop: 8, display: "flex", gap: 14, fontSize: 11, color: "var(--slate-500)", fontWeight: 600 }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--blue-600)", display: "inline-block" }} /> Basic
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--teal-500)", display: "inline-block" }} /> Allowances
-        </span>
-        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ width: 8, height: 8, borderRadius: 3, background: "var(--amber-500)", display: "inline-block" }} /> Deductions
-        </span>
-      </div>
-    </div>
-  );
-}
-
-function PayslipCard() {
-  const rows = [
-    { label: "Gross Pay", value: "₹1,25,000", color: "var(--slate-800)" },
-    { label: "Tax (TDS)", value: "-₹18,420", color: "var(--red-600)" },
-    { label: "PF Deduction", value: "-₹7,500", color: "var(--amber-700)" },
-    { label: "Net Pay", value: "₹99,080", color: "var(--green-700)" },
-  ];
-
-  return (
-    <div id="payslipcard"
-      className="pw-card-flat float-card-2"
-      style={{
-        padding: "20px 24px",
-        width: "100%",
-        minWidth: 260,
-      }}
-    >
-      {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 16,
-        }}
-      >
-        <span
-          style={{
-            fontSize: 12,
-            fontWeight: 700,
-            color: "var(--slate-700)",
-          }}
-        >
-          Payslip Preview
-        </span>
-
-        <span className="badge badge-blue">March 2025</span>
-      </div>
-
-      {/* User */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 18,
-        }}
-      >
-        <div
-          style={{
-            width: 40,
-            height: 40,
-            borderRadius: 12,
-            background: "linear-gradient(135deg,#DBEAFE,#93C5FD)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: 15,
-            fontWeight: 700,
-            color: "#1D4ED8",
-          }}
-        >
-          P
+      <div style={{ padding: 20, background: "#F7F8FA" }}>
+        {/* Summary row */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 16 }}>
+          {[["Total Payroll","₹26,40,000","#1A7340"],["Employees","148","#1565C0"],["TDS Deducted","₹3,84,000","#E8502A"]].map(([l,v,c]) => (
+            <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "12px 14px", border: "1px solid #E0E0E0" }}>
+              <div style={{ fontSize: 10, color: "#777", fontWeight: 700, marginBottom: 5, textTransform: "uppercase", letterSpacing: ".4px" }}>{l}</div>
+              <div style={{ fontSize: 18, fontWeight: 900, color: c, letterSpacing: "-.01em" }}>{v}</div>
+            </div>
+          ))}
         </div>
-
-        <div>
-          <div
-            style={{
-              fontSize: 13.5,
-              fontWeight: 700,
-              color: "var(--slate-800)",
-              letterSpacing: "-0.01em"
-            }}
-          >
-            Priya Sharma
+        {/* Salary breakdown bars */}
+        <div style={{ background: "#fff", borderRadius: 6, padding: "14px 16px", border: "1px solid #E0E0E0", marginBottom: 12 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#555", marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>Salary Breakdown</div>
+          {[["Basic","74%","#1A7340"],["HRA","21%","#43A047"],["Transport","5%","#81C784"]].map(([l,p,c]) => (
+            <div key={l} style={{ marginBottom: 9 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                <span style={{ color: "#555", fontWeight: 600 }}>{l}</span>
+                <span style={{ color: "#333", fontWeight: 700 }}>{p}</span>
+              </div>
+              <div style={{ height: 6, background: "#E8F5EE", borderRadius: 99 }}>
+                <div style={{ height: "100%", width: p, background: c, borderRadius: 99 }} />
+              </div>
+            </div>
+          ))}
+        </div>
+        {/* Employee list */}
+        <div style={{ background: "#fff", borderRadius: 6, border: "1px solid #E0E0E0", overflow: "hidden" }}>
+          <div style={{ padding: "10px 14px", borderBottom: "1px solid #EEE", display: "flex", justifyContent: "space-between", fontSize: 11, fontWeight: 700, color: "#999", textTransform: "uppercase", letterSpacing: ".5px" }}>
+            <span>Employee</span><span>Department</span><span>Net Pay</span><span>Status</span>
           </div>
-
-          <div style={{ fontSize: 11, color: "var(--slate-500)" }}>
-            Sr. Engineer · Bangalore
-          </div>
+          {[["Priya Sharma","Engineering","₹1,12,400","Paid"],["Rahul Singh","Operations","₹88,600","Paid"],["Anita Rao","HR","₹72,200","Paid"]].map(([n,d,s,st]) => (
+            <div key={n} style={{ padding: "10px 14px", borderBottom: "1px solid #F5F5F5", display: "flex", justifyContent: "space-between", fontSize: 12, alignItems: "center" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#E8F5EE", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#1A7340" }}>{n.split(" ").map(w=>w[0]).join("")}</div>
+                <span style={{ fontWeight: 600, color: "#333" }}>{n}</span>
+              </div>
+              <span style={{ color: "#777" }}>{d}</span>
+              <span style={{ fontWeight: 700, color: "#333" }}>{s}</span>
+              <span style={{ background: "#E8F5EE", color: "#1A7340", fontSize: 11, fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>{st}</span>
+            </div>
+          ))}
         </div>
       </div>
-
-      {/* Salary Rows */}
-      {rows.map((row, i) => (
-        <div
-          key={i} 
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            padding: "7px 0",
-            borderBottom:
-              row.label !== "Net Pay"
-                ? "1px solid var(--slate-100)"
-                : "none",
-          }}
-        >
-          <span style={{ fontSize: 12.5, color: "var(--slate-500)" }}>
-            {row.label}
-          </span>
-
-          <span
-            style={{
-              fontSize: 12.5,
-              fontWeight: 700,
-              color: row.color,
-            }}
-          >
-            {row.value}
-          </span>
-        </div>
-      ))}
     </div>
   );
 }
 
-function AttendanceCard() {
-  const days = ["M","T","W","T","F"];
-  const status = ["p","p","p","a","p"];
-  return (
-    <div className="pw-card-flat float-card-3" style={{ padding: "16px 20px", width: "100%" }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--slate-500)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 12 }}>Attendance — This Week</div>
-      <div style={{ display: "flex", gap: 7, marginBottom: 14 }}>
-        {days.map((d, i) => (
-          <div key={i} style={{ flex: 1, textAlign: "center" }}>
-            <div style={{ fontSize: 10.5, color: "var(--slate-400)", marginBottom: 5, fontWeight: 600 }}>{d}</div>
-            <div style={{
-              width: "100%", aspectRatio: "1", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700,
-              background: status[i] === "p" ? "var(--green-50)" : "var(--red-100)",
-              color: status[i] === "p" ? "var(--green-700)" : "var(--red-600)",
-              border: `1px solid ${status[i] === "p" ? "var(--green-100)" : "var(--red-100)"}`,
-              transition: "transform 0.15s ease",
-            }}
-            onMouseEnter={e => e.currentTarget.style.transform = "scale(1.08)"}
-            onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
-            >{status[i] === "p" ? "✓" : "✗"}</div>
+/* phone mockup for ESS */
+function PhoneMockup({ tab }) {
+  const content = {
+    web: (
+      <div style={{ padding: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#333" }}>My Payslip — April 2025</div>
+        {[["Gross Pay","₹1,40,000"],["PF Deduction","-₹8,400"],["TDS","-₹21,200"],["Net Pay","₹1,10,400"]].map(([l,v]) => (
+          <div key={l} style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid #F0F0F0", fontSize: 12 }}>
+            <span style={{ color: "#777" }}>{l}</span>
+            <span style={{ fontWeight: 700, color: l === "Net Pay" ? "#1A7340" : l.includes("-") || l === "TDS" || l === "PF" ? "#D32F2F" : "#333" }}>{v}</span>
+          </div>
+        ))}
+        <button style={{ marginTop: 14, width: "100%", padding: "9px", background: "#E8502A", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Download PDF</button>
+      </div>
+    ),
+    payslip: (
+      <div style={{ padding: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#333" }}>Payslips</div>
+        {[["March 2025","₹1,08,200","Paid"],["Feb 2025","₹1,08,200","Paid"],["Jan 2025","₹1,02,400","Paid"]].map(([m,a,s]) => (
+          <div key={m} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F0F0F0" }}>
+            <div><div style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{m}</div><div style={{ fontSize: 11, color: "#777" }}>{a}</div></div>
+            <span style={{ background: "#E8F5EE", color: "#1A7340", fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 20 }}>{s}</span>
           </div>
         ))}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-        <span style={{ color: "var(--slate-500)" }}>Present: <strong style={{ color: "var(--green-700)" }}>4</strong></span>
-        <span style={{ color: "var(--slate-500)" }}>Absent: <strong style={{ color: "var(--red-600)" }}>1</strong></span>
+    ),
+    leave: (
+      <div style={{ padding: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#333" }}>Leave Balance</div>
+        {[["Casual Leave","8 days","#1A7340"],["Sick Leave","6 days","#1565C0"],["Earned Leave","14 days","#E8502A"]].map(([t,d,c]) => (
+          <div key={t} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #F0F0F0" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: c }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: "#333" }}>{t}</span>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: c }}>{d}</span>
+          </div>
+        ))}
+        <button style={{ marginTop: 14, width: "100%", padding: "9px", background: "#1A7340", color: "#fff", border: "none", borderRadius: 4, fontSize: 12, fontWeight: 700, cursor: "pointer" }}>Apply for Leave</button>
+      </div>
+    ),
+    notify: (
+      <div style={{ padding: 14 }}>
+        <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 10, color: "#333" }}>Notifications</div>
+        {[["Salary Credited","April salary ₹1,10,400 credited","2m"],["Payslip Ready","April 2025 payslip is ready","1h"],["TDS Updated","Form 16 for FY 24-25 available","1d"]].map(([t,s,tm]) => (
+          <div key={t} style={{ padding: "8px 0", borderBottom: "1px solid #F0F0F0" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "#333" }}>{t}</span>
+              <span style={{ fontSize: 10, color: "#999" }}>{tm}</span>
+            </div>
+            <span style={{ fontSize: 11, color: "#777" }}>{s}</span>
+          </div>
+        ))}
+      </div>
+    ),
+  };
+
+  return (
+    <div style={{ width: 220, background: "#1C1C1E", borderRadius: 24, padding: 8, boxShadow: "0 12px 40px rgba(0,0,0,0.25)", flexShrink: 0 }}>
+      <div style={{ background: "#fff", borderRadius: 18, overflow: "hidden" }}>
+        <div style={{ background: "#1A7340", padding: "10px 14px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#fff" }}>BrixiGo</span>
+          <div style={{ display: "flex", gap: 4 }}>
+            {[...Array(3)].map((_,i) => <div key={i} style={{ width: 4, height: 4, borderRadius: "50%", background: "rgba(255,255,255,.6)" }} />)}
+          </div>
+        </div>
+        <div style={{ minHeight: 200 }}>{content[tab] || content.web}</div>
       </div>
     </div>
   );
 }
 
+/* ═══════════════════════════════════════
+   NAVBAR
+═══════════════════════════════════════ */
+function Navbar({ onLoginClick }) {
+  const [scrolled, setScrolled] = useState(false);
+  const links = [
+    { label: "Features", id: "features" }, { label: "Pricing", id: "pricing" },
+    { label: "Compliance", id: "compliance" }, { label: "Customers", id: "testimonials" }, { label: "Support", id: "footer" },
+  ];
+  useEffect(() => {
+    const fn = () => setScrolled(window.scrollY > 4);
+    window.addEventListener("scroll", fn);
+    return () => window.removeEventListener("scroll", fn);
+  }, []);
+  const scrollTo = id => { const el = document.getElementById(id); if (el) window.scrollTo({ top: el.offsetTop - 68, behavior: "smooth" }); };
+
+  return (
+    <nav className={`zn-nav${scrolled ? " scrolled" : ""}`}>
+      <div style={{ width: "100%", padding: "0 clamp(16px,4vw,48px)", height: 64, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <a href="#" style={{ display: "flex", alignItems: "center", textDecoration: "none" }}>
+          <BrixigoLogo
+            height={48}
+            alt="Brixigo Technologies Pvt.Ltd."
+            hoverScale={1.03}
+            style={{ objectPosition: "left center", maxWidth: 220 }}
+          />
+        </a>
+        <div className="hide-mob" style={{ display: "flex", gap: 2 }}>
+          {links.map(l => (
+            <button key={l.id} onClick={() => scrollTo(l.id)} style={{ padding: "8px 16px", border: "none", background: "transparent", cursor: "pointer", fontSize: 14, fontWeight: 600, color: "var(--z-text-md)", fontFamily: "var(--font)", borderRadius: 4, transition: "all .2s" }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--z-green)"; e.currentTarget.style.background = "var(--z-bg-green)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--z-text-md)"; e.currentTarget.style.background = "transparent"; }}
+            >{l.label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 10 }}>
+          <button className="zb zb-ghost" onClick={onLoginClick}>Sign In</button>
+          <button className="zb zb-primary" onClick={onLoginClick}>Start Free Trial</button>
+        </div>
+      </div>
+    </nav>
+  );
+}
+
+/* ═══════════════════════════════════════
+   HERO — Zoho style: white + light green tint, big H1, product screenshot
+═══════════════════════════════════════ */
 function Hero({ onLoginClick }) {
   return (
-    <section className="hero-section" style={{ padding: "88px 24px 108px" }}>
-      <div className="hero-grid" />
-      <div style={{ maxWidth: "100%", margin: "0 auto", position: "relative" }}>
-        <div className="hero-cols" style={{display: "flex",alignItems: "center",gap: 72,flexWrap: "wrap"}}>
+    <section style={{ background: "linear-gradient(180deg, var(--z-bg-hero) 0%, #fff 100%)", borderBottom: "1px solid var(--z-border)", padding: "72px clamp(20px,5vw,72px) 0", overflow: "hidden" }}>
+      <div style={{ width: "100%" }}>
+        {/* Top announcement bar */}
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "#fff", border: "1px solid var(--z-green-mid)", borderRadius: 20, padding: "6px 16px", fontSize: 13, color: "var(--z-green)" }}>
+            <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--z-orange)", display: "inline-block" }} />
+            <span style={{ fontWeight: 700 }}>New fiscal year?</span>
+            <span style={{ color: "var(--z-text-md)" }}>Start your payroll with a clean slate.</span>
+            <a href="#" style={{ color: "var(--z-orange)", fontWeight: 700, textDecoration: "none" }}>Learn how →</a>
+          </div>
+        </div>
 
-          {/* Left */}
-          <div style={{ flex: 1, minWidth: 0 }}>
-            <div className="fade-in-up" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(239,246,255,0.8)", border: "1px solid var(--blue-100)", borderRadius: 999, padding: "6px 16px", marginBottom: 28, backdropFilter: "blur(8px)" }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--blue-500)", display: "inline-block", animation: "pulse-dot 2s ease-in-out infinite" }} />
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--blue-700)", letterSpacing: "0.2px" }}>Trusted by 2,400+ companies across India</span>
-            </div>
-
-            <h1 className="fade-in-up-1" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(32px, 3.8vw, 56px)", lineHeight: 1.12, color: "var(--slate-900)", marginBottom: 22, letterSpacing: "-0.02em" }}>
-              Automate Payroll.<br />
-              <span style={{ color: "var(--blue-600)" }}>Ensure Compliance.</span><br />
-              Pay Employees{" "}
-              <span style={{ fontStyle: "italic", color: "var(--teal-600)" }}>Accurately.</span>
+        <div style={{ display: "flex", gap: 60, alignItems: "flex-end", flexWrap: "wrap" }}>
+          {/* Left copy */}
+          <div style={{ flex: "0 0 auto", maxWidth: 520, paddingBottom: 60 }}>
+            <h1 style={{ fontSize: "clamp(30px,3.8vw,48px)", fontWeight: 900, color: "var(--z-text)", lineHeight: 1.15, marginBottom: 20, letterSpacing: "-.01em" }}>
+              Payroll made easy,<br />
+              <span style={{ color: "var(--z-green)" }}>scalable,</span> and{" "}
+              <span style={{ color: "var(--z-orange)" }}>compliant</span>
             </h1>
-
-            <p className="fade-in-up-2" style={{ fontSize: 17, color: "var(--slate-600)", lineHeight: 1.75, marginBottom: 36, maxWidth: 520, letterSpacing: "-0.01em" }}>
-              End-to-end payroll processing with automated TDS, PF, ESI compliance, digital payslips, and real-time employee analytics — built for Indian businesses.
+            <p style={{ fontSize: 17, color: "var(--z-text-md)", lineHeight: 1.7, marginBottom: 32, maxWidth: 460 }}>
+              Transform outdated payroll practices and build a better workplace for your business with BrixiGo Payroll.
             </p>
-
-            <div className="fade-in-up-3" style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 44 }}>
-              <button className="btn btn-primary btn-xl" onClick={onLoginClick} style={{ gap: 10 }}>
-                Join With Us <Icon.ArrowRight size={16} />
-              </button>
-              <button className="btn btn-secondary btn-xl" onClick={onLoginClick} style={{ gap: 8 }}>
-                <Icon.Play size={14} />
-                Watch Demo
-              </button>
+            <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 28 }}>
+              <button className="zb zb-primary" onClick={onLoginClick} style={{ fontSize: 15, padding: "13px 28px" }}>Start My Free Trial</button>
+              <button className="zb zb-outline" onClick={onLoginClick} style={{ gap: 7 }}><I.Play />Request a Demo</button>
             </div>
-
-            <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
-              {[["✓ No credit card required","var(--green-700)"], ["✓ Setup in 15 minutes","var(--teal-700)"], ["✓ Fully GST & TDS compliant","var(--blue-700)"]].map(([t,c]) => (
-                <span key={t} style={{ fontSize: 13, fontWeight: 600, color: c, letterSpacing: "-0.01em" }}>{t}</span>
+            <div style={{ display: "flex", gap: 20, flexWrap: "wrap" }}>
+              {["✓ No credit card required","✓ Setup in 15 minutes","✓ GST & TDS compliant"].map(t => (
+                <span key={t} style={{ fontSize: 13, color: "var(--z-text-md)", fontWeight: 600 }}>{t}</span>
               ))}
             </div>
           </div>
 
-          {/* Right — Floating UI Visuals */}
-          <div className="hide-mobile" style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 16, alignItems: "stretch", position: "relative" }}>
-            <SalaryCard />
-            <div style={{ display: "flex", gap: 14, justifyContent: "flex-end" }}>
-              <PayslipCard />
-              <AttendanceCard />
-            </div>
+          {/* Right — product screenshot */}
+          <div style={{ flex: 1, minWidth: 280, display: "flex", justifyContent: "center", alignItems: "flex-end" }}>
+            <DashboardMockup />
           </div>
-
         </div>
       </div>
     </section>
   );
 }
 
-/* ─────────────────────────────────────────────
-   STATS STRIP — Enhanced with hover
-───────────────────────────────────────────── */
-function Stats() {
-  const stats = [
-    { value: "₹1,200Cr+", label: "Salary Processed Monthly", color: "var(--blue-600)", icon: <Icon.Salary size={18} /> },
-    { value: "2,400+",    label: "Companies Trust Us",        color: "var(--teal-600)", icon: <Icon.Building size={18} /> },
-    { value: "1.8L+",     label: "Employees on Platform",     color: "var(--green-600)", icon: <Icon.Users size={18} /> },
-    { value: "99.98%",    label: "On-time Payment Rate",      color: "var(--amber-600)", icon: <Icon.Zap size={18} /> },
-  ];
+/* ═══════════════════════════════════════
+   CUSTOMER LOGOS STRIP (Zoho style ticker)
+═══════════════════════════════════════ */
+function LogoStrip() {
+  const logos = ["Nexus Tech","BuildCore","MedChain","GreenPulse","Axis Retail","Spectra IT","DataMind","SwiftHR","OmniPay","TalentFlow"];
   return (
-  <section style={{ background: "var(--bg-card)", borderBottom: "1px solid var(--border)" }}>
-  <div style={{ width: "100%" }}>
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-        borderLeft: "1px solid var(--border)",
-      }}
-    >
-      {stats.map((s, i) => (
-        <div
-          key={i}
-          className="stat-cell"
-          style={{
-            padding: "36px 24px",
-            borderRight: "1px solid var(--border)",
-            textAlign: "center",
-            cursor: "default",
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: 10 }}>
-            <div style={{
-              width: 36, height: 36, borderRadius: 10,
-              background: `${s.color}10`,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              color: s.color,
-            }}>
-              {s.icon}
-            </div>
-          </div>
-          <div
-            style={{
-              fontSize: 30,
-              fontWeight: 700,
-              fontFamily: "var(--font-display)",
-              color: s.color,
-              marginBottom: 6,
-              letterSpacing: "-0.02em",
-            }}
-          >
-            {s.value}
-          </div>
-
-          <div
-            style={{
-              fontSize: 13,
-              color: "var(--slate-500)",
-              fontWeight: 500,
-              letterSpacing: "-0.01em"
-            }}
-          >
-            {s.label}
-          </div>
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   FEATURES — Enhanced cards with top accent
-───────────────────────────────────────────── */
-function Features() {
-  const features = [
-    {
-      icon: <Icon.Salary size={22} />,
-      iconBg: "var(--blue-50)", iconColor: "var(--blue-600)",
-      tag: "Core", tagClass: "badge-blue",
-      title: "Automated Salary Processing",
-      desc: "Run payroll for all employees in one click. Automatically calculate gross pay, deductions, allowances, and net pay with zero manual errors.",
-    },
-    {
-      icon: <Icon.Shield size={22} />,
-      iconBg: "var(--teal-50)", iconColor: "var(--teal-600)",
-      tag: "Compliance", tagClass: "badge-teal",
-      title: "TDS, PF & ESI Compliance",
-      desc: "Automated TDS computation, Form 16 generation, PF/ESI filings, and compliance reports aligned with the latest IT regulations.",
-    },
-    {
-      icon: <Icon.FileText size={22} />,
-      iconBg: "var(--green-50)", iconColor: "var(--green-600)",
-      tag: "Payslips", tagClass: "badge-green",
-      title: "Digital Payslip Generation",
-      desc: "Generate branded, legally-compliant PDF payslips instantly. Auto-distribute to employees via email or the self-service portal.",
-    },
-    {
-      icon: <Icon.Clock size={22} />,
-      iconBg: "var(--amber-50)", iconColor: "var(--amber-700)",
-      tag: "Attendance", tagClass: "badge-amber",
-      title: "Attendance & Leave Integration",
-      desc: "Sync attendance data from biometrics or HR systems. Auto-compute LOP deductions and leave encashment with configurable policies.",
-    },
-    {
-      icon: <Icon.Chart size={22} />,
-      iconBg: "var(--blue-50)", iconColor: "var(--blue-600)",
-      tag: "Analytics", tagClass: "badge-blue",
-      title: "Payroll Analytics & Reports",
-      desc: "Real-time dashboards for salary costs, department-wise expense breakdowns, and year-on-year payroll trends for leadership teams.",
-    },
-    {
-      icon: <Icon.Users size={22} />,
-      iconBg: "var(--teal-50)", iconColor: "var(--teal-600)",
-      tag: "HR", tagClass: "badge-teal",
-      title: "Employee Records Management",
-      desc: "Centralised employee master with bank details, tax declarations, documents, and full revision history — secure and audit-ready.",
-    },
-  ];
-
-  return (
-   <section id="Features" className="features-section">
-  <div className="features-container">
-    
-    {/* Header */}
-    <div className="features-header">
-      <span className="badge badge-blue">Platform Features</span>
-
-      <h2 className="features-title">
-        Everything payroll, in one platform
-      </h2>
-
-      <p className="features-subtitle">
-        Built for Indian HR and finance teams who need speed, accuracy, and full statutory compliance.
-      </p>
-    </div>
-
-    {/* Grid */}
-    <div className="features-grid">
-      {features.map((f, i) => (
-        <div key={i} className="feature-card">
-          
-          <div className="feature-top">
-            <div
-              className="feature-icon-wrap"
-              style={{ background: f.iconBg, color: f.iconColor }}
-            >
-              {f.icon}
-            </div>
-
-            <div>
-              <span className={`badge ${f.tagClass}`} style={{ marginBottom: 4, display: "inline-flex" }}>
-                {f.tag}
-              </span>
-
-              <h3 className="feature-title">
-                {f.title}
-              </h3>
-            </div>
-          </div>
-
-          <p className="feature-desc">
-            {f.desc}
-          </p>
-        </div>
-      ))}
-    </div>
-
-  </div>
-</section>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   COMPLIANCE STRIP — Enhanced pills
-───────────────────────────────────────────── */
-function ComplianceStrip() {
-  const items = [
-    { label: "Income Tax Act", icon: "📋" },
-    { label: "PF Act Compliance", icon: "🛡️" },
-    { label: "ESI Regulations", icon: "🏥" },
-    { label: "Gratuity Act", icon: "📜" },
-    { label: "Professional Tax", icon: "🗂️" },
-    { label: "Form 16 / 12BA", icon: "📄" },
-    { label: "TDS Returns", icon: "💼" },
-    { label: "Bonus Act", icon: "🎯" },
-  ];
-  return (
-  <section id="compliancestrip"
-  style={{
-    background: "linear-gradient(180deg, var(--slate-100) 0%, rgba(241,245,249,0.5) 100%)",
-    padding: "64px 0",
-    borderTop: "1px solid var(--border)",
-    borderBottom: "1px solid var(--border)",
-    position: "relative",
-  }}
->
-  <div
-    style={{
-      width: "100%",
-      padding: "0 clamp(20px, 6vw, 80px)",
-      textAlign: "center",
-    }}
-  >
-    {/* Badge */}
-    <div style={{ marginBottom: 12 }}>
-      <span className="badge badge-slate" style={{ fontSize: 11, letterSpacing: "0.5px" }}>
-        <Icon.Shield size={12} /> Compliance
-      </span>
-    </div>
-
-    {/* Heading */}
-    <h3
-      style={{
-        fontFamily: "var(--font-display)",
-        fontSize: "clamp(22px, 3vw, 30px)",
-        color: "var(--slate-900)",
-        marginBottom: 12,
-        letterSpacing: "-0.01em"
-      }}
-    >
-      Full Statutory Compliance Coverage
-    </h3>
-    <p style={{ fontSize: 14, color: "var(--slate-500)", marginBottom: 32, maxWidth: 440, margin: "0 auto 32px" }}>
-      Automated compliance with every major Indian labour and tax regulation.
-    </p>
-
-    {/* Pills */}
-    <div
-      style={{
-        display: "flex",
-        flexWrap: "wrap",
-        gap: 12,
-        justifyContent: "center",
-      }}
-    >
-      {items.map((item, i) => (
-        <div
-          key={i}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: 8,
-            background: "#ffffff",
-            border: "1px solid var(--border)",
-            borderRadius: 999,
-            padding: "10px 20px",
-            fontSize: 13.5,
-            fontWeight: 600,
-            color: "var(--slate-700)",
-            boxShadow: "var(--shadow-xs)",
-            transition: "all 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
-            cursor: "default",
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.transform = "translateY(-3px)";
-            e.currentTarget.style.boxShadow = "var(--shadow-md)";
-            e.currentTarget.style.borderColor = "var(--blue-200)";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.transform = "translateY(0)";
-            e.currentTarget.style.boxShadow = "var(--shadow-xs)";
-            e.currentTarget.style.borderColor = "var(--border)";
-          }}
-        >
-          <span style={{ fontSize: 15 }}>{item.icon}</span>
-          {item.label}
-        </div>
-      ))}
-    </div>
-  </div>
-</section>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   TESTIMONIALS — Enhanced with quote marks
-───────────────────────────────────────────── */
-function Testimonials() {
-  const reviews = [
-    {
-      stars: 5,
-      quote: "PayWise reduced our payroll processing time from 3 days to under 2 hours. The TDS auto-computation alone saves our accounts team an entire week every quarter.",
-      name: "Ananya Krishnan",
-      role: "Head of Finance",
-      company: "Nexus Technologies, Hyderabad",
-      avatar: "AK",
-      avatarBg: "linear-gradient(135deg,#DBEAFE,#93C5FD)",
-      avatarColor: "#1D4ED8",
-    },
-    {
-      stars: 5,
-      quote: "The payslip portal is a game-changer. Employees download their payslips themselves and HR queries have dropped by 70%. Compliance filings are now stress-free.",
-      name: "Rajesh Mehta",
-      role: "HR Director",
-      company: "BuildCore Infra, Mumbai",
-      avatar: "RM",
-      avatarBg: "linear-gradient(135deg,#CCFBF1,#5EEAD4)",
-      avatarColor: "#0F766E",
-    },
-    {
-      stars: 5,
-      quote: "Onboarding 200+ employees was seamless. The attendance integration with our biometric system works flawlessly and LOP deductions are fully automated.",
-      name: "Sunita Patel",
-      role: "VP Operations",
-      company: "MedChain Pharma, Ahmedabad",
-      avatar: "SP",
-      avatarBg: "linear-gradient(135deg,#DCFCE7,#86EFAC)",
-      avatarColor: "#15803D",
-    },
-  ];
-
-  return (
-    <section style={{ padding: "96px 24px", background: "var(--bg-card)", borderTop: "1px solid var(--border)" }}>
-      <div style={{ maxWidth: 1200, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 56 }}>
-          <span className="badge badge-teal" style={{ marginBottom: 14 }}>Customer Stories</span>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(26px,3.5vw,38px)", color: "var(--slate-900)", letterSpacing: "-0.01em" }}>
-            Trusted by HR & Finance teams
-          </h2>
-          <p style={{ fontSize: 15, color: "var(--slate-500)", marginTop: 10, maxWidth: 440, margin: "10px auto 0" }}>See how leading companies streamline their payroll with BrixiGo.</p>
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
-          {reviews.map((r, i) => (
-            <div key={i} className="pw-card testimonial-card" style={{ padding: "32px" }}>
-              <div style={{ display: "flex", gap: 3, marginBottom: 18 }}>
-                {Array(r.stars).fill(0).map((_, j) => (
-                  <span key={j} style={{ color: "var(--amber-500)" }}><Icon.Star size={15} /></span>
-                ))}
-              </div>
-              <p style={{ fontSize: 14.5, color: "var(--slate-600)", lineHeight: 1.75, marginBottom: 24, fontStyle: "italic", letterSpacing: "-0.01em" }}>"{r.quote}"</p>
-              <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-                <div style={{ width: 44, height: 44, borderRadius: 13, background: r.avatarBg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 700, color: r.avatarColor, flexShrink: 0 }}>{r.avatar}</div>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--slate-900)", letterSpacing: "-0.01em" }}>{r.name}</div>
-                  <div style={{ fontSize: 12.5, color: "var(--slate-500)" }}>{r.role} · {r.company}</div>
-                </div>
-              </div>
-            </div>
+    <section style={{ padding: "32px 0", background: "#fff", borderBottom: "1px solid var(--z-border)" }}>
+      <p style={{ textAlign: "center", fontSize: 13, color: "var(--z-text-xs)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "1px", marginBottom: 20 }}>Loved by India's fastest-growing businesses</p>
+      <div className="zlogo-wrap">
+        <div className="zlogo-track">
+          {[...logos, ...logos].map((l, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: "8px 24px", background: "var(--z-bg-grey)", border: "1px solid var(--z-border)", borderRadius: 6, whiteSpace: "nowrap", fontSize: 13, fontWeight: 700, color: "var(--z-text-md)", minWidth: 140 }}>{l}</div>
           ))}
         </div>
       </div>
@@ -1928,75 +733,394 @@ function Testimonials() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   PRICING — Enhanced visual hierarchy
-───────────────────────────────────────────── */
-function Pricing({ onLoginClick }) {
-  const plans = [
-    {
-      name: "Starter",
-      price: "₹2,999",
-      period: "/month",
-      desc: "For growing businesses up to 25 employees",
-      color: "var(--teal-600)",
-      badge: "badge-teal",
-      features: ["Payroll Processing", "Payslip Generation", "PF & TDS Filing", "Email Support", "Employee Self-Service", "Basic Reports"],
-      cta: "Start Free Trial",
-      ctaClass: "btn btn-secondary btn-md",
-      popular: false,
-    },
-    {
-      name: "Professional",
-      price: "₹7,499",
-      period: "/month",
-      desc: "For established businesses up to 100 employees",
-      color: "var(--blue-600)",
-      badge: "badge-blue",
-      features: ["Everything in Starter", "Attendance Integration", "Custom Pay Structures", "Form 16 Automation", "Leave Management", "API Access", "Priority Support"],
-      cta: "Start Free Trial",
-      ctaClass: "btn btn-primary btn-md",
-      popular: true,
-    },
-    {
-      name: "Enterprise",
-      price: "Custom",
-      period: "",
-      desc: "For large enterprises with complex requirements",
-      color: "var(--green-600)",
-      badge: "badge-green",
-      features: ["Unlimited Employees", "Multi-location Payroll", "Custom Compliance", "Dedicated Account Manager", "SLA Guarantee", "On-premise Option", "Custom Integrations"],
-      cta: "Contact Sales",
-      ctaClass: "btn btn-success btn-md",
-      popular: false,
-    },
-  ];
+/* ═══════════════════════════════════════
+   FEATURES — Zoho left-nav sidebar + right illustration
+═══════════════════════════════════════ */
+const FEAT_DATA = [
+  { id: "salary", label: "Personalize salary components", icon: "💰", title: "Customize salary structures for every employee", desc: "Accommodate diverse salary structures that suit each employee and your organisation hierarchy with custom earnings and deductions.", details: ["Custom earnings components (HRA, TA, DA)","Flexible deduction structures","Multiple pay schedules","Loan & advance management"] },
+  { id: "bank", label: "Deliver salaries online", icon: "🏦", title: "Pay employees directly to their bank accounts", desc: "BrixiGo has joined hands with reputed banks in India and auto-generates bank advice so you can pay employees online — instantly.", details: ["Direct bank transfer integration","Auto bank advice generation","Multi-bank support","Payment confirmation receipts"] },
+  { id: "contractor", label: "Contractor payments", icon: "🤝", title: "Simplify contractor & freelancer payments", desc: "Add contractors, set their reporting roles, handle TDS automatically, and manage their payouts alongside employees in one workflow.", details: ["Contractor onboarding workflow","Auto TDS on contractor payments","Form 16A generation","Unified payout dashboard"] },
+  { id: "approvals", label: "Multi-level approvals", icon: "✅", title: "Secure every payroll run with approval layers", desc: "Ensure every pay run passes through the right hands with multi-level approvals, keeping your entire payroll process completely reliable.", details: ["Configurable approval chains","Role-based access control","Audit trail for every action","Approval notification alerts"] },
+  { id: "reports", label: "Payroll reports & insights", icon: "📊", title: "Get instant insights with powerful reports", desc: "With auto-generated reports, you get a clear picture of payroll costs, employee salaries, and more to make smarter data-backed decisions.", details: ["30+ pre-built report templates","Scheduled report delivery","Cost-centre analysis","Export to Excel & PDF"] },
+  { id: "scale", label: "Effortless scalability", icon: "🚀", title: "Scales from 5 to 5,000 employees seamlessly", desc: "From budding startups to established enterprises, BrixiGo grows with your business — with no data migration headaches.", details: ["Multi-company payroll","Branch & department management","Bulk employee onboarding","API-first architecture"] },
+];
+
+function FeatIllustration({ id }) {
+  const illustrations = {
+    salary: (
+      <div style={{ background: "var(--z-bg-grey)", borderRadius: 8, padding: 20, border: "1px solid var(--z-border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text-md)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>Salary Structure — Priya Sharma</div>
+        {[["Basic","₹70,000","#1A7340",70],["HRA","₹28,000","#1565C0",28],["Transport","₹8,000","#E8502A",8],["Medical","₹5,000","#7B1FA2",5]].map(([l,v,c,w]) => (
+          <div key={l} style={{ marginBottom: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+              <span style={{ color: "var(--z-text-md)", fontWeight: 600 }}>{l}</span>
+              <span style={{ fontWeight: 700, color: "var(--z-text)" }}>{v}</span>
+            </div>
+            <div style={{ height: 7, background: "#E8F5EE", borderRadius: 99 }}>
+              <div style={{ height: "100%", width: `${w}%`, background: c, borderRadius: 99 }} />
+            </div>
+          </div>
+        ))}
+        <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--z-border)", display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+          <span style={{ color: "var(--z-text-md)" }}>Total CTC</span>
+          <span style={{ fontWeight: 900, color: "var(--z-green)", fontSize: 16 }}>₹1,32,000/mo</span>
+        </div>
+      </div>
+    ),
+    bank: (
+      <div style={{ background: "var(--z-bg-grey)", borderRadius: 8, padding: 20, border: "1px solid var(--z-border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text-md)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>Bank Transfer — April 2025</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {[["HDFC Bank","142 employees","₹18,40,000","Sent"],["ICICI Bank","6 employees","₹7,20,000","Sent"],["SBI","0 employees","₹0","N/A"]].map(([bank,emp,amt,st]) => (
+            <div key={bank} style={{ background: "#fff", borderRadius: 6, padding: "10px 14px", border: "1px solid var(--z-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div><div style={{ fontSize: 13, fontWeight: 700, color: "var(--z-text)" }}>{bank}</div><div style={{ fontSize: 11, color: "var(--z-text-xs)" }}>{emp}</div></div>
+              <div style={{ textAlign: "right" }}><div style={{ fontSize: 13, fontWeight: 700, color: "var(--z-text)" }}>{amt}</div><span style={{ fontSize: 10, fontWeight: 700, background: st==="Sent" ? "#E8F5EE" : "#F5F5F5", color: st==="Sent" ? "#1A7340" : "#999", padding: "2px 8px", borderRadius: 10 }}>{st}</span></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    contractor: (
+      <div style={{ background: "var(--z-bg-grey)", borderRadius: 8, padding: 20, border: "1px solid var(--z-border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text-md)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>Contractors this month</div>
+        {[["Arun K.","UI/UX Design","₹45,000","TDS 10%"],["Meera S.","Content","₹22,000","TDS 1%"],["TechSoft Ltd","Development","₹1,80,000","TDS 2%"]].map(([n,r,a,t]) => (
+          <div key={n} style={{ background: "#fff", borderRadius: 6, padding: "10px 14px", border: "1px solid var(--z-border)", marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div><div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text)" }}>{n}</div><div style={{ fontSize: 11, color: "#777" }}>{r}</div></div>
+            <div style={{ textAlign: "right" }}><div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text)" }}>{a}</div><span style={{ fontSize: 10, color: "var(--z-orange)", fontWeight: 700 }}>{t}</span></div>
+          </div>
+        ))}
+      </div>
+    ),
+    approvals: (
+      <div style={{ background: "var(--z-bg-grey)", borderRadius: 8, padding: 20, border: "1px solid var(--z-border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text-md)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>Approval Workflow — April Run</div>
+        {[["HR Manager","Approved","Priya K.","#1A7340","✓"],["Finance Head","Approved","Rajesh M.","#1A7340","✓"],["CFO","Pending","Sunita P.","#E8502A","⏳"],["CEO","Awaiting","Arun T.","#999","—"]].map(([r,s,n,c,i]) => (
+          <div key={r} style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", borderBottom: "1px solid #eee" }}>
+            <div style={{ width: 30, height: 30, borderRadius: "50%", background: c+"22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>{i}</div>
+            <div style={{ flex: 1 }}><div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text)" }}>{r}</div><div style={{ fontSize: 11, color: "#777" }}>{n}</div></div>
+            <span style={{ fontSize: 11, fontWeight: 700, color: c }}>{s}</span>
+          </div>
+        ))}
+      </div>
+    ),
+    reports: (
+      <div style={{ background: "var(--z-bg-grey)", borderRadius: 8, padding: 20, border: "1px solid var(--z-border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text-md)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>Monthly Cost by Department</div>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 110, marginBottom: 8 }}>
+          {[["Eng","88","#1A7340"],["Sales","72","#E8502A"],["Ops","60","#1565C0"],["HR","38","#7B1FA2"],["Fin","44","#F57C00"]].map(([d,h,c]) => (
+            <div key={d} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--z-text-md)" }}>{h}%</span>
+              <div style={{ width: "100%", height: `${h}%`, background: c, borderRadius: "4px 4px 0 0" }} />
+              <span style={{ fontSize: 10, fontWeight: 700, color: "var(--z-text-xs)" }}>{d}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+    scale: (
+      <div style={{ background: "var(--z-bg-grey)", borderRadius: 8, padding: 20, border: "1px solid var(--z-border)" }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: "var(--z-text-md)", marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>Company Overview</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[["Total Employees","1,842","#1A7340"],["Active Branches","14","#1565C0"],["States Covered","12","#E8502A"],["Payroll Run","₹2.4Cr/mo","#7B1FA2"]].map(([l,v,c]) => (
+            <div key={l} style={{ background: "#fff", borderRadius: 6, padding: "12px", border: "1px solid var(--z-border)", textAlign: "center" }}>
+              <div style={{ fontSize: 10, color: "#777", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 6 }}>{l}</div>
+              <div style={{ fontSize: 20, fontWeight: 900, color: c }}>{v}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  };
+  return illustrations[id] || illustrations.salary;
+}
+
+function Features() {
+  const [active, setActive] = useState("salary");
+  const feat = FEAT_DATA.find(f => f.id === active);
 
   return (
-    <section id="pricing" style={{ padding: "96px 24px", background: "var(--bg-base)" }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-        <div style={{ textAlign: "center", marginBottom: 60 }}>
-          <span className="badge badge-amber" style={{ marginBottom: 14 }}>Transparent Pricing</span>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(26px,3.5vw,38px)", color: "var(--slate-900)", marginBottom: 12, letterSpacing: "-0.01em" }}>Plans that scale with you</h2>
-          <p style={{ fontSize: 15, color: "var(--slate-500)", lineHeight: 1.6 }}>All plans include 30-day free trial · No setup fees · Cancel anytime</p>
+    <section id="features" style={{ padding: "80px clamp(20px,5vw,72px)", background: "#fff" }}>
+      <div style={{ width: "100%" }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div className="z-sec-label">Effortless Payroll</div>
+          <h2 className="z-sec-h2">Software that makes hard things easy</h2>
+          <p className="z-sec-sub" style={{ margin: "0 auto" }}>BrixiGo handles everything from salary calculations to compliance filings — so you can focus on your people.</p>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 24, alignItems: "start" }}>
-          {plans.map((p, i) => (
-            <div key={i} className={`pw-card ${p.popular ? "pricing-popular" : ""}`} style={{ padding: "36px 30px", position: "relative" }}>
-              {p.popular && <div className="pricing-popular-badge">MOST POPULAR</div>}
-              <span className={`badge ${p.badge}`} style={{ marginBottom: 18 }}>{p.name}</span>
-              <div style={{ marginBottom: 10 }}>
-                <span style={{ fontFamily: "var(--font-display)", fontSize: 38, color: "var(--slate-900)", letterSpacing: "-0.02em" }}>{p.price}</span>
-                <span style={{ fontSize: 14, color: "var(--slate-500)", fontWeight: 500 }}>{p.period}</span>
+
+        <div className="zfeat-wrap">
+          {/* Left nav */}
+          <div className="zfeat-nav">
+            {FEAT_DATA.map(f => (
+              <div key={f.id} className={`zfeat-nav-item${active === f.id ? " active" : ""}`} onClick={() => setActive(f.id)}>
+                <span style={{ fontSize: 16 }}>{f.icon}</span>
+                <span>{f.label}</span>
               </div>
-              <p style={{ fontSize: 13.5, color: "var(--slate-500)", marginBottom: 28, lineHeight: 1.5 }}>{p.desc}</p>
-              <button className={p.ctaClass} onClick={onLoginClick} style={{ width: "100%", justifyContent: "center", marginBottom: 28 }}>
-                {p.cta}
-              </button>
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                {p.features.map((f, j) => (
-                  <div key={j} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "var(--slate-600)" }}>
-                    <span style={{ color: p.color, flexShrink: 0 }}><Icon.Check size={14} /></span>
-                    {f}
+            ))}
+          </div>
+          {/* Right content */}
+          <div className="zfeat-content">
+            <h3 className="z-sec-h3" style={{ marginBottom: 10, color: "var(--z-green)" }}>{feat.title}</h3>
+            <p style={{ fontSize: 15, color: "var(--z-text-md)", lineHeight: 1.7, marginBottom: 24 }}>{feat.desc}</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 24 }}>
+              {feat.details.map(d => (
+                <div key={d} style={{ display: "flex", alignItems: "flex-start", gap: 8, fontSize: 13.5, color: "var(--z-text-md)" }}>
+                  <span style={{ color: "var(--z-green)", flexShrink: 0, marginTop: 2 }}><I.Check s={13} /></span>{d}
+                </div>
+              ))}
+            </div>
+            <FeatIllustration id={active} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════
+   LEAVE & ATTENDANCE (Zoho style full-section)
+═══════════════════════════════════════ */
+function LeaveSection() {
+  return (
+    <section style={{ padding: "80px clamp(20px,5vw,72px)", background: "var(--z-bg-grey)", borderTop: "1px solid var(--z-border)" }}>
+      <div style={{ width: "100%", display: "flex", gap: 64, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 280 }}>
+          <div className="z-sec-label">Leave and Attendance</div>
+          <h2 className="z-sec-h2">Manage leave and attendance, built-in.</h2>
+          <p style={{ fontSize: 16, color: "var(--z-text-md)", lineHeight: 1.75, marginBottom: 28 }}>Create custom leave types, allow employees to apply for leaves, approve or reject leaves, manage attendance — all from within BrixiGo.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            {[["📅 Custom Leave Types","Configure Casual, Sick, Earned, and custom leave policies per state or role."],["📍 Attendance Tracking","Integrate with biometric devices or let employees check in from the ESS portal."],["📋 Auto LOP Deduction","Missed days are automatically computed and deducted from the pay run."],["📲 Mobile Check-in","Employees can mark attendance from the BrixiGo mobile app with location tagging."]].map(([t,d]) => (
+              <div key={t} style={{ display: "flex", gap: 12 }}>
+                <span style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }}>{t.split(" ")[0]}</span>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--z-text)", marginBottom: 3 }}>{t.slice(3)}</div>
+                  <div style={{ fontSize: 13.5, color: "var(--z-text-md)", lineHeight: 1.6 }}>{d}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 280 }}>
+          {/* Leave calendar mockup */}
+          <div className="zdash" style={{ maxWidth: 420 }}>
+            <div className="zdash-bar"><span>Attendance · May 2025</span></div>
+            <div style={{ padding: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 4, marginBottom: 12 }}>
+                {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
+                  <div key={d} style={{ textAlign: "center", fontSize: 10, fontWeight: 700, color: "var(--z-text-xs)", padding: "4px 0" }}>{d}</div>
+                ))}
+                {[null,null,null,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31].map((d,i) => {
+                  const status = d ? ([7,14,21,28].includes(d) ? "wknd" : [6,13,20,27].includes(d) ? "wknd" : d === 5 || d === 12 ? "absent" : d === 1 ? "holiday" : d > 6 ? "present" : "upcoming") : null;
+                  const bg = !d ? "transparent" : status === "present" ? "#E8F5EE" : status === "absent" ? "#FFEBEE" : status === "holiday" ? "#FFF8E1" : status === "wknd" ? "#F5F5F5" : "transparent";
+                  const col = !d ? "transparent" : status === "present" ? "#1A7340" : status === "absent" ? "#D32F2F" : status === "holiday" ? "#F57C00" : "#999";
+                  return (
+                    <div key={i} style={{ textAlign: "center", padding: "5px 2px", borderRadius: 6, background: bg, fontSize: 12, fontWeight: 600, color: col }}>{d || ""}</div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 12, fontSize: 11, fontWeight: 700 }}>
+                <span style={{ color: "#1A7340" }}>● Present</span>
+                <span style={{ color: "#D32F2F" }}>● Absent</span>
+                <span style={{ color: "#F57C00" }}>● Holiday</span>
+                <span style={{ color: "#999" }}>● Weekend</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════
+   COMPLIANCE — Zoho shield section
+═══════════════════════════════════════ */
+function Compliance() {
+  const items = [
+    { icon: "⚙️", t: "Automated adjustments", d: "Adapt easily to ever-changing tax laws. BrixiGo updates compliance rules automatically so you're always current." },
+    { icon: "📄", t: "Tax forms ready in one click", d: "Download Form 12BB, 24Q, TDS, and Form 16 instantly with e-signature capability built right in." },
+    { icon: "🛡️", t: "PF, ESI, LWF, PT & IT", d: "Keep your business on legal footing across all 28 states with automated statutory calculations." },
+    { icon: "📊", t: "Ready-to-file reports", d: "Auto-generate pre-formatted statutory and tax reports for faster, error-free filing every quarter." },
+  ];
+  return (
+    <section id="compliance" style={{ padding: "80px clamp(20px,5vw,72px)", background: "#fff", borderTop: "1px solid var(--z-border)" }}>
+      <div style={{ width: "100%", display: "flex", gap: 64, alignItems: "center", flexWrap: "wrap" }}>
+        <div style={{ flex: 1, minWidth: 280 }}>
+          <div className="z-sec-label">Simplified Compliance</div>
+          <h2 className="z-sec-h2">Stay compliant, without thinking about compliance</h2>
+          <p style={{ fontSize: 16, color: "var(--z-text-md)", lineHeight: 1.75, marginBottom: 32 }}>We handle regionally intricate and distinct compliance regulations all across India, so you don't have to.</p>
+          <div>
+            {items.map(it => (
+              <div key={it.t} className="zcomp-item">
+                <div className="zcomp-icon"><span style={{ fontSize: 20 }}>{it.icon}</span></div>
+                <div>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, color: "var(--z-text)", marginBottom: 4 }}>{it.t}</h4>
+                  <p style={{ fontSize: 14, color: "var(--z-text-md)", lineHeight: 1.65 }}>{it.d}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ flex: "0 0 auto", minWidth: 280 }}>
+          {/* Shield illustration */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+            <div style={{ width: 180, height: 180, borderRadius: "50%", background: "linear-gradient(135deg, var(--z-green-lt), var(--z-green-mid))", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 40px rgba(26,115,64,.15)" }}>
+              <div style={{ fontSize: 80 }}>🛡️</div>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              {[["TDS","Auto"],["PF","Compliant"],["ESI","Covered"],["Form 16","Instant"]].map(([l,v]) => (
+                <div key={l} style={{ background: "var(--z-bg-grey)", border: "1px solid var(--z-border)", borderRadius: 8, padding: "10px 14px", textAlign: "center" }}>
+                  <div style={{ fontSize: 11, color: "var(--z-text-xs)", fontWeight: 700, textTransform: "uppercase", letterSpacing: ".4px", marginBottom: 3 }}>{l}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: "var(--z-green)" }}>{v}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════
+   ESS — Employee Self Service (Zoho pill tabs + phone)
+═══════════════════════════════════════ */
+const ESS_TABS = [
+  { id: "web", label: "Web & Mobile app" },
+  { id: "payslip", label: "Instant Payslips" },
+  { id: "leave", label: "Leave Management" },
+  { id: "notify", label: "Notifications" },
+];
+const ESS_CONTENT = {
+  web: { t: "Make payroll data accessible anywhere", d: "Let employees download payslips, tax worksheets, and Form 16s at their convenience, using their web app and mobile — instantly and securely." },
+  payslip: { t: "Instant payslip access for every employee", d: "Payslips are auto-generated and published the moment your pay run is approved. Employees can view, download, or share their payslip in one tap." },
+  leave: { t: "Apply for leave right from the app", d: "Employees can view their leave balance, apply for any leave type, and track approval status — all without sending a single email." },
+  notify: { t: "Notify employees as soon as you pay", d: "BrixiGo automatically sends salary credit notifications and payslip alerts the moment they're released — zero manual communication needed." },
+};
+
+function ESSSection() {
+  const [tab, setTab] = useState("web");
+  const c = ESS_CONTENT[tab];
+  return (
+    <section style={{ padding: "80px clamp(20px,5vw,72px)", background: "var(--z-bg-grey)", borderTop: "1px solid var(--z-border)" }}>
+      <div style={{ width: "100%" }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div className="z-sec-label">Employee Self-Service Portal</div>
+          <h2 className="z-sec-h2">Give your team a modern payroll experience</h2>
+        </div>
+        <div className="zess-tabs" style={{ justifyContent: "center" }}>
+          {ESS_TABS.map(t => (
+            <button key={t.id} className={`zess-tab${tab === t.id ? " active" : ""}`} onClick={() => setTab(t.id)}>{t.label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 60, alignItems: "center", justifyContent: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: 1, minWidth: 260, maxWidth: 480 }}>
+            <h3 className="z-sec-h3">{c.t}</h3>
+            <p style={{ fontSize: 15, color: "var(--z-text-md)", lineHeight: 1.75 }}>{c.d}</p>
+          </div>
+          <PhoneMockup tab={tab} />
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════
+   TESTIMONIALS — Zoho carousel style
+═══════════════════════════════════════ */
+const TESTIMONIALS = [
+  { q: "BrixiGo reduced our payroll processing time from 3 days to under 2 hours. The TDS auto-computation alone saves our accounts team an entire week every quarter.", name: "Ananya Krishnan", role: "Head of Finance, Nexus Technologies" },
+  { q: "The payslip portal is a game-changer. Employees download their payslips themselves and HR queries have dropped by 70%. Compliance filings are now completely stress-free.", name: "Rajesh Mehta", role: "HR Director, BuildCore Infra, Mumbai" },
+  { q: "Onboarding 200+ employees was seamless. The attendance integration with our biometric system works flawlessly and LOP deductions are fully automated.", name: "Sunita Patel", role: "VP Operations, MedChain Pharma, Ahmedabad" },
+  { q: "BrixiGo's bank integration with HDFC and ICICI simplifies salary payouts. Payroll accounting, expense reimbursements, and LOP sync happen automatically.", name: "Vikram Rao", role: "Finance Controller, GreenPulse Tech" },
+];
+
+function Testimonials() {
+  const [idx, setIdx] = useState(0);
+  const t = TESTIMONIALS[idx];
+  return (
+    <section id="testimonials" style={{ padding: "80px clamp(20px,5vw,72px)", background: "#fff", borderTop: "1px solid var(--z-border)" }}>
+      <div style={{ width: "100%" }}>
+        <div style={{ textAlign: "center", marginBottom: 48 }}>
+          <div className="z-sec-label">Testimonials</div>
+          <h2 className="z-sec-h2">Loved by both customers and critics</h2>
+          {/* Rating row */}
+          <div style={{ display: "flex", gap: 28, justifyContent: "center", flexWrap: "wrap", marginTop: 20 }}>
+            {[["App Store","4.8"],["Google Play","4.4"],["G2","4.3"],["Capterra","4.5"]].map(([p,r]) => (
+              <div key={p} style={{ textAlign: "center" }}>
+                <div style={{ color: "#F57C00", fontSize: 12, marginBottom: 2 }}>{"★".repeat(5)}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--z-text)" }}>{r} / 5</div>
+                <div style={{ fontSize: 11, color: "var(--z-text-xs)", marginTop: 2 }}>{p}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div style={{ maxWidth: 760, margin: "0 auto" }}>
+          <div className="ztesti-card">
+            <div style={{ color: "#F57C00", fontSize: 24, marginBottom: 18 }}>{"★".repeat(5)}</div>
+            <p style={{ fontSize: 17, color: "var(--z-text)", lineHeight: 1.75, marginBottom: 24, fontStyle: "italic" }}>"{t.q}"</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <div style={{ width: 48, height: 48, borderRadius: "50%", background: "var(--z-green-lt)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 700, color: "var(--z-green)", flexShrink: 0 }}>
+                {t.name.split(" ").map(w => w[0]).join("")}
+              </div>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 700, color: "var(--z-text)" }}>{t.name}</div>
+                <div style={{ fontSize: 13, color: "var(--z-text-xs)" }}>{t.role}</div>
+              </div>
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 12, marginTop: 24, alignItems: "center" }}>
+            <button onClick={() => setIdx(i => (i - 1 + TESTIMONIALS.length) % TESTIMONIALS.length)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid var(--z-border)", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--z-text-md)", transition: "all .2s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--z-orange)"; e.currentTarget.style.color = "var(--z-orange)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--z-border)"; e.currentTarget.style.color = "var(--z-text-md)"; }}
+            ><I.ChevL /></button>
+            {TESTIMONIALS.map((_, i) => (
+              <div key={i} onClick={() => setIdx(i)} style={{ width: i === idx ? 24 : 8, height: 8, borderRadius: 99, background: i === idx ? "var(--z-orange)" : "var(--z-border)", cursor: "pointer", transition: "all .3s" }} />
+            ))}
+            <button onClick={() => setIdx(i => (i + 1) % TESTIMONIALS.length)} style={{ width: 36, height: 36, borderRadius: "50%", border: "1.5px solid var(--z-border)", background: "#fff", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--z-text-md)", transition: "all .2s" }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--z-orange)"; e.currentTarget.style.color = "var(--z-orange)"; }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--z-border)"; e.currentTarget.style.color = "var(--z-text-md)"; }}
+            ><I.ChevR /></button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ═══════════════════════════════════════
+   PRICING
+═══════════════════════════════════════ */
+function Pricing({ onLoginClick }) {
+  const plans = [
+    { name: "Starter", price: "₹2,999", per: "/mo", desc: "Up to 25 employees", features: ["Salary Processing","Payslip Generation","PF & TDS Filing","Email Support","Employee Self-Service"], cta: "Start Free Trial", style: "ghost" },
+    { name: "Professional", price: "₹7,499", per: "/mo", desc: "Up to 100 employees", popular: true, features: ["Everything in Starter","Attendance Integration","Form 16 Automation","Leave Management","API Access","Priority Support"], cta: "Start Free Trial", style: "primary" },
+    { name: "Enterprise", price: "Custom", per: "", desc: "Unlimited employees", features: ["Multi-location Payroll","Custom Compliance","Dedicated Manager","SLA Guarantee","On-premise Option","Custom Integrations"], cta: "Contact Sales", style: "green" },
+  ];
+  return (
+    <section id="pricing" style={{ padding: "80px clamp(20px,5vw,72px)", background: "var(--z-bg-grey)", borderTop: "1px solid var(--z-border)" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ textAlign: "center", marginBottom: 52 }}>
+          <div className="z-sec-label">Pricing</div>
+          <h2 className="z-sec-h2">Plans that scale with you</h2>
+          <p style={{ fontSize: 15, color: "var(--z-text-md)" }}>All plans include 30-day free trial · No setup fees · Cancel anytime</p>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(280px,1fr))", gap: 24, alignItems: "start" }}>
+          {plans.map((p, i) => (
+            <div key={i} className={`zprice-card${p.popular ? " zprice-popular" : ""}`}>
+              {p.popular && <div className="zprice-badge">Most Popular</div>}
+              <div style={{ marginBottom: 4 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".8px", color: "var(--z-text-xs)" }}>{p.name}</span>
+              </div>
+              <div style={{ marginBottom: 6 }}>
+                <span style={{ fontSize: 36, fontWeight: 900, color: "var(--z-text)", letterSpacing: "-.02em" }}>{p.price}</span>
+                <span style={{ fontSize: 14, color: "var(--z-text-xs)" }}>{p.per}</span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--z-text-xs)", marginBottom: 20 }}>{p.desc}</p>
+              <button onClick={onLoginClick} className={`zb zb-${p.style}`} style={{ width: "100%", justifyContent: "center", marginBottom: 24, fontSize: 14 }}>{p.cta}</button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {p.features.map(f => (
+                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13.5, color: "var(--z-text-md)" }}>
+                    <span style={{ color: "var(--z-green)", flexShrink: 0 }}><I.Check /></span>{f}
                   </div>
                 ))}
               </div>
@@ -2008,296 +1132,124 @@ function Pricing({ onLoginClick }) {
   );
 }
 
-/* ─────────────────────────────────────────────
-   CTA SECTION — Enhanced gradient mesh
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════
+   CTA SECTION
+═══════════════════════════════════════ */
 function CTA({ onLoginClick }) {
   return (
-    <section className="cta-section" style={{ padding: "96px 24px", background: "linear-gradient(145deg, #EFF6FF 0%, #F0FDFA 50%, #FAFBFF 100%)", borderTop: "1px solid var(--border)" }}>
-      <div style={{ maxWidth: 640, margin: "0 auto", textAlign: "center", position: "relative" }}>
-        <span className="badge badge-blue" style={{ marginBottom: 18 }}>Get Started Today</span>
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px,4vw,44px)", color: "var(--slate-900)", marginBottom: 18, lineHeight: 1.15, letterSpacing: "-0.02em" }}>
-          Run your first payroll in under 15 minutes
-        </h2>
-        <p style={{ fontSize: 16, color: "var(--slate-500)", lineHeight: 1.75, marginBottom: 40, letterSpacing: "-0.01em" }}>
-          Join 2,400+ Indian businesses using PayWise to process accurate, compliant payroll every month — without the stress.
-        </p>
+    <section style={{ padding: "72px clamp(20px,5vw,72px)", background: "var(--z-green)", borderTop: "1px solid rgba(255,255,255,.1)" }}>
+      <div style={{ maxWidth: 700, margin: "0 auto", textAlign: "center" }}>
+        <h2 style={{ fontSize: "clamp(24px,3.5vw,38px)", fontWeight: 900, color: "#fff", marginBottom: 16, lineHeight: 1.2 }}>Cloud payroll system for growing businesses</h2>
+        <p style={{ fontSize: 16, color: "rgba(255,255,255,.85)", marginBottom: 32, lineHeight: 1.7 }}>Join 2,400+ Indian businesses using BrixiGo to process accurate, compliant payroll every month — without the stress.</p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-          <button className="btn btn-primary btn-xl" onClick={onLoginClick} style={{ gap: 10 }}>
-            Start Free 30-Day Trial <Icon.ArrowRight size={16} />
-          </button>
-          <button className="btn btn-secondary btn-xl">Talk to Sales</button>
+          <button className="zb" onClick={onLoginClick} style={{ background: "#fff", color: "var(--z-green)", borderRadius: 4, padding: "13px 28px", fontSize: 15, fontWeight: 700, boxShadow: "0 4px 16px rgba(0,0,0,.2)" }} onMouseEnter={e => e.currentTarget.style.background="#F5F5F5"} onMouseLeave={e => e.currentTarget.style.background="#fff"}>Start My Free Trial</button>
+          <button className="zb" onClick={onLoginClick} style={{ background: "transparent", color: "#fff", border: "2px solid rgba(255,255,255,.5)", borderRadius: 4, padding: "11px 26px", fontSize: 15, fontWeight: 700 }} onMouseEnter={e => e.currentTarget.style.borderColor="#fff"} onMouseLeave={e => e.currentTarget.style.borderColor="rgba(255,255,255,.5)"}>Request Demo</button>
         </div>
-        <p style={{ marginTop: 24, fontSize: 13, color: "var(--slate-400)", fontWeight: 500 }}>No credit card · Free setup · Dedicated onboarding support</p>
+        <div style={{ marginTop: 24, display: "flex", gap: 32, justifyContent: "center", flexWrap: "wrap" }}>
+          {[["50,000+","Hours of demos done"],["100,000+","Man-hours saved"],["50+","Industries served"]].map(([v,l]) => (
+            <div key={l} style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 22, fontWeight: 900, color: "#fff" }}>{v}</div>
+              <div style={{ fontSize: 12, color: "rgba(255,255,255,.75)", marginTop: 2 }}>{l}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );
 }
 
-/* ─────────────────────────────────────────────
-   FOOTER — Enhanced with better structure
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════
+   FOOTER — Zoho dark navy style
+═══════════════════════════════════════ */
 function Footer() {
   const cols = [
-    {
-      heading: "Platform",
-      links: [
-        "Payroll Processing",
-        "Tax Compliance",
-        "Payslip Generator",
-        "Employee Portal",
-        "Attendance Module",
-      ],
-    },
-    {
-      heading: "Company",
-      links: ["About Us", "Careers", "Blog", "Press", "Contact"],
-    },
-    {
-      heading: "Resources",
-      links: [
-        "Documentation",
-        "API Reference",
-        "Status Page",
-        "Security",
-        "Privacy Policy",
-      ],
-    },
+    { h: "About BrixiGo", ls: ["Pricing","Features","Integrations","Customers","Employee Onboarding","Payroll Processing","Statutory Compliance"] },
+    { h: "Resources", ls: ["Help Center","FAQs","Webinars","Academy","What's New","Blog","Training Program"] },
+    { h: "Partners", ls: ["Partner Program","Find a Partner","Become a Partner"] },
+    { h: "Quick Links", ls: ["What is Payroll?","HR Payroll Software","Payslip Templates","Free Payroll Software","Best Payroll Software","Mobile Apps","Data Security"] },
+    { h: "Free Tools", ls: ["Income Tax Calculator","Bonus Calculator","Gratuity Calculator","NPS Calculator","HRA Exemption Calc","Payslip Generator"] },
   ];
-
   return (
-    <footer
-      id="footer" className="pw-footer"
-      style={{
-        padding: "80px 0 32px",
-        background: "linear-gradient(180deg, var(--slate-900) 0%, #0B1120 100%)",
-      }}
-    >
-      <div
-        style={{
-          width: "100%",
-          padding: "0 clamp(20px, 6vw, 80px)",
-        }}
-      >
-        {/* TOP GRID */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1.5fr 1fr 1fr 1fr",
-            gap: 48,
-            marginBottom: 56,
-          }}
-        >
-          {/* BRAND */}
+    <footer id="footer" className="zfooter" style={{ padding: "56px 0 0" }}>
+      <div style={{ width: "100%", padding: "0 clamp(20px,5vw,72px)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1.2fr repeat(4,1fr)", gap: 40, marginBottom: 48 }}>
           <div>
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                marginBottom: 20,
-              }}
-            >
-              <img
-                src={logo1}
-                alt="Brixigo"
-                style={{ height: 42 }}
-              />
-
-              <div
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 20,
-                  color: "#fff",
-                }}
-              >
-                BrixiGo
-              </div>
+            <img src={logo1} alt="Brixigo Technologies Pvt.Ltd." style={{ height: 48, width: "auto", objectFit: "contain", objectPosition: "left center", marginBottom: 14 }} />
+            <p style={{ fontSize: 13, color: "#aaa", lineHeight: 1.7, marginBottom: 18, maxWidth: 220 }}>India's most reliable payroll automation platform. Built for compliance, designed for speed.</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "#aaa" }}>
+              <span>📞 Toll-Free: 1800 572 1234</span>
+              <span>✉️ support@brixigo.com</span>
+              <span>🕐 Mon–Fri, 9AM–7PM</span>
             </div>
-
-            <p
-              style={{
-                fontSize: 14,
-                color: "var(--slate-400)",
-                lineHeight: 1.75,
-                marginBottom: 24,
-                maxWidth: 320,
-              }}
-            >
-              India's most reliable payroll automation platform. Built for
-              compliance, designed for speed.
-            </p>
-
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              {["🇮🇳 Made in India", "ISO 27001 Certified"].map((t) => (
-                <span
-                  key={t}
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "var(--slate-300)",
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.08)",
-                    borderRadius: 999,
-                    padding: "5px 12px",
-                    backdropFilter: "blur(4px)",
-                  }}
-                >
-                  {t}
-                </span>
+            <div style={{ display: "flex", gap: 8, marginTop: 16 }}>
+              {["ISO 27001","GDPR","SOC 2","PII"].map(t => (
+                <span key={t} style={{ fontSize: 10, fontWeight: 700, color: "#999", background: "rgba(255,255,255,.07)", border: "1px solid rgba(255,255,255,.1)", borderRadius: 4, padding: "3px 7px" }}>{t}</span>
               ))}
             </div>
           </div>
-
-          {/* LINKS */}
-          {cols.map((col, i) => (
+          {cols.map((c, i) => (
             <div key={i}>
-              <div
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: "#fff",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.8px",
-                  marginBottom: 20,
-                }}
-              >
-                {col.heading}
-              </div>
-
-              <div
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 13,
-                }}
-              >
-                {col.links.map((l) => (
-                  <a
-                    key={l}
-                    href="#"
-                    style={{
-                      fontSize: 14,
-                      color: "var(--slate-400)",
-                      textDecoration: "none",
-                      transition: "all 0.2s cubic-bezier(0.16, 1, 0.3, 1)",
-                      display: "inline-block",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = "#fff";
-                      e.currentTarget.style.transform = "translateX(4px)";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = "var(--slate-400)";
-                      e.currentTarget.style.transform = "translateX(0)";
-                    }}
-                  >
-                    {l}
-                  </a>
-                ))}
+              <div className="zfooter-head">{c.h}</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                {c.ls.map(l => <a key={l} href="#">{l}</a>)}
               </div>
             </div>
           ))}
         </div>
-
-        {/* BOTTOM BAR */}
-        <div
-          style={{
-            borderTop: "1px solid rgba(255,255,255,0.06)",
-            paddingTop: 28,
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            gap: 12,
-          }}
-        >
-          <span style={{ fontSize: 13, color: "var(--slate-500)" }}>
-            © 2025 BrixiGo Technologies Pvt. Ltd. All rights reserved.
-          </span>
-
-          <span style={{ fontSize: 13, color: "var(--slate-500)" }}>
-            CIN: U74999TG2021PTC152341 | GSTIN: 36AABCP1234A1Z5
-          </span>
+        <div style={{ borderTop: "1px solid rgba(255,255,255,.07)", padding: "20px 0", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+          <span style={{ fontSize: 12, color: "#666" }}>© 2025 BrixiGo Technologies Pvt. Ltd. All rights reserved.</span>
+          <span style={{ fontSize: 12, color: "#666" }}>CIN: U74999TG2021PTC152341 | GSTIN: 36AABCP1234A1Z5</span>
         </div>
       </div>
     </footer>
   );
 }
 
-/* ─────────────────────────────────────────────
-   FORGOT PASSWORD MODAL — Enhanced
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════
+   FORGOT PASSWORD MODAL
+═══════════════════════════════════════ */
 function ForgotPasswordModal({ onClose, onBack }) {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
 
-const handleSend = async () => {
-  if (!email.includes("@")) return;
+  const handleSend = async () => {
+    if (!email.includes("@")) return;
+    setLoading(true);
+    try {
+      await api.post("/auth/forgot-password", { email });
+      setSent(true);
+    } catch (err) {
+      const d = err.response?.data?.detail;
+      alert(typeof d === "string" ? d : "Failed to send reset link");
+    } finally { setLoading(false); }
+  };
 
-  setLoading(true);
-
-  try {
-    await api.post("/auth/forgot-password", {
-      email: email,
-    });
-
-    setSent(true);
-  } catch (err) {
-    console.log(err.response?.data);
-    alert("Failed to send reset link");
-  } finally {
-    setLoading(false);
-  }
-};
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "var(--slate-100)", border: "none", borderRadius: 9, color: "var(--slate-500)", cursor: "pointer", padding: 7, display: "flex", transition: "all 0.15s" }}
-          onMouseEnter={e => e.currentTarget.style.background = "var(--slate-200)"}
-          onMouseLeave={e => e.currentTarget.style.background = "var(--slate-100)"}
-        >
-          <Icon.Close size={15} />
-        </button>
-
+    <div className="zm-bg" onClick={onClose}>
+      <div className="zm-card" onClick={e => e.stopPropagation()}>
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, background: "#f5f5f5", border: "none", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#777" }}><I.Close /></button>
         {!sent ? (
           <>
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-             <img
-  src={logo1}
-  alt="Brixigo"
-  style={{
-    height: 46,
-    width: "auto",
-    objectFit: "contain"
-  }}
-/>
-             
+            <img src={logo1} alt="BrixiGo" style={{ height: 38, marginBottom: 20, objectFit: "contain" }} />
+            <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--z-text)", marginBottom: 8 }}>Reset Password</h2>
+            <p style={{ fontSize: 14, color: "var(--z-text-md)", marginBottom: 24, lineHeight: 1.6 }}>Enter your work email to receive reset instructions.</p>
+            <label className="zf-label">Email Address</label>
+            <div className="zf-wrap" style={{ marginBottom: 20 }}>
+              <span className="zf-icon"><I.Mail s={15} /></span>
+              <input className="zf-input" type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} autoFocus />
             </div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 24, color: "var(--slate-900)", marginBottom: 8, letterSpacing: "-0.01em" }}>Reset Password</h2>
-            <p style={{ fontSize: 14, color: "var(--slate-500)", marginBottom: 28, lineHeight: 1.6 }}>Enter your work email to receive reset instructions.</p>
-            <label className="pw-label">Work Email</label>
-            <div className="pw-input-wrap" style={{ marginBottom: 24 }}>
-              <span className="pw-input-icon"><Icon.Mail size={15} /></span>
-              <input className="pw-input" type="email" placeholder="you@company.com" value={email} onChange={e => setEmail(e.target.value)} autoFocus />
-            </div>
-            <button className="btn btn-primary btn-md" onClick={handleSend} disabled={loading || !email.includes("@")} style={{ width: "100%", justifyContent: "center", opacity: loading ? 0.7 : 1 }}>
-              {loading ? <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} /> Sending…</> : "Send Reset Link"}
+            <button className="zb zb-primary" onClick={handleSend} disabled={loading || !email.includes("@")} style={{ width: "100%", justifyContent: "center", opacity: loading ? .7 : 1, fontSize: 14 }}>
+              {loading ? <><span style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "zSpin .7s linear infinite", display: "inline-block" }} /> Sending…</> : "Send Reset Link"}
             </button>
-            <button onClick={onBack} style={{ width: "100%", marginTop: 14, background: "none", border: "none", color: "var(--blue-600)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font-body)", transition: "color 0.15s" }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--blue-700)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--blue-600)"}
-            >← Back to Sign In</button>
+            <button onClick={onBack} style={{ width: "100%", marginTop: 12, background: "none", border: "none", color: "var(--z-orange)", fontSize: 14, fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)" }}>← Back to Sign In</button>
           </>
         ) : (
           <div style={{ textAlign: "center" }}>
-            <div style={{ width: 64, height: 64, borderRadius: 18, background: "var(--green-50)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 22px", color: "var(--green-600)", border: "1px solid var(--green-100)" }}>
-              <Icon.Send size={26} />
-            </div>
-            <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--slate-900)", marginBottom: 10, letterSpacing: "-0.01em" }}>Check your inbox</h2>
-            <p style={{ fontSize: 14, color: "var(--slate-500)", marginBottom: 28, lineHeight: 1.6 }}>We've sent a password reset link to <strong style={{ color: "var(--slate-700)" }}>{email}</strong>. It expires in 30 minutes.</p>
-            <button className="btn btn-primary btn-md" onClick={onBack} style={{ width: "100%", justifyContent: "center" }}>Back to Sign In</button>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#E8F5EE", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px", color: "var(--z-green)" }}><I.Send s={24} /></div>
+            <h2 style={{ fontSize: 20, fontWeight: 700, color: "var(--z-text)", marginBottom: 8 }}>Check your inbox</h2>
+            <p style={{ fontSize: 14, color: "var(--z-text-md)", marginBottom: 24, lineHeight: 1.6 }}>Reset link sent to <strong>{email}</strong>. Expires in 30 min.</p>
+            <button className="zb zb-primary" onClick={onBack} style={{ width: "100%", justifyContent: "center", fontSize: 14 }}>Back to Sign In</button>
           </div>
         )}
       </div>
@@ -2305,590 +1257,180 @@ const handleSend = async () => {
   );
 }
 
-/* ─────────────────────────────────────────────
-   REGISTER MODAL — Enhanced
-───────────────────────────────────────────── */
-function RegsterModal({ onClose, onSwitchToLogin }) {
-  const [form, setForm] = useState({ name: "", company: "", email: "", password: "" });
-  const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
-
-  const set = (k, v) => { setForm(p => ({ ...p, [k]: v })); setErrors(p => ({ ...p, [k]: "" })); };
-
-  const validate = () => {
-    const e = {};
-    if (!form.name.trim()) e.name = "Full name is required";
-    if (!form.company.trim()) e.company = "Company name is required";
-    if (!form.email.includes("@")) e.email = "Enter a valid email";
-    if (form.password.length < 8) e.password = "Minimum 8 characters";
-    if (!form.role) e.role = "Role is required";
-    setErrors(e);
-    return Object.keys(e).length === 0;
-  };
-
-  const handleSubmit = async () => {
-    if (!validate()) return;
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1500));
-    setLoading(false);
-    alert("✓ Account created! Connect your auth backend to continue.");
-    onClose();
-  };
-
-  const fields = [
-    { key: "name",     label: "Full Name",     placeholder: "Priya Sharma",          type: "text",     icon: <Icon.User size={15} /> },
-    { key: "company",  label: "Company Name",  placeholder: "Nexus Technologies",    type: "text",     icon: <Icon.Building size={15} /> },
-    { key: "email",    label: "Work Email",    placeholder: "priya@nexus.com",       type: "email",    icon: <Icon.Mail size={15} /> },
-    { key: "password", label: "Password",      placeholder: "Min. 8 characters",     type: "password", icon: <Icon.Lock size={15} /> },
-  ];
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
-        <button onClick={onClose} style={{ position: "absolute", top: 16, right: 16, background: "var(--slate-100)", border: "none", borderRadius: 9, color: "var(--slate-500)", cursor: "pointer", padding: 7, display: "flex", transition: "all 0.15s" }}
-          onMouseEnter={e => e.currentTarget.style.background = "var(--slate-200)"}
-          onMouseLeave={e => e.currentTarget.style.background = "var(--slate-100)"}
-        >
-          <Icon.Close size={15} />
-        </button>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-          <img
-  src={logo1}
-  alt="Brixigo"
-  style={{
-    height: 46,
-    width: "auto",
-    objectFit: "contain"
-  }}
-/>
-          
-        </div>
-
-        <h2 style={{ fontFamily: "var(--font-display)", fontSize: 22, color: "var(--slate-900)", marginBottom: 6, letterSpacing: "-0.01em" }}>Create your account</h2>
-        <p style={{ fontSize: 14, color: "var(--slate-500)", marginBottom: 26, lineHeight: 1.5 }}>No credit card required. Setup takes under 5 minutes.</p>
-
-        {fields.map(f => (
-          <div key={f.key} style={{ marginBottom: 18 }}>
-            <label className="pw-label">{f.label}</label>
-            <div className="pw-input-wrap">
-              <span className="pw-input-icon">{f.icon}</span>
-              <input
-                className={`pw-input ${errors[f.key] ? "error" : ""}`}
-                type={f.type}
-                placeholder={f.placeholder}
-                value={form[f.key]}
-                onChange={e => set(f.key, e.target.value)}
-              />
-            </div>
-            {errors[f.key] && <div style={{ marginTop: 5, fontSize: 12, color: "var(--red-600)", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Icon.Alert size={12} />{errors[f.key]}</div>}
-          </div>
-        ))}
-
-        <button className="btn btn-success btn-md" onClick={handleSubmit} disabled={loading} style={{ width: "100%", justifyContent: "center", marginTop: 8, marginBottom: 18, opacity: loading ? 0.75 : 1 }}>
-          {loading ? <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "spin 0.7s linear infinite", display: "inline-block" }} /> Creating account…</> : <>Create Free Account <Icon.ArrowRight size={14} /></>}
-        </button>
-
-        <div className="divider" style={{ marginBottom: 16 }}>Already have an account?</div>
-        <button className="btn btn-secondary btn-md" onClick={onSwitchToLogin} style={{ width: "100%", justifyContent: "center" }}>
-          Sign In Instead
-        </button>
-        <p style={{ textAlign: "center", marginTop: 18, fontSize: 12, color: "var(--slate-400)", lineHeight: 1.5 }}>
-          By creating an account you agree to our <a href="#" style={{ color: "var(--blue-600)", textDecoration: "none", fontWeight: 600 }}>Terms</a> and <a href="#" style={{ color: "var(--blue-600)", textDecoration: "none", fontWeight: 600 }}>Privacy Policy</a>
-        </p>
-      </div>
-    </div>
-  );
-}
-
-/* ─────────────────────────────────────────────
-   LOGIN MODAL  —  Dual Portal (Admin / Employee)
-   ✅ Real Brixigo logo
-   ✅ Icons perfectly centred inside inputs
-   ✅ Bulletproof validation (empty-field + format)
-   ✅ Double-submit guard
-   ✅ Fully responsive (mobile / tablet / desktop)
-   ✅ Enhanced UI — refined spacing, shadows, transitions
-───────────────────────────────────────────── */
+/* ═══════════════════════════════════════
+   LOGIN MODAL
+═══════════════════════════════════════ */
 function LoginModal({ onClose }) {
-  // ── View routing ──────────────────────────────
-  const [view, setView] = useState("login");
-
-  // ── Role: "admin" → Username | "employee" → Email ──
-  const [role, setRole] = useState("admin");
-
-  // ── Field values ──────────────────────────────
+  const [view, setView]         = useState("login");
+  const [role, setRole]         = useState("admin");
   const [username, setUsername] = useState("");
   const [email, setEmail]       = useState("");
   const [password, setPassword] = useState("");
-
-  // ── UX state ──────────────────────────────────
-  const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe]     = useState(false);
-  const [loading, setLoading]           = useState(false);
-
-  // ── Errors ────────────────────────────────────
-  const [fieldErrors, setFieldErrors] = useState({ identifier: "", password: "" });
-  const [authError, setAuthError]     = useState("");
+  const [showPw, setShowPw]     = useState(false);
+  const [remember, setRemember] = useState(false);
+  const [loading, setLoading]   = useState(false);
+  const [fieldErr, setFieldErr] = useState({ id: "", pw: "" });
+  const [authErr, setAuthErr]   = useState("");
 
   const navigate = useNavigate();
   const { login } = useContext(AuthContext);
   const idRef = useRef(null);
 
-  // Auto-focus identifier on open + role change
-  useEffect(() => {
-    const t = setTimeout(() => idRef.current?.focus(), 60);
-    return () => clearTimeout(t);
-  }, [role]);
+  useEffect(() => { const t = setTimeout(() => idRef.current?.focus(), 60); return () => clearTimeout(t); }, [role]);
 
-  // ── Switch role — reset all state ─────────────
-  const switchRole = (r) => {
+  const switchRole = r => {
     if (loading) return;
-    setRole(r);
-    setUsername("");
-    setEmail("");
-    setPassword("");
-    setShowPassword(false);
-    setFieldErrors({ identifier: "", password: "" });
-    setAuthError("");
+    setRole(r); setUsername(""); setEmail(""); setPassword(""); setShowPw(false);
+    setFieldErr({ id: "", pw: "" }); setAuthErr("");
   };
-
   const isAdmin = role === "admin";
 
-  // ── Validation — always runs before API ───────
   const validate = () => {
-    const errs = { identifier: "", password: "" };
-    let valid = true;
-
+    const e = { id: "", pw: "" }; let ok = true;
     if (isAdmin) {
       const u = username.trim();
-      if (!u) {
-        errs.identifier = "Username is required.";
-        valid = false;
-      } else if (u.length < 3) {
-        errs.identifier = "Username must be at least 3 characters.";
-        valid = false;
-      }
+      if (!u) { e.id = "Username is required."; ok = false; }
+      else if (u.length < 3) { e.id = "Min 3 characters."; ok = false; }
     } else {
-      const e = email.trim();
-      if (!e) {
-        errs.identifier = "Email address is required.";
-        valid = false;
-      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
-        errs.identifier = "Please enter a valid email address.";
-        valid = false;
-      }
+      const em = email.trim();
+      if (!em) { e.id = "Email is required."; ok = false; }
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) { e.id = "Enter a valid email."; ok = false; }
     }
-
-    if (!password) {
-      errs.password = "Password is required.";
-      valid = false;
-    } else if (password.length < 6) {
-      errs.password = "Password must be at least 6 characters.";
-      valid = false;
-    }
-
-    setFieldErrors(errs);
-    return valid;
+    if (!password) { e.pw = "Password is required."; ok = false; }
+    else if (password.length < 6) { e.pw = "Min 6 characters."; ok = false; }
+    setFieldErr(e); return ok;
   };
 
-  // ── Submit — auth logic preserved exactly ─────
-  const handleSubmit = async () => {
-    if (loading) return;                   // hard double-submit guard
-    setAuthError("");
-    if (!validate()) return;               // block API if invalid
-
+  const submit = async () => {
+    if (loading) return;
+    setAuthErr("");
+    if (!validate()) return;
     setLoading(true);
     try {
-      const identifier = isAdmin ? username.trim() : email.trim();
-      await login({
-      mode: isAdmin ? "admin" : "employee",
-      identifier: identifier,
-      password: password,
-      });   // ✅ auth call
-      navigate("/dashboard");              // ✅ redirect
-      onClose();                           // ✅ close modal
+      await login({ mode: isAdmin ? "admin" : "employee", identifier: isAdmin ? username.trim() : email.trim(), password });
+      navigate("/dashboard"); onClose();
     } catch (err) {
-      const raw =
-        err?.response?.data?.detail ||
-        err?.response?.data?.message ||
-        err?.message || "";
-      const lower = raw.toLowerCase();
-
-      if (lower.includes("not found") || lower.includes("no user") || lower.includes("does not exist")) {
-        setFieldErrors(p => ({
-          ...p,
-          identifier: isAdmin
-            ? "No account found with this username."
-            : "No account found with this email address.",
-        }));
-      } else if (lower.includes("password") || lower.includes("incorrect") || lower.includes("invalid") || lower.includes("wrong")) {
-        setFieldErrors(p => ({ ...p, password: "Incorrect password. Please try again." }));
-      } else {
-        setAuthError("Sign in failed. Please check your credentials and try again.");
-      }
-    } finally {
-      setLoading(false);
-    }
+      const raw = err?.response?.data?.detail || err?.response?.data?.message || err?.message || "";
+      const lo = raw.toLowerCase();
+      if (lo.includes("not found") || lo.includes("no user")) setFieldErr(p => ({ ...p, id: isAdmin ? "No account found for this username." : "No account found for this email." }));
+      else if (lo.includes("password") || lo.includes("incorrect") || lo.includes("invalid")) setFieldErr(p => ({ ...p, pw: "Incorrect password. Try again." }));
+      else setAuthErr("Sign in failed. Check credentials and try again.");
+    } finally { setLoading(false); }
   };
 
-  const onKey = (e) => { if (e.key === "Enter") handleSubmit(); };
-
-  // ── Route to sub-modals ───────────────────────
   if (view === "register") return <RegisterModal onClose={onClose} onSwitchToLogin={() => setView("login")} />;
   if (view === "forgot")   return <ForgotPasswordModal onClose={onClose} onBack={() => setView("login")} />;
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div
-        className="modal-card"
-        onClick={e => e.stopPropagation()}
-        role="dialog"
-        aria-modal="true"
-        aria-label={`${isAdmin ? "Admin" : "Employee"} Login`}
-      >
+    <div className="zm-bg" onClick={onClose}>
+      <div className="zm-card" onClick={e => e.stopPropagation()} role="dialog" aria-modal>
+        <button onClick={onClose} style={{ position: "absolute", top: 14, right: 14, width: 28, height: 28, background: "#f5f5f5", border: "none", borderRadius: 4, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "#777", transition: "all .2s" }}
+          onMouseEnter={e => e.currentTarget.style.background="#eee"}
+          onMouseLeave={e => e.currentTarget.style.background="#f5f5f5"}
+        ><I.Close /></button>
 
-        {/* ── Close button ── */}
-        <button
-          onClick={onClose}
-          aria-label="Close"
-          style={{
-            position: "absolute", top: 16, right: 16,
-            width: 32, height: 32,
-            background: "var(--slate-100)", border: "none",
-            borderRadius: 9, color: "var(--slate-500)",
-            cursor: "pointer", display: "flex",
-            alignItems: "center", justifyContent: "center",
-            transition: "all 0.2s var(--ease-out-expo)",
-          }}
-          onMouseEnter={e => { e.currentTarget.style.background = "var(--slate-200)"; e.currentTarget.style.transform = "rotate(90deg)"; }}
-          onMouseLeave={e => { e.currentTarget.style.background = "var(--slate-100)"; e.currentTarget.style.transform = "rotate(0)"; }}
-        >
-          <Icon.Close size={14} />
-        </button>
+        <img src={logo1} alt="BrixiGo" style={{ height: 38, objectFit: "contain", marginBottom: 18 }} />
+        <h2 style={{ fontSize: 22, fontWeight: 700, color: "var(--z-text)", marginBottom: 6 }}>Welcome back</h2>
+        <p style={{ fontSize: 13.5, color: "var(--z-text-md)", marginBottom: 20 }}>Sign in to your {isAdmin ? "Admin (HR)" : "Employee"} account</p>
 
-        {/* ── Brand — real Brixigo logo ── */}
-        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 24 }}>
-          <img
-            src={logo1}
-            alt="BrixiGo"
-            style={{ height: 44, width: "auto", objectFit: "contain", flexShrink: 0 }}
-          />
-          
-        </div>
-
-        {/* ── Title ── */}
-        <div style={{ marginBottom: 22 }}>
-          <h2 style={{ fontFamily: "var(--font-display)", fontSize: 23, color: "var(--slate-900)", marginBottom: 6, lineHeight: 1.2, letterSpacing: "-0.01em" }}>
-            Welcome back
-          </h2>
-          <p style={{ fontSize: 13.5, color: "var(--slate-500)", display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-            Sign in to your{" "}
-            <span className={`role-chip ${isAdmin ? "role-chip-admin" : "role-chip-emp"}`}>
-              {isAdmin ? "Admin (HR)" : "Employee"} workspace
-            </span>
-          </p>
-        </div>
-
-        {/* ── Role tabs ── */}
-        <div className="role-tab-wrap" role="tablist" aria-label="Login type">
-          <button
-            role="tab"
-            aria-selected={isAdmin}
-            className={`role-tab${isAdmin ? " active" : ""}`}
-            onClick={() => switchRole("admin")}
-            disabled={loading}
-            type="button"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            </svg>
-            Admin · HR Login
+        <div className="zrole-wrap">
+          <button className={`zrole-tab${isAdmin ? " active" : ""}`} onClick={() => switchRole("admin")} disabled={loading}>
+            <I.Shield s={13} /> Admin · HR Login
           </button>
-          <button
-            role="tab"
-            aria-selected={!isAdmin}
-            className={`role-tab emp-tab${!isAdmin ? " active" : ""}`}
-            onClick={() => switchRole("employee")}
-            disabled={loading}
-            type="button"
-          >
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
-            </svg>
-            Employee Login
+          <button className={`zrole-tab${!isAdmin ? " active" : ""}`} onClick={() => switchRole("employee")} disabled={loading}>
+            <I.User s={13} /> Employee Login
           </button>
         </div>
 
-        {/* ── Employee info banner ── */}
         {!isAdmin && (
-          <div className="emp-info-banner" role="note">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="10"/>
-              <line x1="12" y1="16" x2="12" y2="12"/>
-              <line x1="12" y1="8" x2="12.01" y2="8"/>
-            </svg>
-            <span>
-              Use the <strong>email address</strong> assigned by your HR team.
-              Employee accounts are created by Admin only.
-            </span>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8, background: "#FFF8E1", border: "1px solid #FFE082", borderRadius: 4, padding: "10px 12px", marginBottom: 16, fontSize: 12.5, color: "#795548", fontWeight: 500, lineHeight: 1.55 }}>
+            <I.Info s={13} style={{ flexShrink: 0, marginTop: 1 }} />
+            <span>Use the <strong>email address</strong> assigned by your HR team. Employee accounts are created by Admin only.</span>
           </div>
         )}
 
-        {/* ── Auth-level error banner ── */}
-        {authError && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            style={{
-              display: "flex", alignItems: "flex-start", gap: 9,
-              background: "var(--red-100)", border: "1px solid #FECACA",
-              color: "var(--red-600)", borderRadius: 10,
-              padding: "12px 14px", fontSize: 13,
-              fontWeight: 600, marginBottom: 20,
-              animation: "slideUp 0.2s ease",
-            }}
-          >
-            <Icon.Alert size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>{authError}</span>
+        {authErr && (
+          <div role="alert" style={{ display: "flex", gap: 8, background: "#FFEBEE", border: "1px solid #FFCDD2", color: "#C62828", borderRadius: 4, padding: "10px 12px", fontSize: 13, fontWeight: 600, marginBottom: 16 }}>
+            <I.Alert /> {authErr}
           </div>
         )}
 
-        {/* ════════════════════════════════════════
-            USERNAME / EMAIL FIELD
-        ════════════════════════════════════════ */}
-        <div style={{ marginBottom: 16 }}>
-          <label
-            className="pw-label"
-            htmlFor="lm-identifier"
-            style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}
-          >
-            <span>{isAdmin ? "Username" : "Work Email"}</span>
-          </label>
-          <div className="lm-input-wrap">
-            <span className="lm-input-icon" aria-hidden="true">
-              {isAdmin
-                ? <Icon.User size={15} />
-                : <Icon.Mail size={15} />
-              }
-            </span>
-            <input
-              id="lm-identifier"
-              ref={idRef}
-              className={`lm-input${fieldErrors.identifier ? " lm-err" : ""}`}
-              type={isAdmin ? "text" : "email"}
-              placeholder={isAdmin ? "Enter your username" : "you@company.com"}
-              value={isAdmin ? username : email}
-              onChange={e => {
-                isAdmin ? setUsername(e.target.value) : setEmail(e.target.value);
-                setFieldErrors(p => ({ ...p, identifier: "" }));
-                setAuthError("");
-              }}
-              autoComplete={isAdmin ? "username" : "email"}
-              autoCapitalize="none"
-              spellCheck={false}
-              aria-required="true"
-              aria-invalid={!!fieldErrors.identifier}
-              aria-describedby={fieldErrors.identifier ? "err-identifier" : undefined}
-              onKeyDown={onKey}
-              disabled={loading}
+        {/* ID field */}
+        <div style={{ marginBottom: 14 }}>
+          <label className="zf-label">{isAdmin ? "Username" : "Work Email"}</label>
+          <div className="zf-wrap">
+            <span className="zf-icon">{isAdmin ? <I.User s={15} /> : <I.Mail s={15} />}</span>
+            <input ref={idRef} className={`zf-input${fieldErr.id ? " err" : ""}`} type={isAdmin ? "text" : "email"} placeholder={isAdmin ? "Enter your username" : "you@company.com"} value={isAdmin ? username : email}
+              onChange={e => { isAdmin ? setUsername(e.target.value) : setEmail(e.target.value); setFieldErr(p => ({ ...p, id: "" })); setAuthErr(""); }}
+              onKeyDown={e => e.key === "Enter" && submit()}
             />
           </div>
-          {fieldErrors.identifier && (
-            <div id="err-identifier" className="field-error" role="alert" aria-live="polite">
-              <Icon.Alert size={12} />
-              {fieldErrors.identifier}
-            </div>
-          )}
+          {fieldErr.id && <div className="zf-err-msg"><I.Alert s={12} />{fieldErr.id}</div>}
         </div>
 
-        {/* ════════════════════════════════════════
-            PASSWORD FIELD
-        ════════════════════════════════════════ */}
+        {/* Password */}
         <div style={{ marginBottom: 10 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-            <label className="pw-label" htmlFor="lm-password" style={{ marginBottom: 0 }}>
-              Password
-            </label>
-            <button
-              type="button"
-              onClick={() => setView("forgot")}
-              style={{
-                background: "none", border: "none",
-                fontSize: 12, color: "var(--blue-600)",
-                fontWeight: 600, cursor: "pointer",
-                fontFamily: "var(--font-body)", padding: 0,
-                transition: "color 0.15s",
-              }}
-              onMouseEnter={e => e.currentTarget.style.color = "var(--blue-700)"}
-              onMouseLeave={e => e.currentTarget.style.color = "var(--blue-600)"}
-            >
-              Forgot password?
-            </button>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+            <label className="zf-label" style={{ marginBottom: 0 }}>Password</label>
+            <button type="button" onClick={() => setView("forgot")} style={{ background: "none", border: "none", fontSize: 12, color: "var(--z-orange)", fontWeight: 600, cursor: "pointer", fontFamily: "var(--font)" }}>Forgot password?</button>
           </div>
-          <div className="lm-input-wrap">
-  <span className="lm-input-icon">
-    <Icon.Lock size={15} />
-  </span>
-
-  <input
-    id="lm-password"
-    className={`lm-input${fieldErrors.password ? " lm-err" : ""}`}
-    type="password"
-    placeholder="Enter your password"
-    value={password}
-    onChange={e => {
-      setPassword(e.target.value);
-      setFieldErrors(p => ({ ...p, password: "" }));
-      setAuthError("");
-    }}
-  />
-</div>
-          {fieldErrors.password && (
-            <div id="err-password" className="field-error" role="alert" aria-live="polite">
-              <Icon.Alert size={12} />
-              {fieldErrors.password}
-            </div>
-          )}
+          <div className="zf-wrap">
+            <span className="zf-icon"><I.Lock s={15} /></span>
+            <input className={`zf-input${fieldErr.pw ? " err" : ""}`} style={{ paddingRight: 40 }} type={showPw ? "text" : "password"} placeholder="Enter your password" value={password}
+              onChange={e => { setPassword(e.target.value); setFieldErr(p => ({ ...p, pw: "" })); setAuthErr(""); }}
+              onKeyDown={e => e.key === "Enter" && submit()}
+            />
+            <button type="button" onClick={() => setShowPw(v => !v)} style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "#aaa", display: "flex", alignItems: "center", padding: 3 }}>{showPw ? <I.EyeOff /> : <I.Eye />}</button>
+          </div>
+          {fieldErr.pw && <div className="zf-err-msg"><I.Alert s={12} />{fieldErr.pw}</div>}
         </div>
 
-        {/* ── Remember me ── */}
-        <div
-          role="checkbox"
-          aria-checked={rememberMe}
-          tabIndex={0}
-          style={{ display: "flex", alignItems: "center", gap: 9, marginTop: 16, marginBottom: 24, cursor: "pointer", userSelect: "none" }}
-          onClick={() => setRememberMe(v => !v)}
-          onKeyDown={e => { if (e.key === " ") { e.preventDefault(); setRememberMe(v => !v); } }}
-        >
-          <div
-            aria-hidden="true"
-            style={{
-              width: 18, height: 18, borderRadius: 6, flexShrink: 0,
-              background: rememberMe ? "var(--blue-600)" : "transparent",
-              border: rememberMe ? "none" : "1.5px solid var(--slate-300)",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "all 0.2s var(--ease-spring)",
-              transform: rememberMe ? "scale(1)" : "scale(1)",
-            }}
-          >
-            {rememberMe && <Icon.Check size={11} color="#fff" />}
+        {/* Remember */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "14px 0 18px", cursor: "pointer", userSelect: "none" }} onClick={() => setRemember(v => !v)}>
+          <div style={{ width: 16, height: 16, borderRadius: 3, flexShrink: 0, background: remember ? "var(--z-green)" : "transparent", border: remember ? "none" : "1.5px solid #ccc", display: "flex", alignItems: "center", justifyContent: "center", transition: "all .2s" }}>
+            {remember && <I.Check s={10} />}
           </div>
-          <span style={{ fontSize: 13, color: "var(--slate-600)", fontWeight: 500 }}>
-            Keep me signed in
-          </span>
+          <span style={{ fontSize: 13, color: "var(--z-text-md)" }}>Keep me signed in</span>
         </div>
 
-        {/* ── Submit button ── */}
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={loading}
-          aria-busy={loading}
-          style={{
-            width: "100%", height: 48,
-            border: "none", borderRadius: 11,
-            fontFamily: "var(--font-body)", fontSize: 14.5,
-            fontWeight: 700, color: "#fff",
-            cursor: loading ? "not-allowed" : "pointer",
-            display: "flex", alignItems: "center",
-            justifyContent: "center", gap: 8,
-            letterSpacing: "-0.01em",
-            marginBottom: isAdmin ? 18 : 0,
-            opacity: loading ? 0.75 : 1,
-            transition: "all 0.25s var(--ease-out-expo)",
-            background: isAdmin
-              ? "linear-gradient(135deg, var(--blue-600), var(--blue-700))"
-              : "linear-gradient(135deg, var(--teal-600), var(--teal-700))",
-            boxShadow: isAdmin
-              ? "0 4px 14px rgba(37,99,235,0.28), 0 1px 3px rgba(37,99,235,0.12)"
-              : "0 4px 14px rgba(13,148,136,0.25), 0 1px 3px rgba(13,148,136,0.10)",
-          }}
-          onMouseEnter={e => { if (!loading) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = isAdmin ? "0 8px 24px rgba(37,99,235,0.35)" : "0 8px 24px rgba(13,148,136,0.30)"; }}}
-          onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = isAdmin ? "0 4px 14px rgba(37,99,235,0.28), 0 1px 3px rgba(37,99,235,0.12)" : "0 4px 14px rgba(13,148,136,0.25), 0 1px 3px rgba(13,148,136,0.10)"; }}
-        >
-          {loading ? (
-            <>
-              <span style={{
-                width: 16, height: 16,
-                border: "2px solid rgba(255,255,255,0.3)",
-                borderTopColor: "#fff", borderRadius: "50%",
-                animation: "spin 0.65s linear infinite",
-                display: "inline-block", flexShrink: 0,
-              }} aria-hidden="true" />
-              Signing in…
-            </>
-          ) : (
-            <>
-              Sign In as {isAdmin ? "Admin" : "Employee"}
-              <Icon.ArrowRight size={14} />
-            </>
-          )}
+        {/* Submit */}
+        <button type="button" onClick={submit} disabled={loading} className={`zb zb-${isAdmin ? "primary" : "green"}`} style={{ width: "100%", justifyContent: "center", fontSize: 15, padding: "13px", opacity: loading ? .75 : 1, cursor: loading ? "not-allowed" : "pointer", marginBottom: isAdmin ? 14 : 0 }}>
+          {loading ? <><span style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,.4)", borderTopColor: "#fff", borderRadius: "50%", animation: "zSpin .65s linear infinite", display: "inline-block" }} /> Signing in…</> : <>Sign In as {isAdmin ? "Admin" : "Employee"} <I.Arrow /></>}
         </button>
 
-        {/* ── Create account — Admin only ── */}
         {isAdmin && (
           <>
-            <div className="divider" style={{ marginBottom: 16, marginTop: 0 }}>
-              New to BrixiGo?
-            </div>
-            <button
-              type="button"
-              className="btn btn-secondary btn-md"
-              onClick={() => setView("register")}
-              disabled={loading}
-              style={{ width: "100%", justifyContent: "center" }}
-            >
-              <Icon.Users size={14} />
-              Create Admin Account
-            </button>
+            <div className="zf-divider">New to BrixiGo?</div>
+            <button type="button" className="zb zb-ghost" onClick={() => setView("register")} disabled={loading} style={{ width: "100%", justifyContent: "center", fontSize: 14 }}>Create Admin Account</button>
           </>
         )}
 
-        {/* ── TLS footer ── */}
-        <p style={{ textAlign: "center", marginTop: 20, fontSize: 12, color: "var(--slate-400)", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
-          <Icon.Shield size={11} />
-          Protected by 256-bit TLS encryption ·{" "}
-          <a href="#" style={{ color: "var(--blue-600)", textDecoration: "none", fontWeight: 600 }}>Privacy Policy</a>
+        <p style={{ textAlign: "center", marginTop: 16, fontSize: 12, color: "#aaa", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>
+          <I.Shield s={11} /> 256-bit TLS encrypted
         </p>
       </div>
     </div>
   );
 }
 
-/* ─────────────────────────────────────────────
+/* ═══════════════════════════════════════
    ROOT APP
-───────────────────────────────────────────── */
-export default function PayWiseApp() {
+═══════════════════════════════════════ */
+export default function BrixiGoZohoApp() {
   const [showLogin, setShowLogin] = useState(false);
-  const navigate = useNavigate();
-  const { login } = useContext(AuthContext);
   const [showRegister, setShowRegister] = useState(false);
   const [showResetPassword, setShowResetPassword] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useContext(AuthContext);
 
-  const handleLoginClick = () => {
-    navigate("/login"); 
-  };
+  const handleLoginClick = () => navigate("/login");
 
-  // ✅ REGISTER CLICK
-  const handleRegisterClick = () => {
-    setShowRegister(true);
-    setShowResetPassword(false);
-  };
-
-  // ✅ RESET PASSWORD CLICK
-  const handleResetClick = () => {
-    setShowResetPassword(true);
-    setShowRegister(false);
-  };
   useEffect(() => {
-    const id = "paywise-global-css";
+    const id = "brixigo-zoho-css";
     if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = GLOBAL_CSS;
-    document.head.appendChild(style);
+    const s = document.createElement("style");
+    s.id = id; s.textContent = GLOBAL_CSS;
+    document.head.appendChild(s);
   }, []);
 
   useEffect(() => {
@@ -2896,7 +1438,7 @@ export default function PayWiseApp() {
     return () => { document.body.style.overflow = ""; };
   }, [showLogin]);
 
-  const openLogin = useCallback(() => setShowLogin(true), []);
+  const openLogin  = useCallback(() => setShowLogin(true), []);
   const closeLogin = useCallback(() => setShowLogin(false), []);
 
   return (
@@ -2904,28 +1446,20 @@ export default function PayWiseApp() {
       <Navbar onLoginClick={openLogin} />
       <main>
         <Hero onLoginClick={openLogin} />
-        <Stats />
+        <LogoStrip />
         <Features />
-        <ComplianceStrip />
+        <LeaveSection />
+        <Compliance />
+        <ESSSection />
         <Testimonials />
         <Pricing onLoginClick={openLogin} />
         <CTA onLoginClick={openLogin} />
       </main>
       <Footer />
-      {showLogin && <LoginModal onClose={closeLogin} />}
-      {showRegister && (
-        <RegisterModal
-          onClose={() => setShowRegister(false)}
-          onSwitchToReset={handleResetClick}   // optional if you use link inside modal
-        />
-      )}
 
-      {showResetPassword && (
-        <ResetPassword
-          onClose={() => setShowResetPassword(false)}
-        />
-      )}
+      {showLogin && <LoginModal onClose={closeLogin} />}
+      {showRegister && <RegisterModal onClose={() => setShowRegister(false)} onSwitchToReset={() => { setShowResetPassword(true); setShowRegister(false); }} />}
+      {showResetPassword && <ResetPassword onClose={() => setShowResetPassword(false)} />}
     </div>
-    
   );
 }

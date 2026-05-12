@@ -10,6 +10,7 @@ from utils.dependencies import get_current_user
 
 ROLE_ADMIN = "admin"
 ROLE_HR = "hr"
+ROLE_FINANCE = "finance"
 ROLE_EMPLOYEE = "employee"
 
 
@@ -23,6 +24,14 @@ ACTION_PAYROLL_RUN = "payroll:run"
 ACTION_PAYSLIP_DOWNLOAD_ALL = "payslip:download:all"
 ACTION_PAYSLIP_DOWNLOAD_OWN = "payslip:download:own"
 
+ACTION_BANK_MASTER_MANAGE = "bank_master:manage"
+ACTION_EMPLOYEE_BANK_MANAGE = "employee_bank:manage"
+ACTION_SALARY_BATCH_CREATE = "salary_batch:create"
+ACTION_SALARY_BATCH_APPROVE_HR = "salary_batch:approve:hr"
+ACTION_SALARY_BATCH_APPROVE_FINANCE = "salary_batch:approve:finance"
+ACTION_SALARY_BATCH_PAYOUT = "salary_batch:payout"
+ACTION_REPORTS_BANKING_VIEW = "reports:banking:view"
+
 
 ROLE_PERMISSIONS: dict[str, Set[str]] = {
     ROLE_ADMIN: {
@@ -35,6 +44,18 @@ ROLE_PERMISSIONS: dict[str, Set[str]] = {
         ACTION_EMPLOYEE_EDIT,
         ACTION_PAYROLL_RUN,
         ACTION_PAYSLIP_DOWNLOAD_ALL,
+        ACTION_BANK_MASTER_MANAGE,
+        ACTION_EMPLOYEE_BANK_MANAGE,
+        ACTION_SALARY_BATCH_CREATE,
+        ACTION_SALARY_BATCH_APPROVE_HR,
+        ACTION_REPORTS_BANKING_VIEW,
+    },
+    ROLE_FINANCE: {
+        ACTION_DASHBOARD_VIEW,
+        ACTION_EMPLOYEE_READ,
+        ACTION_REPORTS_BANKING_VIEW,
+        ACTION_SALARY_BATCH_APPROVE_FINANCE,
+        ACTION_SALARY_BATCH_PAYOUT,
     },
     ROLE_EMPLOYEE: {
         ACTION_DASHBOARD_VIEW,

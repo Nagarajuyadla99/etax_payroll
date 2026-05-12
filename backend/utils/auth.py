@@ -1,9 +1,13 @@
 # payroll_system/utils/auth.py
+import logging
 import os
 from datetime import datetime, timedelta
-from jose import jwt, JWTError
-from passlib.context import CryptContext
+
 from fastapi import HTTPException, status
+from jose import ExpiredSignatureError, JWTError, jwt
+from passlib.context import CryptContext
+
+logger = logging.getLogger(__name__)
 
 # =========================
 # CONFIG
@@ -61,7 +65,19 @@ def decode_token(token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         return payload
 
-    except JWTError:
+    except ExpiredSignatureError:
+        logger.info("jwt_decode_failed reason=expired")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid or expired token",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    except JWTError as e:
+        _auth_debug = os.getenv("AUTH_DEBUG", "").lower() in ("1", "true", "yes")
+        if _auth_debug:
+            logger.warning("jwt_decode_failed error=%s detail=%s", type(e).__name__, str(e))
+        else:
+            logger.info("jwt_decode_failed error=%s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid or expired token",

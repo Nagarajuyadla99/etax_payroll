@@ -7,6 +7,7 @@ from models.employee_model import Employee
 from models.user_models import User
 from schemas.onboarding_schemas import SetupSchema
 from utils.dependencies import get_current_user
+from utils.rbac import require_roles
 
 router = APIRouter(prefix="/setup", tags=["Setup"])
 
@@ -15,64 +16,64 @@ router = APIRouter(prefix="/setup", tags=["Setup"])
 async def setup_org(
     payload: SetupSchema,
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles(["admin"]))
 ):
-    # 🔥 FIX START HERE
-    result = await db.execute(
-        select(Organisation).where(
-            Organisation.organisation_id == current_user.organisation_id
+    """
+    Phase 1 foundation: transactional organisation initialization.
+    Note: tenant/org + admin user are created during /auth/register (Phase 1 Option B).
+    This endpoint seeds tenant master data and marks setup complete.
+    """
+    org_id = getattr(current_user, "organisation_id", None)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="User has no organisation")
+
+    # Transactional: all-or-nothing
+    async with db.begin():
+        result = await db.execute(
+            select(Organisation).where(Organisation.organisation_id == org_id)
         )
-    )
-    org = result.scalar_one_or_none()
-    # 🔥 FIX END
+        org = result.scalar_one_or_none()
 
-    if not org:
-        raise HTTPException(400, "User has no organisation")
+        if not org:
+            raise HTTPException(status_code=400, detail="User has no organisation")
 
-    if not org:
-        raise HTTPException(400, "User has no organisation")
+        if org.is_setup_complete:
+            raise HTTPException(status_code=400, detail="Already setup completed")
 
-    if org.is_setup_complete:
-        raise HTTPException(400, "Already setup completed")
+        departments = [d.strip() for d in (payload.departments or []) if d and d.strip()]
+        designations = [d.strip() for d in (payload.designations or []) if d and d.strip()]
+        locations = [l.strip() for l in (payload.locations or []) if l and l.strip()]
 
-   
-    db.add_all([
-        Department(name=d.strip(), organisation_id=org.organisation_id)
-        for d in payload.departments if d.strip()
-    ])
+        if not departments or not designations or not locations:
+            raise HTTPException(
+                status_code=400,
+                detail="Departments, designations and locations are required",
+            )
 
-    
-    db.add_all([
-        Designation(title=d.strip(), organisation_id=org.organisation_id)
-        for d in payload.designations if d.strip()
-    ])
+        db.add_all([Department(name=name, organisation_id=org.organisation_id) for name in departments])
+        db.add_all([Designation(title=title, organisation_id=org.organisation_id) for title in designations])
+        db.add_all([WorkLocation(name=name, organisation_id=org.organisation_id) for name in locations])
 
-    
-    db.add_all([
-        WorkLocation(name=l.strip(), organisation_id=org.organisation_id)
-        for l in payload.locations if l.strip()
-    ])
+        if payload.manager:
+            manager_name = (payload.manager.name or "").strip()
+            manager_email = (payload.manager.email or "").strip()
+            if not manager_name or not manager_email:
+                raise HTTPException(status_code=400, detail="Manager name and email are required")
+            manager = Employee(
+                first_name=manager_name,
+                work_email=manager_email,
+                organisation_id=org.organisation_id,
+            )
+            db.add(manager)
 
-    
-    if payload.manager:
-        manager = Employee(
-            first_name=payload.manager.name,
-            work_email=payload.manager.email,
-            organisation_id=org.organisation_id
-        )
-        db.add(manager)
-
-   
-    org.is_setup_complete = True
-
-    await db.commit()
+        org.is_setup_complete = True
 
     return {"message": "Organisation setup completed successfully"}
 
 @router.get("/departments")
 async def get_departments(
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles(["admin", "hr"]))
 ):
     org_id = current_user.organisation_id
 
@@ -93,7 +94,7 @@ async def get_departments(
 @router.get("/designations")
 async def get_designations(
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles(["admin", "hr"]))
 ):
     org_id = current_user.organisation_id
 
@@ -114,7 +115,7 @@ async def get_designations(
 @router.get("/locations")
 async def get_locations(
     db: AsyncSession = Depends(get_async_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_roles(["admin", "hr"]))
 ):
     org_id = current_user.organisation_id
 

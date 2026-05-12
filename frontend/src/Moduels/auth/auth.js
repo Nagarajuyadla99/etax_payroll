@@ -1,4 +1,5 @@
 import API from "../../services/api";
+import { setStoredAccessToken } from "../../utils/authSession";
 
 export const loginUser = async (username, password) => {
   const form = new URLSearchParams();
@@ -6,7 +7,7 @@ export const loginUser = async (username, password) => {
   form.append("password", password);
 
   const { data } = await API.post("/auth/login", form);
-  localStorage.setItem("token", data.access_token);
+  if (data?.access_token) setStoredAccessToken(data.access_token);
   return data;
 };
 

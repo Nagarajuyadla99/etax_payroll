@@ -19,12 +19,31 @@ from .salary_models import (
     SalaryTemplateComponent,
     PayStructure,
     EmployeeSalaryStructure,
+    SalaryComponentGroup,
+    SalaryComponentGroupItem,
+    SalaryDerivedVariable,
+    OrgStatutoryConfig,
+    SalaryTemplateGroup,
+)
+from .salary_version_models import (
+    SalaryComponentVersion,
+    SalaryDerivedVariableVersion,
+    SalaryPreviewSnapshot,
+    SalaryTemplateVersion,
+    SalaryTemplateComponentVersion,
+    SalaryTemplateGroupVersion,
+    SalaryComponentGroupVersion,
+    SalaryComponentGroupItemVersion,
 )
 from .payroll_models import PayPeriod, PayrollRun, PayrollEntry
+from .payroll_audit_models import PayrollLifecycleAuditLog
 
 
 # Users, roles, and access control
 from .user_models import User, Role, UserRole
+
+# API infra
+from .idempotency_models import ApiIdempotencyKey
 
 
 
