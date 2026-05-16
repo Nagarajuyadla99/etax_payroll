@@ -40,10 +40,9 @@ async def readiness():
 
 @router.get("/provider-health")
 async def provider_health():
-    """
-    Minimal provider health endpoint: checks redis, db, and provider webhook secret presence.
-    (Real ping/latency calls can be added per provider once API endpoints are finalized.)
-    """
+    """DB, Redis, and env-level provider config presence."""
+    import os
+
     from providers.registry import get_provider
 
     provider = get_provider()
@@ -58,13 +57,9 @@ async def provider_health():
         ok = False
         problems.append("db_unavailable")
 
-    # Config presence check (env-based for now)
-    import os
-
     if provider.provider_code == "razorpayx":
         if not os.getenv("RAZORPAYX_KEY_ID") or not os.getenv("RAZORPAYX_KEY_SECRET"):
-            ok = False
-            problems.append("razorpayx_credentials_missing")
+            problems.append("razorpayx_env_credentials_missing")
         if not os.getenv("RAZORPAYX_WEBHOOK_SECRET"):
             problems.append("razorpayx_webhook_secret_missing")
 

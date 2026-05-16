@@ -54,6 +54,7 @@ async def ensure_provider_beneficiary(
             name=acct.account_holder_name,
             account_number=account_number,
             ifsc=branch.ifsc_code,
+            reference_id=f"org:{organisation_id}:emp:{acct.employee_id}:acct:{employee_bank_account_id}",
         )
     )
 

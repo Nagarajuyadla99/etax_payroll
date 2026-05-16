@@ -11,6 +11,12 @@ from models.employee_model import Employee
 from models.payroll_models import PayrollEntry, PayrollRun
 from models.salary_models import SalaryComponent
 
+from services.payroll_component_bucket import (
+    CATEGORY_EARNING,
+    CATEGORY_EMPLOYER_CONTRIBUTION,
+    resolve_payroll_component_category,
+)
+
 
 async def generate_payslip_data(
     db: AsyncSession,
@@ -26,6 +32,9 @@ async def generate_payslip_data(
     payroll = q.scalar_one_or_none()
     if not payroll:
         raise ValueError("Payroll run not found")
+
+    if str(employee.organisation_id) != str(payroll.organisation_id):
+        raise ValueError("Employee does not belong to this payroll run organisation")
 
     q = await db.execute(
         select(PayrollEntry).filter(
@@ -46,8 +55,10 @@ async def generate_payslip_data(
 
     earnings = []
     deductions = []
+    employer_contributions = []
     gross = Decimal("0.00")
     deduction_total = Decimal("0.00")
+    employer_total = Decimal("0.00")
 
     for entry in entries:
         component = component_map.get(entry.component_id)
@@ -55,9 +66,13 @@ async def generate_payslip_data(
             continue
 
         item = {"component": component.name, "amount": entry.amount}
-        if component.component_type == "earning":
+        cat = resolve_payroll_component_category(component)
+        if cat == CATEGORY_EARNING:
             earnings.append(item)
             gross += entry.amount
+        elif cat == CATEGORY_EMPLOYER_CONTRIBUTION:
+            employer_contributions.append(item)
+            employer_total += entry.amount
         else:
             deductions.append(item)
             deduction_total += entry.amount
@@ -68,8 +83,10 @@ async def generate_payslip_data(
         "employee_id": str(employee.employee_id),
         "earnings": earnings,
         "deductions": deductions,
+        "employer_contributions": employer_contributions,
         "gross_salary": gross,
         "total_deductions": deduction_total,
+        "total_employer_contributions": employer_total,
         "net_salary": net,
     }
 
@@ -103,6 +120,18 @@ def generate_payslip_pdf(data):
             y = 750
         pdf.drawString(60, y, f"{deduction['component']} : {float(deduction['amount']):,.2f}")
         y -= 20
+
+    ec = data.get("employer_contributions") or []
+    if ec:
+        y -= 20
+        pdf.drawString(50, y, "Employer contributions")
+        y -= 20
+        for row in ec:
+            if y < 50:
+                pdf.showPage()
+                y = 750
+            pdf.drawString(60, y, f"{row['component']} : {float(row['amount']):,.2f}")
+            y -= 20
 
     y -= 20
     pdf.drawString(50, y, f"Gross Salary : {float(data['gross_salary']):,.2f}")

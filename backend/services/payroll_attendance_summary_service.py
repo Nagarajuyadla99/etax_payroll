@@ -13,50 +13,42 @@ from uuid import UUID
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from models.attendance_models import Attendance, Leave
+from models.attendance_models import Attendance, Leave, OrganisationHoliday
+from models.org_models import Organisation
 from models.payroll_models import PayPeriod
+from services.payroll_attendance_calculator import (
+    accumulate_attendance_row,
+    empty_attendance_bucket,
+    merge_payroll_cfg,
+    prepare_employee_attendance_bucket,
+)
 
 
-def _half_day_status(status: str | None) -> bool:
-    if not status:
-        return False
-    s = status.strip().lower()
-    return s in ("half_day", "hd")
-
-
-def _absent_status(status: str | None) -> bool:
-    if not status:
-        return False
-    s = status.strip().lower()
-    return s in ("absent", "a")
-
-
-def _present_like(status: str | None) -> bool:
-    if not status:
-        return False
-    s = status.strip().lower()
-    return s in ("present", "p")
-
-
-def _leave_on_attendance_row(status: str | None) -> bool:
-    if not status:
-        return False
-    s = status.strip().lower()
-    return s in ("leave", "l")
-
-
-def _holiday_status(status: str | None) -> bool:
-    if not status:
-        return False
-    s = status.strip().lower()
-    return s in ("holiday", "h")
-
-
-def _week_off_status(status: str | None) -> bool:
-    if not status:
-        return False
-    s = status.strip().lower()
-    return s in ("wo", "week_off")
+async def _load_org_calendar(
+    db: AsyncSession,
+    organisation_id: UUID,
+    start: date,
+    end: date,
+) -> tuple[frozenset[date], frozenset[int], dict[str, Any]]:
+    org_r = await db.execute(select(Organisation).where(Organisation.organisation_id == organisation_id))
+    org = org_r.scalar_one_or_none()
+    hr_settings = (org.hr_settings or {}) if org else {}
+    payroll_cfg = hr_settings.get("payroll") or {}
+    att = hr_settings.get("attendance") or {}
+    raw_wo = att.get("week_off_weekdays") or []
+    try:
+        week_off_weekdays = frozenset(int(x) for x in raw_wo)
+    except (TypeError, ValueError):
+        week_off_weekdays = frozenset()
+    hol_q = await db.execute(
+        select(OrganisationHoliday.holiday_date).where(
+            OrganisationHoliday.organisation_id == organisation_id,
+            OrganisationHoliday.holiday_date >= start,
+            OrganisationHoliday.holiday_date <= end,
+        )
+    )
+    org_holidays = frozenset(row[0] for row in hol_q.all())
+    return org_holidays, week_off_weekdays, payroll_cfg
 
 
 async def aggregate_attendance_leave_units(
@@ -64,12 +56,14 @@ async def aggregate_attendance_leave_units(
     organisation_id: UUID,
     start: date,
     end: date,
+    *,
+    payroll_cfg: dict[str, Any] | None = None,
 ) -> Tuple[Dict[UUID, Dict[str, Decimal]], List[Attendance]]:
     """
     Returns (per_employee aggregates, raw attendance rows in range).
-    Inner keys: present_units, absent_units, half_day_units, leave_on_attendance_units,
-    holiday_units, week_off_units, lop_leave_units.
     """
+    cfg = merge_payroll_cfg(payroll_cfg)
+
     att_q = await db.execute(
         select(Attendance).where(
             Attendance.organisation_id == organisation_id,
@@ -79,44 +73,19 @@ async def aggregate_attendance_leave_units(
     )
     rows: List[Attendance] = list(att_q.scalars().all())
 
-    agg: Dict[UUID, Dict[str, Decimal]] = defaultdict(
-        lambda: {
-            "present_units": Decimal("0"),
-            "absent_units": Decimal("0"),
-            "half_day_units": Decimal("0"),
-            "leave_on_attendance_units": Decimal("0"),
-            "holiday_units": Decimal("0"),
-            "week_off_units": Decimal("0"),
-            "lop_leave_units": Decimal("0"),
-        }
-    )
+    agg: Dict[UUID, Dict[str, Decimal]] = defaultdict(empty_attendance_bucket)
 
     for a in rows:
         emp = a.employee_id
-        frac = a.day_fraction if a.day_fraction is not None else Decimal("1")
-        st = a.status
-
-        if _week_off_status(st):
-            wu = frac if frac is not None else Decimal("1")
-            agg[emp]["week_off_units"] += wu
-            continue
-        if _holiday_status(st):
-            hu = frac if frac is not None else Decimal("1")
-            agg[emp]["holiday_units"] += hu
-            continue
-        if _half_day_status(st):
-            agg[emp]["half_day_units"] += frac if frac != Decimal("1") else Decimal("0.5")
-            continue
-        if _absent_status(st):
-            agg[emp]["absent_units"] += frac
-            continue
-        if _leave_on_attendance_row(st):
-            agg[emp]["leave_on_attendance_units"] += frac
-            continue
-        if _present_like(st):
-            agg[emp]["present_units"] += frac
-            continue
-        agg[emp]["present_units"] += frac
+        if emp not in agg:
+            agg[emp] = empty_attendance_bucket()
+        accumulate_attendance_row(
+            agg[emp],
+            status=a.status,
+            day_fraction=a.day_fraction if a.day_fraction is not None else Decimal("1"),
+            payroll_cfg=cfg,
+            work_hours=float(a.work_hours) if a.work_hours is not None else None,
+        )
 
     leave_q = await db.execute(
         select(Leave).where(
@@ -131,6 +100,8 @@ async def aggregate_attendance_leave_units(
     lop_rows: List[Leave] = list(leave_q.scalars().all())
 
     for lv in lop_rows:
+        if lv.employee_id not in agg:
+            agg[lv.employee_id] = empty_attendance_bucket()
         overlap_start = max(lv.start_date, start)
         overlap_end = min(lv.end_date, end)
         if overlap_start > overlap_end:
@@ -161,22 +132,39 @@ async def build_pay_period_attendance_summary(
     start: date = period.start_date
     end: date = period.end_date
 
-    agg, rows = await aggregate_attendance_leave_units(db, org_id, start, end)
+    org_holidays, week_off_weekdays, payroll_cfg = await _load_org_calendar(db, org_id, start, end)
+    agg, rows = await aggregate_attendance_leave_units(db, org_id, start, end, payroll_cfg=payroll_cfg)
 
     employees_out: List[Dict[str, Any]] = []
     all_emp_ids = set(agg.keys())
     for eid in sorted(all_emp_ids, key=lambda x: str(x)):
-        bucket = agg.get(eid, {})
+        emp_rows = [x for x in rows if x.employee_id == eid]
+        bucket, missing = prepare_employee_attendance_bucket(
+            base_bucket=agg.get(eid),
+            employee_attendance_rows=emp_rows,
+            period_start=start,
+            period_end=end,
+            org_holiday_dates=org_holidays,
+            week_off_weekdays=week_off_weekdays,
+            payroll_cfg=payroll_cfg,
+        )
         employees_out.append(
             {
                 "employee_id": str(eid),
                 "present_units": float(bucket["present_units"]),
                 "absent_units": float(bucket["absent_units"]),
                 "half_day_units": float(bucket["half_day_units"]),
+                "paid_leave_units": float(bucket["paid_leave_units"]),
+                "unpaid_leave_units": float(bucket["unpaid_leave_units"]),
                 "leave_on_attendance_units": float(bucket["leave_on_attendance_units"]),
                 "holiday_units": float(bucket["holiday_units"]),
                 "week_off_units": float(bucket["week_off_units"]),
                 "lop_leave_units": float(bucket["lop_leave_units"]),
+                "unknown_units": float(bucket["unknown_units"]),
+                "missing_attendance_units": float(bucket["missing_attendance_units"]),
+                "overtime_units": float(bucket["overtime_units"]),
+                "overtime_hours": float(bucket["overtime_hours"]),
+                "missing_working_dates": [d.isoformat() for d in missing.missing_dates],
                 "recorded_attendance_rows": sum(1 for x in rows if x.employee_id == eid),
             }
         )
@@ -187,5 +175,6 @@ async def build_pay_period_attendance_summary(
         "start_date": start.isoformat(),
         "end_date": end.isoformat(),
         "attendance_leave_locked": bool(period.attendance_leave_locked),
+        "payroll_settings": merge_payroll_cfg(payroll_cfg),
         "employees": employees_out,
     }

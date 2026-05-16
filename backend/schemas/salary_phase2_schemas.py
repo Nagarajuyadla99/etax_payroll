@@ -305,6 +305,14 @@ class EmployeeSalaryStructureOverridesUpdate(BaseModel):
 class FormulaValidateRequest(BaseModel):
     expression: str
     context: str = "generic"
+    known_identifiers: Optional[list[str]] = Field(
+        default=None,
+        description="Component codes, derived variable codes, and allowed symbols for dependency audit.",
+    )
+    strict_unknown_identifiers: bool = Field(
+        default=False,
+        description="If true, unknown formula identifiers fail validation (after syntax check).",
+    )
     model_config = ConfigDict(
         json_schema_extra={
             "examples": [
@@ -319,6 +327,9 @@ class FormulaValidateResponse(BaseModel):
     is_valid: bool
     dependencies: list[str] = []
     error: Optional[str] = None
+    warnings: list[str] = Field(default_factory=list)
+    unknown_dependencies: list[str] = Field(default_factory=list)
+    risk_hints: list[str] = Field(default_factory=list)
 
 
 # ============================================================
@@ -331,6 +342,10 @@ class SalaryPreviewRequest(BaseModel):
     template_id: UUID
     ctc: float
     as_of_date: date
+    pay_period_id: Optional[UUID] = Field(
+        default=None,
+        description="When set with employee_id, merge attendance + LOP for this period into overrides (same as payroll run).",
+    )
     overrides: dict[str, Any] = Field(default_factory=dict)
     save_snapshot: bool = Field(
         default=False,
@@ -339,6 +354,10 @@ class SalaryPreviewRequest(BaseModel):
     include_versions: bool = Field(
         default=False,
         description="Include resolved configuration version ids in the preview response.",
+    )
+    include_engine_audit: bool = Field(
+        default=False,
+        description="When true, include preview_audit (attendance merge, wage proration factor, etc.).",
     )
     model_config = ConfigDict(
         json_schema_extra={
@@ -384,6 +403,14 @@ class SalaryPreviewResponse(BaseModel):
         default=None,
         description="Filled when include_versions=true on the request.",
     )
+    template_engine_meta: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Template-level engine flags (e.g. prorate_with_attendance) passed into the calculator.",
+    )
+    preview_audit: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Populated when include_engine_audit=true on the request.",
+    )
 
 
 # ============================================================
@@ -398,6 +425,10 @@ class SalaryVersionPublishBody(BaseModel):
 class SalaryTemplateVersionPublishBody(BaseModel):
     effective_from: date
     label: Optional[str] = None
+    engine_meta: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="Merged into the new template version meta (e.g. prorate_with_attendance).",
+    )
 
 
 class PublishedSalaryComponentVersionOut(BaseModel):

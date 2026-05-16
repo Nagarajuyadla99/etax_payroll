@@ -11,15 +11,15 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 from typing import AsyncGenerator
 
-load_dotenv()
+# Prefer backend/.env over a stale machine-level DATABASE_URL (common on Windows dev).
+load_dotenv(override=True)
 
 # ------------------------------------------------------------
 # PostgreSQL connection (systemd can set DATABASE_URL via EnvironmentFile)
 # ------------------------------------------------------------
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+asyncpg://postgres:96188@localhost:5432/payroll_db",
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL environment variable is required")
 
 
 # ------------------------------------------------------------
@@ -27,7 +27,7 @@ DATABASE_URL = os.getenv(
 # ------------------------------------------------------------
 engine = create_async_engine(
     DATABASE_URL,
-    echo=True,               # set False in production
+    echo=os.getenv("SQL_ECHO", "false").lower() == "true",
     future=True,
     pool_pre_ping=True,     # prevents stale connection errors
     pool_size=10,           # connection pool size

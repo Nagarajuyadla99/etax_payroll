@@ -13,6 +13,10 @@ import {
   clearAuthSession,
   isAccessTokenExpired,
 } from "../../utils/authSession";
+import {
+  clearPayrollWorkflow,
+  reconcilePayrollWorkflowWithUser,
+} from "../payroll/payrollWorkflow";
 
 export const AuthContext = createContext();
 
@@ -42,6 +46,7 @@ export default function AuthProvider({ children }) {
         const profile = await getProfile();
         setUser(profile);
         setRole(profile?.role ?? payload?.role ?? null);
+        reconcilePayrollWorkflowWithUser(profile);
       } catch (err) {
         const status = err?.response?.status;
         if (status === 401) {
@@ -66,6 +71,7 @@ export default function AuthProvider({ children }) {
 
   const logout = useCallback(() => {
     clearAuthSession("logout");
+    clearPayrollWorkflow();
     resetLocalState();
   }, [resetLocalState]);
 
@@ -98,6 +104,7 @@ export default function AuthProvider({ children }) {
       .then((profile) => {
         setUser(profile);
         setRole(profile?.role ?? payload?.role ?? null);
+        reconcilePayrollWorkflowWithUser(profile);
       })
       .catch((err) => {
         const status = err?.response?.status;

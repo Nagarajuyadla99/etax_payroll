@@ -66,7 +66,12 @@ export default function App() {
   return (
     <AuthProvider>
       <ToastProvider>
-        <BrowserRouter>
+        <BrowserRouter
+          future={{
+            v7_startTransition: true,
+            v7_relativeSplatPath: true,
+          }}
+        >
           <Routes>
             <Route path="/" element={<Login />} />
             <Route path="/login" element={<Login />} />
@@ -139,7 +144,7 @@ export default function App() {
               <Route path="/payslip" element={<ProtectedRoute allowedRoles={["admin", "hr", "employee"]}><PayslipViewer /></ProtectedRoute>} />
               <Route path="/payroll-finalize" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><PayrollLifecycle /></ProtectedRoute>} />
 
-              <Route path="/bank" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><BankPayments /></ProtectedRoute>} />
+              <Route path="/bank" element={<ProtectedRoute allowedRoles={["admin", "hr", "finance"]}><BankPayments /></ProtectedRoute>} />
               <Route path="/statutorytax" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><StatutoryTax /></ProtectedRoute>} />
               <Route path="/audit" element={<ProtectedRoute allowedRoles={["admin"]}><Audit /></ProtectedRoute>} />
 

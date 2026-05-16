@@ -1,6 +1,7 @@
 # payroll_system/crud/org_crud.py
 
-from typing import List, Optional
+from copy import deepcopy
+from typing import Any, List, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
@@ -31,6 +32,42 @@ async def create_organisation(db: AsyncSession, payload: OrganisationCreate) -> 
 async def get_organisation(db: AsyncSession, organisation_id: UUID) -> Optional[Organisation]:
     q = await db.execute(select(Organisation).filter(Organisation.organisation_id == organisation_id))
     return q.scalar_one_or_none()
+
+
+def merge_organisation_hr_settings(
+    existing: dict[str, Any] | None,
+    patch: dict[str, Any],
+) -> dict[str, Any]:
+    """Deep-merge ``hr_settings`` (payroll / attendance sections)."""
+    base = deepcopy(existing or {})
+    for section, values in patch.items():
+        if not isinstance(values, dict):
+            base[section] = values
+            continue
+        current = base.get(section)
+        if not isinstance(current, dict):
+            current = {}
+        merged_section = {**current, **values}
+        base[section] = merged_section
+    return base
+
+
+async def update_organisation_hr_settings(
+    db: AsyncSession,
+    organisation_id: UUID,
+    patch: dict[str, Any],
+) -> Optional[Organisation]:
+    org = await get_organisation(db, organisation_id)
+    if not org:
+        return None
+    org.hr_settings = merge_organisation_hr_settings(org.hr_settings, patch)
+    try:
+        await db.commit()
+        await db.refresh(org)
+        return org
+    except Exception:
+        await db.rollback()
+        raise
 
 
 async def update_organisation(db: AsyncSession, organisation_id: UUID, payload: OrganisationUpdate) -> Optional[Organisation]:

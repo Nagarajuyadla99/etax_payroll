@@ -110,6 +110,8 @@ class SalaryTemplate(Base):
     name = Column(String(150), nullable=False)
     description = Column(Text)
 
+    meta = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
     is_default = Column(Boolean, nullable=False, server_default=text("false"))
 
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
@@ -173,6 +175,8 @@ class SalaryTemplateComponent(Base):
 # ✅ ADD THESE
     percentage_of = Column(String(100), nullable=True)
     formula = Column(Text, nullable=True)
+
+    meta = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
 

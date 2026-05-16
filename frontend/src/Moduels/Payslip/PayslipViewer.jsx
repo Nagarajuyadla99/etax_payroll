@@ -58,8 +58,9 @@ export default function PayslipViewer() {
         <div>
           <h1 className="text-2xl font-semibold text-gray-800">Payslip (stored data)</h1>
           <p className="text-gray-500 text-sm">
-            Requires payroll to be <strong>locked</strong> (Phase 4). No recalculation — lines come from
-            payroll entries.
+            Data comes from stored payroll lines. <strong>HR/Admin</strong> can preview after the run is
+            processed. <strong>Employees</strong> can download only after the run is <strong>locked</strong> in
+            Payroll Finalize.
           </p>
         </div>
         <button
@@ -134,7 +135,7 @@ export default function PayslipViewer() {
                 <ul className="text-xs space-y-1">
                   {(data.earnings || []).map((e, i) => (
                     <li key={i}>
-                      {e.name}: {Number(e.amount).toFixed(2)}
+                      {e.component || e.name}: {Number(e.amount).toFixed(2)}
                     </li>
                   ))}
                 </ul>
@@ -144,11 +145,23 @@ export default function PayslipViewer() {
                 <ul className="text-xs space-y-1">
                   {(data.deduction_lines || data.deductions || []).map((e, i) => (
                     <li key={i}>
-                      {e.name}: {Number(e.amount).toFixed(2)}
+                      {e.component || e.name}: {Number(e.amount).toFixed(2)}
                     </li>
                   ))}
                 </ul>
               </div>
+              {(data.employer_contributions || []).length > 0 && (
+                <div>
+                  <p className="font-medium text-gray-800 mb-1">Employer contributions</p>
+                  <ul className="text-xs space-y-1">
+                    {data.employer_contributions.map((e, i) => (
+                      <li key={i}>
+                        {e.component || e.name}: {Number(e.amount).toFixed(2)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {(data.statutory_breakdown || []).length > 0 && (
                 <div>
                   <p className="font-medium text-gray-800 mb-1">Statutory breakdown</p>
@@ -162,12 +175,19 @@ export default function PayslipViewer() {
                 </div>
               )}
             </div>
-            <div className="border-t pt-2 text-sm">
+            <div className="border-t pt-2 text-sm space-y-1">
               <p>Gross: {Number(data.gross_salary).toFixed(2)}</p>
               <p>
                 Total deductions:{" "}
                 {Number(data.total_deductions ?? data.total_deductions_and_statutory).toFixed(2)}
               </p>
+              {(Number(data.total_employer_contributions ?? 0) !== 0 ||
+                (data.employer_contributions || []).length > 0) && (
+                <p>
+                  Employer contributions (not in net):{" "}
+                  {Number(data.total_employer_contributions ?? 0).toFixed(2)}
+                </p>
+              )}
               <p className="font-semibold">Net: {Number(data.net_salary).toFixed(2)}</p>
             </div>
           </div>

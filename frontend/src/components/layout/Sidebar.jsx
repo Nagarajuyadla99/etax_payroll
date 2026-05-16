@@ -106,7 +106,7 @@ export const SIDEBAR_CONFIG = [
   },
   {
     section: "Finance & Compliance",
-    roles: ["admin", "hr"],
+    roles: ["admin", "hr", "finance"],
     items: [
       { key: "bank_requests", label: "Bank Requests", icon: "wallet", path: "/bank", color: "ic-blue" },
       { key: "approvals", label: "Approvals", icon: "check-circle", path: "/approvals", color: "ic-green" },

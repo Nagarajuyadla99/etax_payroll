@@ -34,10 +34,10 @@ export default function PayrollRunsPage() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    setData((current) => ({
-      organisation_id: current.organisation_id || organisationId || "",
-      pay_period_id: current.pay_period_id || payPeriodId || "",
-    }));
+    setData({
+      organisation_id: organisationId || "",
+      pay_period_id: payPeriodId || "",
+    });
   }, [organisationId, payPeriodId]);
 
   const createRun = async () => {

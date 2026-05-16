@@ -1,21 +1,18 @@
 import axios from "axios";
+import { API_BASE_URL } from "../../../config/apiConfig";
+import { getStoredAccessToken } from "../../../utils/authSession";
 
-const API_BASE =
-  (typeof import.meta !== "undefined"
-    ? import.meta.env?.VITE_API_URL
-    : process.env.REACT_APP_API_URL) || "http://127.0.0.1:9000/api/salary";
-
-const API = `${API_BASE}/v2`;
+const API = `${API_BASE_URL}/salary/v2`;
 
 function genIdempotencyKey() {
   return `${Date.now()}_${Math.random().toString(16).slice(2)}_${Math.random().toString(16).slice(2)}`;
 }
 
 function authHeaders() {
-  const token = localStorage.getItem("token");
+  const token = getStoredAccessToken();
   return {
     headers: {
-      Authorization: `Bearer ${token}`,
+      Authorization: token ? `Bearer ${token}` : undefined,
       "Content-Type": "application/json",
     },
   };

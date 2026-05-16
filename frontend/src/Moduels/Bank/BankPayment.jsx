@@ -1,6 +1,14 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
-import API from "../../services/api";
+import React, { useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { AuthContext } from "../Context/AuthContext";
+import {
+  approveSalaryBatchFinance,
+  approveSalaryBatchHr,
+  createSalaryBatch,
+  formatFinancialApiError,
+  generateSalaryBatchBankFile,
+  listSalaryBatches,
+  payoutSalaryBatch,
+} from "./disbursementApi";
 
 const statusPill = (status) => {
   const s = (status || "").toLowerCase();
@@ -26,8 +34,10 @@ export default function BankPayments() {
     [role]
   );
 
-  const [loading, setLoading] = useState(false);
+  const [listLoading, setListLoading] = useState(false);
+  const [actionLoading, setActionLoading] = useState(null);
   const [error, setError] = useState("");
+  const [info, setInfo] = useState("");
   const [batches, setBatches] = useState([]);
 
   const [showModal, setShowModal] = useState(false);
@@ -37,96 +47,113 @@ export default function BankPayments() {
     batch_ref: "",
   });
 
-  const load = async () => {
-    setLoading(true);
+  const busy = listLoading || Boolean(actionLoading);
+
+  const load = useCallback(async () => {
+    setListLoading(true);
     setError("");
     try {
-      const res = await API.get("/disbursement/salary-batches");
+      const res = await listSalaryBatches();
       setBatches(res.data || []);
     } catch (e) {
-      setError(e?.response?.data?.detail || "Failed to load salary batches");
+      setError(formatFinancialApiError(e, { context: "load salary batches" }));
     } finally {
-      setLoading(false);
+      setListLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
-  const createBatch = async () => {
+  const runAction = async (actionKey, fn, { successMessage, context } = {}) => {
+    if (actionLoading) return false;
+    setActionLoading(actionKey);
+    setError("");
+    setInfo("");
+    try {
+      await fn();
+      if (successMessage) setInfo(successMessage);
+      await load();
+      return true;
+    } catch (e) {
+      const message = formatFinancialApiError(e, { context: context || "action" });
+      const status = e?.response?.status;
+      const isBenignConflict =
+        status === 409 &&
+        (String(message).toLowerCase().includes("already") ||
+          String(message).toLowerCase().includes("refreshing"));
+      if (isBenignConflict) {
+        setInfo(message);
+        await load();
+        return true;
+      }
+      setError(message);
+      return false;
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const createBatch = () => {
     if (!createData.payroll_run_id || !createData.pay_period_id || !createData.batch_ref) {
       alert("Payroll run id, pay period id and batch ref are required");
       return;
     }
-    setLoading(true);
-    setError("");
-    try {
-      await API.post("/disbursement/salary-batches", createData);
-      setShowModal(false);
-      setCreateData({ payroll_run_id: "", pay_period_id: "", batch_ref: "" });
-      await load();
-    } catch (e) {
-      setError(e?.response?.data?.detail || "Failed to create batch");
-    } finally {
-      setLoading(false);
-    }
+    runAction(
+      "create-batch",
+      async () => {
+        await createSalaryBatch(createData);
+        setShowModal(false);
+        setCreateData({ payroll_run_id: "", pay_period_id: "", batch_ref: "" });
+      },
+      { successMessage: "Salary batch created.", context: "create salary batch" }
+    );
   };
 
-  const hrApprove = async (batchId) => {
-    setLoading(true);
-    setError("");
-    try {
-      await API.post(`/disbursement/salary-batches/${batchId}/approve/hr`, {
-        comment: "Approved by HR",
-      });
-      await load();
-    } catch (e) {
-      setError(e?.response?.data?.detail || "HR approval failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const hrApprove = (batchId) =>
+    runAction(
+      `hr:${batchId}`,
+      () =>
+        approveSalaryBatchHr(batchId, {
+          comment: "Approved by HR",
+        }),
+      { successMessage: "HR approval recorded.", context: "HR approval" }
+    );
 
-  const financeApprove = async (batchId) => {
-    setLoading(true);
-    setError("");
-    try {
-      await API.post(`/disbursement/salary-batches/${batchId}/approve/finance`, {
-        comment: "Approved by Finance",
-      });
-      await load();
-    } catch (e) {
-      setError(e?.response?.data?.detail || "Finance approval failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const financeApprove = (batchId) =>
+    runAction(
+      `finance:${batchId}`,
+      () =>
+        approveSalaryBatchFinance(batchId, {
+          comment: "Approved by Finance",
+        }),
+      { successMessage: "Finance approval recorded.", context: "finance approval" }
+    );
 
-  const payout = async (batchId) => {
-    setLoading(true);
-    setError("");
-    try {
-      await API.post(`/disbursement/salary-batches/${batchId}/payout`);
-      await load();
-    } catch (e) {
-      setError(e?.response?.data?.detail || "Payout request failed");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const payout = (batchId) =>
+    runAction(
+      `payout:${batchId}`,
+      () => payoutSalaryBatch(batchId),
+      { successMessage: "Payout queued.", context: "payout" }
+    );
 
-  const generateBankFile = async (batchId) => {
-    setLoading(true);
-    setError("");
-    try {
-      await API.post(`/disbursement/salary-batches/${batchId}/artifacts/bank-file`);
-      alert("Bank file generated. Open artifacts list to see storage path.");
-    } catch (e) {
-      setError(e?.response?.data?.detail || "Bank file generation failed");
-    } finally {
-      setLoading(false);
+  const generateBankFile = (batchId) => {
+    const batch = batches.find((row) => row.batch_id === batchId);
+    if (!batch || batch.status !== "approved") {
+      setError(
+        "Bank file generation requires a fully approved batch (HR and Finance). Complete approvals first."
+      );
+      return;
     }
+    runAction(
+      `bank-file:${batchId}`,
+      async () => {
+        await generateSalaryBatchBankFile(batchId);
+        alert("Bank file generated. Open artifacts list to see storage path.");
+      },
+      { context: "bank file generation" }
+    );
   };
 
   return (
@@ -141,16 +168,18 @@ export default function BankPayments() {
 
         <div className="flex gap-2">
           <button
+            type="button"
             onClick={load}
             className="px-4 py-2 rounded-lg bg-white border shadow-sm hover:bg-gray-50"
-            disabled={loading}
+            disabled={busy}
           >
             Refresh
           </button>
           <button
+            type="button"
             onClick={() => setShowModal(true)}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow hover:bg-blue-700 transition"
-            disabled={loading}
+            disabled={busy}
           >
             + Create Salary Batch
           </button>
@@ -160,6 +189,12 @@ export default function BankPayments() {
       {error ? (
         <div className="mb-4 p-3 rounded-lg bg-red-50 text-red-700 border border-red-100">
           {error}
+        </div>
+      ) : null}
+
+      {info ? (
+        <div className="mb-4 p-3 rounded-lg bg-green-50 text-green-800 border border-green-100">
+          {info}
         </div>
       ) : null}
 
@@ -178,7 +213,7 @@ export default function BankPayments() {
             </thead>
 
             <tbody className="divide-y">
-              {loading ? (
+              {listLoading ? (
                 <tr>
                   <td className="px-6 py-4 text-gray-500" colSpan={6}>
                     Loading...
@@ -193,9 +228,18 @@ export default function BankPayments() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-gray-900">{String(b.payroll_run_id).slice(0, 8)}</div>
-                      <div className="text-xs text-gray-500">Pay period: {String(b.pay_period_id).slice(0, 8)}</div>
+                      <div className="text-xs text-gray-500">
+                        Pay period: {String(b.pay_period_id).slice(0, 8)}
+                      </div>
                     </td>
-                    <td className="px-6 py-4">{b.total_employees ?? 0}</td>
+                    <td className="px-6 py-4">
+                      {b.total_employees ?? 0}
+                      {(b.total_employees ?? 0) === 0 && b.status === "approved" ? (
+                        <div className="text-xs text-amber-600">
+                          Employee lines load when you generate file or run payout
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="px-6 py-4">{formatMoney(b.total_amount)}</td>
                     <td className="px-6 py-4">
                       <span className={`px-2 py-1 text-xs rounded-full ${statusPill(b.status)}`}>
@@ -204,41 +248,52 @@ export default function BankPayments() {
                     </td>
                     <td className="px-6 py-4 text-center space-x-2">
                       <button
+                        type="button"
                         onClick={() => generateBankFile(b.batch_id)}
-                        className="text-blue-700 hover:underline text-sm"
-                        disabled={loading}
+                        className="text-blue-700 hover:underline text-sm disabled:opacity-50"
+                        disabled={busy || b.status !== "approved"}
+                        title={
+                          b.status !== "approved"
+                            ? "Complete HR and Finance approval before generating a bank file"
+                            : ""
+                        }
                       >
-                        Generate File
+                        {actionLoading === `bank-file:${b.batch_id}` ? "Generating…" : "Generate File"}
                       </button>
 
                       {canHrApprove && (b.status === "hr_pending" || b.status === "finance_pending") ? (
                         <button
+                          type="button"
                           onClick={() => hrApprove(b.batch_id)}
-                          className="text-yellow-700 hover:underline text-sm"
-                          disabled={loading || b.status !== "hr_pending"}
+                          className="text-yellow-700 hover:underline text-sm disabled:opacity-50"
+                          disabled={busy || b.status !== "hr_pending"}
                           title={b.status !== "hr_pending" ? "HR approval already done" : ""}
                         >
-                          HR Approve
+                          {actionLoading === `hr:${b.batch_id}` ? "Approving…" : "HR Approve"}
                         </button>
                       ) : null}
 
-                      {canFinanceApprove ? (
+                      {canFinanceApprove && b.status === "finance_pending" ? (
                         <button
+                          type="button"
                           onClick={() => financeApprove(b.batch_id)}
-                          className="text-indigo-700 hover:underline text-sm"
-                          disabled={loading || b.status !== "finance_pending"}
+                          className="text-indigo-700 hover:underline text-sm disabled:opacity-50"
+                          disabled={busy}
                         >
-                          Finance Approve
+                          {actionLoading === `finance:${b.batch_id}`
+                            ? "Approving…"
+                            : "Finance Approve"}
                         </button>
                       ) : null}
 
                       {canFinanceApprove ? (
                         <button
+                          type="button"
                           onClick={() => payout(b.batch_id)}
-                          className="text-green-700 hover:underline text-sm"
-                          disabled={loading || b.status !== "approved"}
+                          className="text-green-700 hover:underline text-sm disabled:opacity-50"
+                          disabled={busy || b.status !== "approved"}
                         >
-                          Payout
+                          {actionLoading === `payout:${b.batch_id}` ? "Queuing…" : "Payout"}
                         </button>
                       ) : null}
                     </td>
@@ -267,9 +322,10 @@ export default function BankPayments() {
                 </div>
               </div>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="px-2 py-1 rounded-lg hover:bg-gray-100"
-                disabled={loading}
+                disabled={busy}
               >
                 ✕
               </button>
@@ -282,6 +338,7 @@ export default function BankPayments() {
                 value={createData.batch_ref}
                 onChange={(e) => setCreateData({ ...createData, batch_ref: e.target.value })}
                 className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-200 outline-none"
+                disabled={busy}
               />
               <input
                 type="text"
@@ -291,6 +348,7 @@ export default function BankPayments() {
                   setCreateData({ ...createData, payroll_run_id: e.target.value })
                 }
                 className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-200 outline-none"
+                disabled={busy}
               />
               <input
                 type="text"
@@ -300,24 +358,27 @@ export default function BankPayments() {
                   setCreateData({ ...createData, pay_period_id: e.target.value })
                 }
                 className="w-full border rounded-lg px-3 py-2 focus:ring focus:ring-blue-200 outline-none"
+                disabled={busy}
               />
             </div>
 
             <div className="flex justify-end mt-6 space-x-3">
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="px-4 py-2 rounded-lg bg-gray-200 hover:bg-gray-300"
-                disabled={loading}
+                disabled={busy}
               >
                 Cancel
               </button>
 
               <button
+                type="button"
                 onClick={createBatch}
-                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700"
-                disabled={loading}
+                className="px-4 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                disabled={busy}
               >
-                Create
+                {actionLoading === "create-batch" ? "Creating…" : "Create"}
               </button>
             </div>
           </div>
@@ -326,3 +387,4 @@ export default function BankPayments() {
     </div>
   );
 }
+

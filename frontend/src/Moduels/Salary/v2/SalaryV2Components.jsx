@@ -26,6 +26,7 @@ function emptyForm() {
     system_code: "",
     rounding_rule: { scale: 2 },
     meta: {},
+    attendance_proration_mode: "",
     is_active: true,
   };
 }
@@ -81,13 +82,23 @@ export default function SalaryV2Components() {
       setSaving(true);
       setSubmitted(true);
       setError("");
+      const { attendance_proration_mode, ...restForm } = form;
       await v2CreateComponent({
-        ...form,
+        ...restForm,
         code: form.code.trim().toUpperCase(),
         name: form.name.trim(),
         description: form.description?.trim() || null,
         formula_expression: showFormula ? form.formula_expression.trim() : null,
         system_code: showSystem ? form.system_code.trim().toUpperCase() : null,
+        meta: (() => {
+          const m = { ...(form.meta || {}) };
+          if (form.component_category === "earning" && attendance_proration_mode) {
+            m.attendance_proration_mode = attendance_proration_mode;
+          } else {
+            delete m.attendance_proration_mode;
+          }
+          return m;
+        })(),
       });
       setForm(emptyForm());
       setSubmitted(false);
@@ -159,6 +170,24 @@ export default function SalaryV2Components() {
             ))}
           </select>
         </div>
+        {form.component_category === "earning" ? (
+          <div className="bw-field xl-4">
+            <label className="bw-label" htmlFor="v2-apm">
+              Attendance proration mode
+            </label>
+            <select
+              id="v2-apm"
+              className="bw-select"
+              value={form.attendance_proration_mode}
+              onChange={(e) => setForm((p) => ({ ...p, attendance_proration_mode: e.target.value }))}
+            >
+              <option value="">Default (auto when template prorate on)</option>
+              <option value="auto">Auto</option>
+              <option value="manual">Manual</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+        ) : null}
         <div className="bw-field xl-4">
           <label className="bw-label" htmlFor="v2-calc">
             Calculation type
@@ -242,6 +271,7 @@ export default function SalaryV2Components() {
                 <th>Name</th>
                 <th>Category</th>
                 <th>Calculation</th>
+                <th>Attendance</th>
               </tr>
             </thead>
             <tbody>
@@ -255,11 +285,16 @@ export default function SalaryV2Components() {
                   <td>
                     <span className="bw-badge bw-badge-neutral">{r.calculation_type}</span>
                   </td>
+                  <td className="text-xs text-slate-600">
+                    {r.component_category === "earning"
+                      ? r.meta?.attendance_proration_mode || "—"
+                      : "—"}
+                  </td>
                 </tr>
               ))}
               {filtered.length === 0 ? (
                 <tr>
-                  <td className="bw-table-empty" colSpan={4}>
+                  <td className="bw-table-empty" colSpan={5}>
                     No components yet. Start with BASIC as an earning with a fixed amount.
                   </td>
                 </tr>

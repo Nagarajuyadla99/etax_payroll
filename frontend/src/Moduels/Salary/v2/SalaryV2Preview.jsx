@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { v2Preview } from "./SalaryApiV2";
 import { useToast } from "../../Context/ToastContext";
+import { usePayrollWorkflow } from "../../payroll/payrollWorkflow";
 
 function toErr(e, fallback) {
   return e?.detail || e?.message || fallback;
@@ -14,13 +15,22 @@ function pretty(n) {
 
 export default function SalaryV2Preview() {
   const toast = useToast();
+  const { payPeriodId } = usePayrollWorkflow();
   const [payload, setPayload] = useState(() => ({
     template_id: "",
     employee_id: "",
+    pay_period_id: "",
     as_of_date: "",
     ctc: 120000,
     overrides: {},
+    include_engine_audit: false,
   }));
+
+  useEffect(() => {
+    if (payPeriodId) {
+      setPayload((p) => (p.pay_period_id ? p : { ...p, pay_period_id: payPeriodId }));
+    }
+  }, [payPeriodId]);
 
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -41,9 +51,11 @@ export default function SalaryV2Preview() {
       const res = await v2Preview({
         template_id: payload.template_id,
         employee_id: payload.employee_id || null,
+        pay_period_id: payload.pay_period_id?.trim() || null,
         as_of_date: payload.as_of_date,
         ctc: Number(payload.ctc || 0),
         overrides: payload.overrides || {},
+        include_engine_audit: Boolean(payload.include_engine_audit),
       });
       setResult(res);
       setSuccess("Preview completed.");
@@ -146,6 +158,26 @@ export default function SalaryV2Preview() {
           />
         </div>
         <div>
+          <label className="mb-1 block text-xs font-medium text-slate-600">Pay period ID (attendance)</label>
+          <input
+            className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-mono"
+            value={payload.pay_period_id}
+            onChange={(e) => setPayload((p) => ({ ...p, pay_period_id: e.target.value }))}
+            placeholder="uuid — merged with employee_id like payroll"
+          />
+        </div>
+        <div className="flex items-end pb-2">
+          <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-700">
+            <input
+              type="checkbox"
+              checked={payload.include_engine_audit}
+              onChange={(e) => setPayload((p) => ({ ...p, include_engine_audit: e.target.checked }))}
+              className="rounded border-slate-300"
+            />
+            Include engine audit in response
+          </label>
+        </div>
+        <div>
           <label className="mb-1 block text-xs font-medium text-slate-600">CTC</label>
           <input
             type="number"
@@ -220,6 +252,44 @@ export default function SalaryV2Preview() {
             </div>
           ) : null}
 
+          {result?.template_engine_meta && !result.template_engine_meta.prorate_with_attendance ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              <strong>Template note:</strong> Add{" "}
+              <code className="rounded bg-white/70 px-1">prorate_with_attendance: true</code> on the template version
+              meta, or run preview with a pay period so attendance can auto-apply when factor is below 1.
+            </div>
+          ) : null}
+
+          {result?.preview_audit?.attendance_proration_applied ? (
+            <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-950">
+              <strong>Attendance proration applied.</strong> Factor{" "}
+              {result.preview_audit.wage_proration_factor ?? "—"} on{" "}
+              {(result.preview_audit.prorated_components || []).length} earning line(s). Net and earnings totals are
+              post-proration.
+            </div>
+          ) : null}
+          {result?.preview_audit?.attendance_proration_suppressed_reason ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+              {result.preview_audit.attendance_proration_suppressed_reason}
+            </div>
+          ) : null}
+
+          {result?.preview_audit ? (
+            <div className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
+              <div className="font-semibold text-slate-800">Preview audit</div>
+              <pre className="mt-2 overflow-x-auto text-[11px]">{JSON.stringify(result.preview_audit, null, 2)}</pre>
+            </div>
+          ) : null}
+
+          {result?.template_engine_meta && Object.keys(result.template_engine_meta).length ? (
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-700">
+              <div className="font-semibold text-slate-800">Template engine meta</div>
+              <pre className="mt-2 overflow-x-auto text-[11px]">
+                {JSON.stringify(result.template_engine_meta, null, 2)}
+              </pre>
+            </div>
+          ) : null}
+
           <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
             <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
               <div className="text-xs font-semibold text-slate-600">Earnings</div>
@@ -260,6 +330,14 @@ export default function SalaryV2Preview() {
   );
 }
 
+function prorationLineLabel(line) {
+  const bd = line?.breakdown || {};
+  if (bd.attendance_auto_proration) return "Auto attendance proration";
+  const cat = String(line?.category || "").toLowerCase();
+  if (cat !== "earning") return "—";
+  return "Manual / none";
+}
+
 function Lines({ title, rows }) {
   return (
     <div className="rounded-lg border border-slate-200">
@@ -272,6 +350,7 @@ function Lines({ title, rows }) {
             <tr>
               <th className="px-3 py-2">Code</th>
               <th className="px-3 py-2">Name</th>
+              <th className="px-3 py-2">Attendance</th>
               <th className="px-3 py-2 text-right">Amount</th>
             </tr>
           </thead>
@@ -280,12 +359,13 @@ function Lines({ title, rows }) {
               <tr key={`${r.component_code || r.code}-${idx}`}>
                 <td className="px-3 py-2 font-medium text-slate-900">{r.component_code || r.code}</td>
                 <td className="px-3 py-2 text-slate-700">{r.name}</td>
+                <td className="px-3 py-2 text-xs text-slate-600">{prorationLineLabel(r)}</td>
                 <td className="px-3 py-2 text-right tabular-nums text-slate-900">{pretty(r.amount)}</td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td className="px-3 py-6 text-center text-slate-500" colSpan={3}>
+                <td className="px-3 py-6 text-center text-slate-500" colSpan={4}>
                   No lines.
                 </td>
               </tr>

@@ -95,6 +95,8 @@ def process_employee_payroll_task(
             statutory_cfg_by_code=bundle["statutory_cfg_by_code"],
             employee_overrides=overrides,
             wage_proration_factor=wf,
+            template_engine_meta=bundle.get("template_engine_meta"),
+            payroll_cfg=dict(job_dict.get("payroll_cfg") or {}),
         )
 
         max_attempts = int(os.getenv("PAYROLL_EMPLOYEE_MAX_ATTEMPTS", "4"))
@@ -290,6 +292,7 @@ def payroll_orchestrate_run_task(self, payroll_run_id: str, processed_by: str, s
                 "wage_proration_factor": format(job.wage_proration_factor, "f")
                 if job.wage_proration_factor is not None
                 else None,
+                "payroll_cfg": gathered.payroll_cfg,
             }
             process_employee_payroll_task.delay(
                 payroll_run_id,

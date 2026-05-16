@@ -1,6 +1,7 @@
 # payroll_mnagment/crud/payroll_crud.py
 
 import asyncio
+import logging
 import os
 from typing import Optional
 from uuid import UUID, uuid4
@@ -10,15 +11,15 @@ from types import SimpleNamespace
 from datetime import datetime, timezone
 
 from fastapi.encoders import jsonable_encoder
-from sqlalchemy import update
+from sqlalchemy import delete, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.exc import IntegrityError
 from datetime import date
 
+from models.org_models import Organisation
 from models.payroll_models import PayPeriod, PayrollRun, PayrollEntry
 from models.employee_model import Employee
-from models.org_models import Organisation
 from models.salary_models import SalaryComponent
 
 from schemas.payroll_schemas import (
@@ -40,6 +41,7 @@ from services.payroll_lifecycle_guard import (
     assert_not_locked_value_error,
     mark_run_ready_for_review,
 )
+from services.payroll_component_bucket import aggregate_payroll_run_totals
 
 
 def _employee_age_years(dob: date | None, on_date: date) -> int | None:
@@ -100,14 +102,19 @@ def _statutory_effective_map(rows: list, on_date: date) -> dict:
 
 async def create_pay_period(
     db: AsyncSession,
-    payload: PayPeriodCreate
+    payload: PayPeriodCreate,
+    *,
+    organisation_id: UUID,
 ) -> PayPeriod:
 
-    """Create a new pay period ensuring no overlap."""
+    """Create a new pay period ensuring no overlap (tenant-scoped)."""
+
+    if str(payload.organisation_id) != str(organisation_id):
+        raise ValueError("organisation_id must match the authenticated organisation")
 
     q = await db.execute(
         select(PayPeriod).filter(
-            PayPeriod.organisation_id == payload.organisation_id,
+            PayPeriod.organisation_id == organisation_id,
             PayPeriod.start_date <= payload.end_date,
             PayPeriod.end_date >= payload.start_date
         )
@@ -116,7 +123,9 @@ async def create_pay_period(
     if q.scalar_one_or_none():
         raise ValueError("Overlapping pay period exists for this organisation")
 
-    pay_period = PayPeriod(**payload.model_dump())
+    data = payload.model_dump()
+    data["organisation_id"] = organisation_id
+    pay_period = PayPeriod(**data)
 
     try:
         db.add(pay_period)
@@ -147,20 +156,41 @@ async def get_pay_period(
 
 async def create_payroll(
     db: AsyncSession,
-    payload: PayrollRunCreate
+    payload: PayrollRunCreate,
+    *,
+    organisation_id: UUID,
 ) -> PayrollRun:
 
-    """Create a payroll run."""
+    """Create a payroll run (tenant-scoped)."""
+
+    if str(payload.organisation_id) != str(organisation_id):
+        raise ValueError("organisation_id must match the authenticated organisation")
 
     pay_period = await get_pay_period(db, payload.pay_period_id)
 
     if not pay_period:
         raise ValueError("Pay period not found")
 
+    if str(pay_period.organisation_id) != str(organisation_id):
+        raise ValueError("Pay period not found")
+
     if pay_period.status != "open":
         raise ValueError("Pay period is not open")
 
-    payroll = PayrollRun(**payload.model_dump())
+    data = payload.model_dump()
+    data["organisation_id"] = organisation_id
+
+    from services.payroll_process_policy import build_creation_execution_meta
+
+    org_row = await db.execute(
+        select(Organisation).where(Organisation.organisation_id == organisation_id)
+    )
+    org = org_row.scalar_one_or_none()
+    hr_settings = (org.hr_settings or {}) if org else {}
+    payroll_cfg = hr_settings.get("payroll") or {}
+
+    payroll = PayrollRun(**data)
+    payroll.execution_meta = build_creation_execution_meta(payroll_cfg)
 
     try:
         db.add(payroll)
@@ -281,30 +311,14 @@ async def get_payroll_summary(
     components = q.scalars().all()
     component_map = {c.component_id: c for c in components}
 
+    rolled = aggregate_payroll_run_totals(entries=entries, component_by_id=component_map)
     totals = {
-        "earnings": Decimal("0.00"),
-        "deductions": Decimal("0.00")
+        "earnings": rolled["earnings"],
+        "deductions": rolled["deductions"],
+        "net": rolled["net"],
     }
-
-    for entry in entries:
-
-        component = component_map.get(entry.component_id)
-
-        if not component:
-            continue
-
-        cat = (getattr(component, "component_category", None) or component.component_type or "")
-        cat = (cat or "").lower()
-        if cat == "earning":
-            totals["earnings"] += entry.amount
-        elif cat == "employer_contribution":
-            if "employer_contributions" not in totals:
-                totals["employer_contributions"] = Decimal("0.00")
-            totals["employer_contributions"] += entry.amount
-        else:
-            totals["deductions"] += entry.amount
-
-    totals["net"] = totals["earnings"] - totals["deductions"]
+    if rolled["employer_contributions"] != 0:
+        totals["employer_contributions"] = rolled["employer_contributions"]
 
     return {
         "totals": totals,
@@ -353,8 +367,70 @@ async def _shadow_legacy_compare_batch(
 
 
 async def compute_payroll_process_input_hash(db: AsyncSession, payroll_run_id: UUID) -> str:
-    g = await gather_payroll_inputs(db, payroll_run_id)
+    g = await gather_payroll_inputs(
+        db,
+        payroll_run_id,
+        enforce_validation=False,
+        check_process_policy=False,
+    )
     return compute_input_fingerprint(g)
+
+
+async def reset_payroll_run_for_reprocess(
+    db: AsyncSession,
+    payroll_run_id: UUID,
+    *,
+    reason: str = "attendance_settings_changed",
+) -> PayrollRun:
+    """
+    Clear persisted lines and processing state so the run can be processed again
+    with a fresh attendance snapshot. Does not delete the payroll_run row.
+    """
+    from services.payroll_process_policy import (
+        append_reprocess_reset_history,
+        assert_payroll_reset_allowed,
+        build_creation_execution_meta,
+    )
+
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise ValueError("Payroll run not found")
+    assert_payroll_reset_allowed(payroll)
+
+    org_row = await db.execute(
+        select(Organisation).where(Organisation.organisation_id == payroll.organisation_id)
+    )
+    org = org_row.scalar_one_or_none()
+    payroll_cfg = ((org.hr_settings or {}) if org else {}).get("payroll") or {}
+
+    previous_snapshot = (payroll.execution_meta or {}).get("input_snapshot")
+    await db.execute(delete(PayrollEntry).where(PayrollEntry.payroll_run_id == payroll_run_id))
+
+    payroll.status = "draft"
+    payroll.execution_status = "draft"
+    payroll.gross_pay_total = Decimal("0")
+    payroll.net_pay_total = Decimal("0")
+    payroll.processed_at = None
+    payroll.processed_by = None
+    payroll.execution_trace_id = None
+    payroll.lifecycle_status = "draft"
+    payroll.lifecycle_verified_at = None
+    payroll.lifecycle_verified_by = None
+    payroll.lifecycle_approved_at = None
+    payroll.lifecycle_approved_by = None
+
+    meta = append_reprocess_reset_history(
+        payroll.execution_meta,
+        reason=reason,
+        previous_snapshot=previous_snapshot if isinstance(previous_snapshot, dict) else None,
+    )
+    meta.update(build_creation_execution_meta(payroll_cfg))
+    payroll.execution_meta = meta
+
+    db.add(payroll)
+    await db.commit()
+    await db.refresh(payroll)
+    return payroll
 
 
 async def mark_payroll_run_queued(db: AsyncSession, payroll_run_id: UUID) -> None:
@@ -388,13 +464,14 @@ async def process_payroll_run(
 
     assert_not_locked_value_error(payroll)
 
-    if payroll.status == "processed":
-        raise ValueError("Payroll already processed")
+    gathered = await gather_payroll_inputs(db, payroll_run_id, check_process_policy=True)
 
-    if getattr(payroll, "execution_status", None) in ("queued", "running"):
-        raise ValueError("Payroll run is processing asynchronously; wait for Celery to finish")
-
-    gathered = await gather_payroll_inputs(db, payroll_run_id)
+    if gathered.attendance_warnings:
+        logging.getLogger(__name__).warning(
+            "payroll_run_id=%s attendance_warnings=%s",
+            payroll_run_id,
+            gathered.attendance_warnings,
+        )
 
     input_snapshot = build_input_snapshot_payload(gathered)
     input_fingerprint = compute_input_fingerprint(gathered)
@@ -420,6 +497,8 @@ async def process_payroll_run(
             statutory_cfg_by_code=bundle["statutory_cfg_by_code"],
             employee_overrides=job.overrides,
             wage_proration_factor=job.wage_proration_factor,
+            template_engine_meta=bundle.get("template_engine_meta"),
+            payroll_cfg=gathered.payroll_cfg,
         )
         async with sem:
             res = await asyncio.to_thread(run_preview_job, pl)
@@ -437,8 +516,7 @@ async def process_payroll_run(
             db, gathered.org_scope, gathered.jobs, result_by_emp
         )
 
-    processed_count = 0
-    for job in sorted(gathered.jobs, key=lambda j: str(j.employee_id)):
+    for job in gathered.jobs:
         res = result_by_emp[job.employee_id]
         if res.errors:
             raise ValueError(
@@ -446,9 +524,16 @@ async def process_payroll_run(
                 f"{job.employee_id}: {'; '.join(res.errors[:8])}"
             )
 
+    processed_count = 0
+    proration_audit_by_employee: dict[str, Any] = {}
+    for job in sorted(gathered.jobs, key=lambda j: str(j.employee_id)):
+        res = result_by_emp[job.employee_id]
+
         gross_total += res.totals.get("earnings", Decimal("0"))
         net_total += res.totals.get("net_pay", Decimal("0"))
         processed_count += 1
+        if res.proration_audit:
+            proration_audit_by_employee[str(job.employee_id)] = res.proration_audit
 
         for idx, ln in enumerate(res.lines):
             meta = {
@@ -503,6 +588,11 @@ async def process_payroll_run(
         "parallelism": workers,
         "input_snapshot": input_snapshot,
         "input_fingerprint": input_fingerprint,
+        "attendance_warnings": list(gathered.attendance_warnings),
+        "attendance_validation": (
+            gathered.attendance_validation.to_dict() if gathered.attendance_validation else None
+        ),
+        "proration_audit_by_employee": proration_audit_by_employee,
         "shadow_legacy": shadow_report,
     }
 
@@ -538,7 +628,12 @@ async def verify_payroll_run_replay(db: AsyncSession, payroll_run_id: UUID) -> d
     if not stored_snap:
         raise ValueError("No input_snapshot stored on this payroll run (process with Phase 3b orchestrator).")
 
-    gathered = await gather_payroll_inputs(db, payroll_run_id)
+    gathered = await gather_payroll_inputs(
+        db,
+        payroll_run_id,
+        enforce_validation=False,
+        check_process_policy=False,
+    )
     fresh_snap = build_input_snapshot_payload(gathered)
 
     drift: dict[str, object] = {}
@@ -583,6 +678,8 @@ async def verify_payroll_run_replay(db: AsyncSession, payroll_run_id: UUID) -> d
             statutory_cfg_by_code=bundle["statutory_cfg_by_code"],
             employee_overrides=overrides,
             wage_proration_factor=wf,
+            template_engine_meta=bundle.get("template_engine_meta"),
+            payroll_cfg=gathered.payroll_cfg,
         )
         replay_engine_errors.extend(res.errors or [])
 
@@ -625,7 +722,7 @@ async def build_payroll_execution_trace(db: AsyncSession, payroll_run_id: UUID) 
     if not payroll:
         raise ValueError("Payroll run not found")
 
-    gathered = await gather_payroll_inputs(db, payroll_run_id)
+    gathered = await gather_payroll_inputs(db, payroll_run_id, enforce_validation=False)
     dag_plans: dict[str, object] = {}
     for tid, bundle in gathered.template_bundle_cache.items():
         dag_plans[str(tid)] = build_phase2_dag_plan_from_bundle(bundle)

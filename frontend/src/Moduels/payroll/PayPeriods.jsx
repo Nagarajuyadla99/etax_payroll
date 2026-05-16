@@ -36,7 +36,7 @@ export default function PayPeriods() {
     if (organisationId) {
       setForm((current) => ({
         ...current,
-        organisation_id: current.organisation_id || organisationId,
+        organisation_id: organisationId,
       }));
     }
   }, [organisationId]);

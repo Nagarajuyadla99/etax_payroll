@@ -79,26 +79,47 @@ export default function SalaryStatementPage(){
                 Employee ID: {emp.employee_id}
               </h3>
 
-              {/* Components */}
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-
-                {Object.entries(emp.components).map(([k,v]) => (
-
-                  <div
-                    key={k}
-                    className="bg-gray-50 border rounded p-3"
-                  >
-                    <p className="text-sm text-gray-500">
-                      {k}
-                    </p>
-
-                    <p className="font-semibold text-gray-800">
-                      {v}
-                    </p>
+              {/* Components with optional attendance proration detail */}
+              <div className="space-y-3">
+                {(emp.component_lines || []).length > 0 ? (
+                  <table className="w-full text-sm border rounded overflow-hidden">
+                    <thead className="bg-gray-100 text-gray-600">
+                      <tr>
+                        <th className="text-left p-2 border-b">Component</th>
+                        <th className="text-left p-2 border-b">Original</th>
+                        <th className="text-left p-2 border-b">Final</th>
+                        <th className="text-left p-2 border-b">Prorated?</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {emp.component_lines.map((ln) => (
+                        <tr key={ln.component_code || ln.name} className="border-b">
+                          <td className="p-2">{ln.name}</td>
+                          <td className="p-2 text-gray-600">
+                            {Number(ln.original_amount).toLocaleString()}
+                          </td>
+                          <td className="p-2 font-medium">{Number(ln.amount).toLocaleString()}</td>
+                          <td className="p-2 text-xs">
+                            {ln.proration_applied
+                              ? "Yes"
+                              : ln.attendance_proratable === false
+                                ? "No (fixed payout)"
+                                : "No"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {Object.entries(emp.components || {}).map(([k, v]) => (
+                      <div key={k} className="bg-gray-50 border rounded p-3">
+                        <p className="text-sm text-gray-500">{k}</p>
+                        <p className="font-semibold text-gray-800">{v}</p>
+                      </div>
+                    ))}
                   </div>
-
-                ))}
-
+                )}
               </div>
 
             </div>

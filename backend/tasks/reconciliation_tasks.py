@@ -83,3 +83,15 @@ def process_import(import_id: str):
     log.info("Processing reconciliation import %s", import_id)
     return asyncio.run(_go())
 
+
+@celery_app.task(name="reconciliation.daily_exception_scan")
+def daily_exception_scan(lookback_hours: int = 24):
+    from services.reconciliation_ops_service import daily_reconciliation_exception_scan
+
+    async def _go():
+        async with AsyncSessionLocal() as db:
+            async with db.begin():
+                return await daily_reconciliation_exception_scan(db, lookback_hours=lookback_hours)
+
+    return asyncio.run(_go())
+

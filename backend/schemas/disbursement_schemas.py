@@ -23,6 +23,8 @@ class SalaryBatchOut(BaseModel):
     total_employees: int
     total_amount: Decimal
     status: str
+    disbursement_mode: Optional[str] = None
+    disbursement_locked_at: Optional[datetime] = None
     created_by: Optional[UUID]
     created_at: datetime
     updated_at: datetime

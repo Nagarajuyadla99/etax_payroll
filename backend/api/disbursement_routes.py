@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import os
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -18,14 +20,47 @@ from schemas.disbursement_schemas import (
     SalaryBatchOut,
 )
 from utils.dependencies import get_current_auth, resolve_organisation_id
+from utils.db_transaction import run_writes
 from utils.idempotency import idempotent_execute, require_idempotency_key
 from utils.rbac import require_roles
 from services.audit_service import audit_log
-from services.workflow_service import create_approvals_for_batch, select_workflow_for_salary_batch
+from services.disbursement_workflow import (
+    batch_ready_for_bank_file,
+    finance_approval_allowed,
+    finance_step_done,
+    load_approval_snapshot,
+    log_workflow_state,
+    reconcile_batch_status,
+)
+from services.disbursement_service import (
+    DISBURSEMENT_MODE_API,
+    DISBURSEMENT_MODE_BANK_FILE,
+    assert_disbursement_mode,
+    celery_inline_fallback_allowed,
+    try_acquire_payout_enqueue_lock,
+    validate_batch_for_bank_file,
+    validate_batch_for_payout,
+)
+from services.workflow_service import (
+    create_approvals_for_batch,
+    recompute_batch_status_from_approvals,
+    select_workflow_for_salary_batch,
+)
 from services.event_bus import publish_event
+from services.payout_audit_service import seal_payout_audit
+from utils.banking_log import new_correlation_id, log_banking
+from services.disbursement_payroll_guard import assert_payroll_eligible_for_disbursement_batch
+from services.disbursement_reconciliation_summary import build_batch_reconciliation_summary
+from services.banking_metrics import (
+    inc_bank_file_generated,
+    inc_payout_enqueued,
+    inc_payout_enqueue_conflict,
+)
+from utils.artifact_download_token import build_artifact_download_token, verify_artifact_download_token
 
 
 router = APIRouter(prefix="/disbursement", tags=["Disbursement"])
+logger = logging.getLogger("payroll.disbursement")
 
 
 @router.post("/salary-batches", response_model=SalaryBatchOut, status_code=status.HTTP_201_CREATED)
@@ -39,8 +74,14 @@ async def create_salary_batch(
     if not org_id:
         raise HTTPException(status_code=400, detail="Organisation not found")
 
-    async with db.begin():
-        # Create batch shell; items will be populated during payout engine task (next todo)
+    async def _writes() -> SalaryBatch:
+        cid = new_correlation_id()
+        await assert_payroll_eligible_for_disbursement_batch(
+            db,
+            payroll_run_id=data.payroll_run_id,
+            organisation_id=org_id,
+            pay_period_id=data.pay_period_id,
+        )
         batch = SalaryBatch(
             organisation_id=org_id,
             payroll_run_id=data.payroll_run_id,
@@ -83,17 +124,20 @@ async def create_salary_batch(
         except Exception:
             pass
 
-        await audit_log(
+        await seal_payout_audit(
             db,
             organisation_id=org_id,
-            actor_id=getattr(auth.principal, "user_id", None),
-            actor_role=getattr(auth.principal, "role", None),
             action="salary_batch.created",
             entity="salary_batch",
             entity_id=batch.batch_id,
-            before=None,
+            actor_id=getattr(auth.principal, "user_id", None),
+            actor_role=getattr(auth.principal, "role", None),
             after={"batch_ref": batch.batch_ref, "status": batch.status},
-            extra={"payroll_run_id": str(batch.payroll_run_id), "pay_period_id": str(batch.pay_period_id)},
+            extra={
+                "payroll_run_id": str(batch.payroll_run_id),
+                "pay_period_id": str(batch.pay_period_id),
+                "correlation_id": cid,
+            },
         )
 
         await publish_event(
@@ -103,7 +147,9 @@ async def create_salary_batch(
             dedupe_key=f"payroll.created:{batch.batch_id}",
             payload={"batch_id": str(batch.batch_id), "batch_ref": batch.batch_ref, "status": batch.status},
         )
+        return batch
 
+    batch = await run_writes(db, _writes)
     await db.refresh(batch)
     return batch
 
@@ -118,7 +164,12 @@ async def list_salary_batches(
     if not org_id:
         raise HTTPException(status_code=400, detail="Organisation not found")
     res = await db.execute(select(SalaryBatch).where(SalaryBatch.organisation_id == org_id).order_by(SalaryBatch.created_at.desc()))
-    return list(res.scalars().all())
+    batches = list(res.scalars().all())
+    for batch in batches:
+        await reconcile_batch_status(db, batch=batch)
+    if db.in_transaction():
+        await db.commit()
+    return batches
 
 
 @router.get("/salary-batches/{batch_id}", response_model=SalaryBatchDetailOut)
@@ -139,6 +190,9 @@ async def get_salary_batch(
     batch = res.scalar_one_or_none()
     if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
+    await reconcile_batch_status(db, batch=batch)
+    if db.in_transaction():
+        await db.commit()
     return batch
 
 
@@ -192,27 +246,27 @@ async def _approve(
 
     from datetime import datetime, timezone
 
+    previous_batch_status = batch.status
     ap.status = "approved"
     ap.actor_user_id = actor_user_id
     ap.decided_at = datetime.now(tz=timezone.utc)
     ap.comment = comment
     ap.decision_token = None
 
-    # batch status transitions
-    # Phase 2D: compute based on all approvals
-    res2 = await db.execute(
-        select(Approval.status).where(
-            Approval.entity_type == "salary_batch",
-            Approval.entity_id == batch.batch_id,
-            Approval.organisation_id == org_id,
-        )
-    )
-    statuses = [r[0] for r in res2.all()]
-    if statuses and all(s == "approved" for s in statuses):
-        batch.status = "approved"
-    elif step == "HR":
-        batch.status = "finance_pending"
+    # Flush so approval status is visible before batch status is recomputed.
     await db.flush()
+    await recompute_batch_status_from_approvals(db, batch=batch)
+    await db.flush()
+
+    snapshot = await load_approval_snapshot(db, batch=batch)
+    log_workflow_state(
+        event=f"approval_{step.lower()}",
+        snapshot=snapshot,
+        extra={
+            "transition": f"{previous_batch_status} -> {batch.status}",
+            "actor_user_id": str(actor_user_id) if actor_user_id else None,
+        },
+    )
 
     await audit_log(
         db,
@@ -244,21 +298,24 @@ async def approve_hr(
     if not batch or str(batch.organisation_id) != str(org_id):
         raise HTTPException(status_code=404, detail="Batch not found")
     async def _exec():
-        async with db.begin():
-            await _approve(
+        await run_writes(
+            db,
+            lambda: _approve(
                 db=db,
                 org_id=org_id,
                 batch=batch,
                 step="HR",
                 actor_user_id=getattr(auth.principal, "user_id", None),
                 comment=data.comment,
-            )
+            ),
+        )
         res = await db.execute(select(Approval).where(Approval.batch_id == batch_id).order_by(Approval.created_at.asc()))
         return 200, [ApprovalOut.model_validate(a).model_dump() for a in res.scalars().all()]
 
     status_code, payload = await idempotent_execute(
         request=request,
         db=db,
+        organisation_id=org_id,
         idempotency_key=idempotency_key,
         endpoint="approve_hr",
         body=data.model_dump(),
@@ -283,24 +340,45 @@ async def approve_finance(
     batch = await db.get(SalaryBatch, batch_id)
     if not batch or str(batch.organisation_id) != str(org_id):
         raise HTTPException(status_code=404, detail="Batch not found")
-    if batch.status not in {"finance_pending", "approved"}:
+
+    snapshot = await load_approval_snapshot(db, batch=batch)
+    log_workflow_state(event="finance_approve_attempt", snapshot=snapshot)
+
+    if not finance_approval_allowed(batch, snapshot):
         raise HTTPException(status_code=409, detail="Batch not ready for finance approval")
+
     async def _exec():
-        async with db.begin():
-            await _approve(
-                db=db,
-                org_id=org_id,
-                batch=batch,
-                step="FINANCE",
-                actor_user_id=getattr(auth.principal, "user_id", None),
-                comment=data.comment,
+        snap = await load_approval_snapshot(db, batch=batch)
+        if finance_step_done(snap):
+            async def _repair():
+                await reconcile_batch_status(db, batch=batch)
+
+            await run_writes(db, _repair)
+            log_workflow_state(
+                event="finance_approve_idempotent",
+                snapshot=await load_approval_snapshot(db, batch=batch),
             )
-        res = await db.execute(select(Approval).where(Approval.batch_id == batch_id).order_by(Approval.created_at.asc()))
+        else:
+            await run_writes(
+                db,
+                lambda: _approve(
+                    db=db,
+                    org_id=org_id,
+                    batch=batch,
+                    step="FINANCE",
+                    actor_user_id=getattr(auth.principal, "user_id", None),
+                    comment=data.comment,
+                ),
+            )
+        res = await db.execute(
+            select(Approval).where(Approval.batch_id == batch_id).order_by(Approval.created_at.asc())
+        )
         return 200, [ApprovalOut.model_validate(a).model_dump() for a in res.scalars().all()]
 
     status_code, payload = await idempotent_execute(
         request=request,
         db=db,
+        organisation_id=org_id,
         idempotency_key=idempotency_key,
         endpoint="approve_finance",
         body=data.model_dump(),
@@ -322,28 +400,58 @@ async def payout_salary_batch(
     if not org_id:
         raise HTTPException(status_code=400, detail="Organisation not found")
     batch = await db.get(SalaryBatch, batch_id)
-    if not batch or str(batch.organisation_id) != str(org_id):
+    if not batch:
         raise HTTPException(status_code=404, detail="Batch not found")
-    if batch.status != "approved":
-        raise HTTPException(status_code=409, detail="Batch not approved")
+    await validate_batch_for_payout(batch, org_id)
 
     async def _exec():
-        # Enqueue payout task
-        try:
-            from celery_app import celery_app
+        async def _writes():
+            await assert_disbursement_mode(db, batch, DISBURSEMENT_MODE_API)
+            try:
+                job_id = await try_acquire_payout_enqueue_lock(db, batch)
+            except HTTPException as exc:
+                if exc.status_code == 409:
+                    inc_payout_enqueue_conflict()
+                raise
+            try:
+                from celery_app import celery_app
 
-            celery_app.send_task("payout.process_salary_batch", args=[str(batch_id)])
-            return 202, {"ok": True, "message": "Payout queued"}
-        except Exception:
-            # Dev fallback: run inline
-            from tasks.payout_tasks import process_salary_batch
+                celery_app.send_task("payout.process_salary_batch", args=[str(batch_id)])
+                inc_payout_enqueued()
+                cid = new_correlation_id()
+                await seal_payout_audit(
+                    db,
+                    organisation_id=org_id,
+                    action="salary_batch.payout_enqueued",
+                    entity="salary_batch",
+                    entity_id=batch.batch_id,
+                    actor_id=getattr(auth.principal, "user_id", None),
+                    actor_role=getattr(auth.principal, "role", None),
+                    after={"job_id": job_id, "status": batch.status},
+                    extra={"correlation_id": cid},
+                )
+                log_banking(logger, "payout.enqueued", batch_id=str(batch_id), job_id=job_id)
+                return 202, {"ok": True, "message": "Payout queued", "job_id": job_id}
+            except Exception as exc:
+                if not celery_inline_fallback_allowed():
+                    batch.payout_job_id = None
+                    batch.status = "approved"
+                    await db.flush()
+                    raise HTTPException(
+                        status_code=503,
+                        detail="Payout queue unavailable; try again later",
+                    ) from exc
+                from tasks.payout_tasks import process_salary_batch
 
-            process_salary_batch(str(batch_id))
-            return 202, {"ok": True, "message": "Payout executed inline (dev fallback)"}
+                process_salary_batch(str(batch_id))
+                return 202, {"ok": True, "message": "Payout executed inline (dev fallback)", "job_id": job_id}
+
+        return await run_writes(db, _writes)
 
     status_code, payload = await idempotent_execute(
         request=request,
         db=db,
+        organisation_id=org_id,
         idempotency_key=idempotency_key,
         endpoint="payout_salary_batch",
         body={"batch_id": str(batch_id)},
@@ -367,6 +475,8 @@ async def retry_failed(
     batch = await db.get(SalaryBatch, batch_id)
     if not batch or str(batch.organisation_id) != str(org_id):
         raise HTTPException(status_code=404, detail="Batch not found")
+    if batch.disbursement_mode == DISBURSEMENT_MODE_BANK_FILE:
+        raise HTTPException(status_code=409, detail="Batch uses bank_file mode; API retry not allowed")
 
     async def _exec():
         try:
@@ -383,6 +493,7 @@ async def retry_failed(
     status_code, payload = await idempotent_execute(
         request=request,
         db=db,
+        organisation_id=org_id,
         idempotency_key=idempotency_key,
         endpoint="retry_failed",
         body={"batch_id": str(batch_id)},
@@ -403,18 +514,41 @@ async def generate_bank_file(
     org_id = resolve_organisation_id(auth.principal, auth.payload)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organisation not found")
+
+    batch = await db.get(SalaryBatch, batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    await validate_batch_for_bank_file(batch, org_id)
+
+    await reconcile_batch_status(db, batch=batch)
+    snapshot = await load_approval_snapshot(db, batch=batch)
+    log_workflow_state(event="bank_file_attempt", snapshot=snapshot)
+
+    ok, reason = batch_ready_for_bank_file(batch, snapshot)
+    if not ok:
+        log_workflow_state(
+            event="bank_file_rejected",
+            snapshot=snapshot,
+            extra={"reason": reason},
+        )
+        raise HTTPException(status_code=409, detail=reason)
+
     from services.bank_file_service import generate_bank_file_for_batch
 
     async def _exec():
-        async with db.begin():
-            artifact = await generate_bank_file_for_batch(db, batch_id=batch_id, organisation_id=org_id)
+        async def _writes():
+            await assert_disbursement_mode(db, batch, DISBURSEMENT_MODE_BANK_FILE)
+            return await generate_bank_file_for_batch(db, batch_id=batch_id, organisation_id=org_id)
+
+        artifact = await run_writes(db, _writes)
+        inc_bank_file_generated()
         return (
             201,
             {
                 "artifact_id": str(artifact.artifact_id),
                 "kind": artifact.kind,
                 "format": artifact.format,
-                "storage_path": artifact.storage_path,
+                "version": artifact.version,
                 "sha256": artifact.sha256,
                 "created_at": str(artifact.created_at),
             },
@@ -423,6 +557,7 @@ async def generate_bank_file(
     status_code, payload = await idempotent_execute(
         request=request,
         db=db,
+        organisation_id=org_id,
         idempotency_key=idempotency_key,
         endpoint="generate_bank_file",
         body={"batch_id": str(batch_id)},
@@ -444,16 +579,103 @@ async def list_artifacts(
     batch = await db.get(SalaryBatch, batch_id)
     if not batch or str(batch.organisation_id) != str(org_id):
         raise HTTPException(status_code=404, detail="Batch not found")
-    res = await db.execute(select(PaymentArtifact).where(PaymentArtifact.batch_id == batch_id).order_by(PaymentArtifact.created_at.desc()))
-    return [
-        {
-            "artifact_id": str(a.artifact_id),
-            "kind": a.kind,
-            "format": a.format,
-            "storage_path": a.storage_path,
-            "sha256": a.sha256,
-            "created_at": a.created_at,
-        }
-        for a in res.scalars().all()
-    ]
+    res = await db.execute(
+        select(PaymentArtifact)
+        .where(PaymentArtifact.batch_id == batch_id)
+        .order_by(PaymentArtifact.created_at.desc())
+    )
+    artifacts = []
+    for a in res.scalars().all():
+        try:
+            token = build_artifact_download_token(batch_id=batch_id, artifact_id=a.artifact_id)
+            download_url = (
+                f"/api/disbursement/salary-batches/{batch_id}/artifacts/{a.artifact_id}/download"
+                f"?token={token}"
+            )
+        except RuntimeError:
+            download_url = (
+                f"/api/disbursement/salary-batches/{batch_id}/artifacts/{a.artifact_id}/download"
+            )
+        artifacts.append(
+            {
+                "artifact_id": str(a.artifact_id),
+                "kind": a.kind,
+                "format": a.format,
+                "version": a.version,
+                "sha256": a.sha256,
+                "created_at": a.created_at,
+                "download_url": download_url,
+            }
+        )
+    return artifacts
+
+
+@router.get("/salary-batches/{batch_id}/reconciliation-summary")
+async def batch_reconciliation_summary(
+    batch_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    auth=Depends(get_current_auth),
+    current_user=Depends(require_roles(["admin", "finance"])),
+):
+    org_id = resolve_organisation_id(auth.principal, auth.payload)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organisation not found")
+    summary = await build_batch_reconciliation_summary(
+        db, batch_id=batch_id, organisation_id=org_id
+    )
+    if summary.get("error") == "not_found":
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return summary
+
+
+@router.get("/salary-batches/{batch_id}/artifacts/{artifact_id}/download")
+async def download_artifact(
+    batch_id: UUID,
+    artifact_id: UUID,
+    token: str | None = None,
+    db: AsyncSession = Depends(get_async_db),
+    auth=Depends(get_current_auth),
+    current_user=Depends(require_roles(["admin", "hr", "finance"])),
+):
+    from pathlib import Path
+
+    from fastapi.responses import FileResponse
+
+    org_id = resolve_organisation_id(auth.principal, auth.payload)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organisation not found")
+    batch = await db.get(SalaryBatch, batch_id)
+    if not batch or str(batch.organisation_id) != str(org_id):
+        raise HTTPException(status_code=404, detail="Batch not found")
+    art = await db.get(PaymentArtifact, artifact_id)
+    if not art or art.batch_id != batch_id:
+        raise HTTPException(status_code=404, detail="Artifact not found")
+    if not token or not verify_artifact_download_token(
+        batch_id=batch_id, artifact_id=artifact_id, token=token
+    ):
+        raise HTTPException(status_code=403, detail="Invalid or expired download token")
+    path = Path(art.storage_path).resolve()
+    base = Path(os.getenv("BANK_FILE_STORAGE_DIR", "storage/bank_files")).resolve()
+    if not str(path).startswith(str(base)):
+        raise HTTPException(status_code=403, detail="Invalid artifact path")
+    if not path.is_file():
+        raise HTTPException(status_code=404, detail="Artifact file missing on disk")
+    await audit_log(
+        db,
+        organisation_id=org_id,
+        actor_id=getattr(auth.principal, "user_id", None),
+        actor_role=getattr(auth.principal, "role", None),
+        action="bank_file.downloaded",
+        entity="payment_artifact",
+        entity_id=art.artifact_id,
+        before=None,
+        after={"batch_id": str(batch_id), "version": art.version},
+    )
+    if db.in_transaction():
+        await db.commit()
+    return FileResponse(
+        path,
+        media_type="text/csv",
+        filename=path.name,
+    )
 

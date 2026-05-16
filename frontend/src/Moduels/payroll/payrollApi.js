@@ -1,11 +1,15 @@
 import API from "../../services/api";
+import {
+  createIdempotencyKey,
+  getApiErrorDetail,
+  idempotencyHeaders,
+} from "../../utils/idempotency";
 
-/** Generate idempotency key (new attempt). Reuse the same key only when intentionally retrying the same request. */
+export { createIdempotencyKey };
+
+/** @deprecated Use createIdempotencyKey — kept for existing payroll screens. */
 export function newIdempotencyKey() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) {
-    return crypto.randomUUID();
-  }
-  return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return createIdempotencyKey("payroll");
 }
 
 // PAY PERIOD
@@ -112,3 +116,42 @@ export const lockPayrollLifecycle = (runId) =>
 
 export const getPayrollLifecycleAudit = (runId) =>
   API.get(`/payrolls/${runId}/lifecycle/audit`);
+
+/**
+ * User-facing message for payroll process / reset API errors (structured detail from backend).
+ */
+export function formatPayrollProcessError(error) {
+  const detail = error?.response?.data?.detail;
+
+  if (detail && typeof detail === "object" && detail.code) {
+    const code = detail.code;
+    const msg = detail.message || "Payroll request failed";
+    if (code === "PAYROLL_ALREADY_PROCESSED" || code === "PAYROLL_MODE_MISMATCH") {
+      return `${msg} Use “Regenerate payroll using attendance mode” below, then Process again.`;
+    }
+    if (code === "ATTENDANCE_VALIDATION_FAILED") {
+      return msg;
+    }
+    return msg;
+  }
+
+  if (typeof detail === "string") {
+    if (detail.toLowerCase().includes("already processed")) {
+      return `${detail} Use “Regenerate payroll using attendance mode”, then Process again.`;
+    }
+    return detail;
+  }
+
+  return getApiErrorDetail(error);
+}
+
+export function resetPayrollForReprocess(runId, options = {}) {
+  const idempotencyKey = options.idempotencyKey ?? newIdempotencyKey();
+  return API.post(
+    `/payrolls/${runId}/reset-for-reprocess`,
+    {},
+    {
+      headers: idempotencyHeaders("payroll-reset", idempotencyKey),
+    }
+  ).then((res) => ({ ...res, idempotencyKey }));
+}

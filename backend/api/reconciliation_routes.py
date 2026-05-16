@@ -16,6 +16,7 @@ from models.reconciliation_models import BankReconciliationEntry, BankStatementI
 from models.reconciliation_v2_models import BankTransaction, ReconciliationException, ReconciliationMatch
 from utils.dependencies import get_current_auth, resolve_organisation_id
 from utils.rbac import require_roles
+from services.reconciliation_ops_service import finance_exception_dashboard
 
 
 router = APIRouter(prefix="/reconciliation", tags=["Reconciliation"])
@@ -295,4 +296,17 @@ async def resolve_exception(
         if note:
             ex.resolution_note = note
     return {"ok": True}
+
+
+@router.get("/finance/dashboard")
+async def reconciliation_finance_dashboard(
+    limit: int = 50,
+    db: AsyncSession = Depends(get_async_db),
+    auth=Depends(get_current_auth),
+    current_user=Depends(require_roles(["admin", "finance"])),
+):
+    org_id = resolve_organisation_id(auth.principal, auth.payload)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organisation not found")
+    return await finance_exception_dashboard(db, organisation_id=org_id, limit=limit)
 

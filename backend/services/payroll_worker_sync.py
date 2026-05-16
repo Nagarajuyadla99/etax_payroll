@@ -23,6 +23,8 @@ class PreviewJobPayload:
     statutory_cfg_by_code: dict[str, dict]
     employee_overrides: dict[str, Any]
     wage_proration_factor: Decimal | None
+    template_engine_meta: dict[str, Any] | None = None
+    payroll_cfg: dict[str, Any] | None = None
 
 
 def run_preview_job(payload: PreviewJobPayload) -> SalaryPreviewResult:
@@ -38,4 +40,6 @@ def run_preview_job(payload: PreviewJobPayload) -> SalaryPreviewResult:
         statutory_cfg_by_code=copy.deepcopy(payload.statutory_cfg_by_code),
         employee_overrides=copy.deepcopy(payload.employee_overrides or {}),
         wage_proration_factor=payload.wage_proration_factor,
+        template_engine_meta=copy.deepcopy(payload.template_engine_meta) if payload.template_engine_meta else None,
+        payroll_cfg=copy.deepcopy(payload.payroll_cfg) if payload.payroll_cfg else None,
     )

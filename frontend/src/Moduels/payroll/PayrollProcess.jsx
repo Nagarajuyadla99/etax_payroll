@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
+  formatPayrollProcessError,
   getPayroll,
   newIdempotencyKey,
   processPayroll,
   replayVerifyPayroll,
+  resetPayrollForReprocess,
 } from "./payrollApi";
+import { fetchPayPeriodAttendanceSummary } from "../attendance/attendanceApi";
 import PayrollWorkflowBanner from "./PayrollWorkflowBanner";
 import { usePayrollWorkflow, usePrefilledPayrollRunId } from "./payrollWorkflow";
 
@@ -59,11 +62,43 @@ export default function ProcessPayroll() {
   const [processError, setProcessError] = useState(null);
   const [verifyResult, setVerifyResult] = useState(null);
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [attendanceSummary, setAttendanceSummary] = useState(null);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [attendanceError, setAttendanceError] = useState(null);
+  const [regenerateLoading, setRegenerateLoading] = useState(false);
 
   const pollRef = useRef(null);
   const idempotencyAttemptRef = useRef(null);
 
   usePrefilledPayrollRunId(setPayrollId);
+
+  useEffect(() => {
+    const ppId = runSnapshot?.pay_period_id;
+    if (!ppId) {
+      setAttendanceSummary(null);
+      setAttendanceError(null);
+      return undefined;
+    }
+    let cancelled = false;
+    setAttendanceLoading(true);
+    setAttendanceError(null);
+    fetchPayPeriodAttendanceSummary(ppId)
+      .then((data) => {
+        if (!cancelled) setAttendanceSummary(data);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setAttendanceSummary(null);
+          setAttendanceError(e?.message || "Could not load attendance summary");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setAttendanceLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [runSnapshot?.pay_period_id]);
 
   useEffect(() => {
     return () => {
@@ -148,16 +183,27 @@ export default function ProcessPayroll() {
         idempotencyAttemptRef.current = null;
       }
     } catch (e) {
-      const detail = e?.response?.data?.detail;
-      const status = e?.response?.status;
-      const msg = typeof detail === "string"
-        ? detail
-        : detail
-          ? JSON.stringify(detail)
-          : status
-            ? `Payroll API request failed (${status}). Check the backend terminal on port 9000.`
-            : "Could not reach the payroll API. Confirm the backend on port 9000 is running, then try Process Payroll again.";
-      setProcessError(msg);
+      setProcessError(formatPayrollProcessError(e));
+    }
+  };
+
+  const regenerateForAttendanceMode = async () => {
+    if (!payrollId.trim()) {
+      alert("Please enter Payroll Run ID");
+      return;
+    }
+    const id = payrollId.trim();
+    setRegenerateLoading(true);
+    setProcessError(null);
+    try {
+      await resetPayrollForReprocess(id);
+      idempotencyAttemptRef.current = null;
+      await refreshRun(id);
+      setProcessError(null);
+    } catch (e) {
+      setProcessError(formatPayrollProcessError(e));
+    } finally {
+      setRegenerateLoading(false);
     }
   };
 
@@ -197,6 +243,15 @@ export default function ProcessPayroll() {
 
   const startedAt = runSnapshot?.created_at;
   const completedAt = runSnapshot?.processed_at;
+
+  const processed = (runSnapshot?.status || "").toLowerCase() === "processed";
+  const fmtMoney = (v) => {
+    if (v == null || v === "") return "—";
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v);
+  };
+
+  const snapDbg = runSnapshot?.execution_meta?.input_snapshot?.attendance_debug_by_employee || {};
 
   return (
     <div className="p-8 bg-gray-50 min-h-screen">
@@ -266,8 +321,18 @@ export default function ProcessPayroll() {
         </div>
 
         {processError && (
-          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3">
-            {processError}
+          <div className="text-sm text-red-700 bg-red-50 border border-red-200 rounded p-3 space-y-2">
+            <p>{processError}</p>
+            <button
+              type="button"
+              onClick={regenerateForAttendanceMode}
+              disabled={regenerateLoading || !payrollId.trim()}
+              className="text-sm bg-white border border-red-300 hover:bg-red-100 text-red-800 px-3 py-1.5 rounded disabled:opacity-50"
+            >
+              {regenerateLoading
+                ? "Regenerating…"
+                : "Regenerate payroll using attendance mode"}
+            </button>
           </div>
         )}
 
@@ -311,6 +376,156 @@ export default function ProcessPayroll() {
           )}
         </div>
 
+        {(processed || runSnapshot?.gross_pay_total != null) && (
+          <div className="border rounded-lg p-4 bg-emerald-50/60 border-emerald-200 space-y-2">
+            <h2 className="text-sm font-semibold text-emerald-900">Run totals</h2>
+            <p className="text-xs text-emerald-800">
+              Net and gross reflect the salary engine after attendance and LOP rules in{" "}
+              <code className="bg-white/80 px-1 rounded">hr_settings.payroll</code>{" "}
+              (same inputs as stored in <code className="bg-white/80 px-1 rounded">execution_meta.input_snapshot</code>
+              ).
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div>
+                <div className="text-gray-600">Gross pay (sum of earnings)</div>
+                <div className="text-lg font-semibold text-gray-900">{fmtMoney(runSnapshot?.gross_pay_total)}</div>
+              </div>
+              <div>
+                <div className="text-gray-600">Net pay (after deductions)</div>
+                <div className="text-lg font-semibold text-gray-900">{fmtMoney(runSnapshot?.net_pay_total)}</div>
+              </div>
+              <div className="sm:col-span-2 text-xs text-gray-600">
+                Employees processed: {runSnapshot?.execution_meta?.employees_processed ?? "—"}
+                {runSnapshot?.execution_meta?.employees_skipped_no_structure != null
+                  ? ` · skipped (no salary structure): ${runSnapshot.execution_meta.employees_skipped_no_structure}`
+                  : ""}
+              </div>
+              {(() => {
+                const empPayloads = runSnapshot?.execution_meta?.input_snapshot?.employees || [];
+                const firstFactor = empPayloads[0]?.wage_proration_factor;
+                const empId = empPayloads[0]?.employee_id;
+                const prorationAudit =
+                  runSnapshot?.execution_meta?.proration_audit_by_employee?.[empId]
+                  || Object.values(runSnapshot?.execution_meta?.proration_audit_by_employee || {})[0];
+                if (firstFactor && Number(firstFactor) < 1) {
+                  const suppressed = prorationAudit?.attendance_proration_suppressed_reason;
+                  const applied = prorationAudit?.attendance_proration_applied;
+                  return (
+                    <div className="sm:col-span-2 text-xs rounded p-2 border bg-white/80 border-emerald-100">
+                      Wage proration factor: <strong>{firstFactor}</strong>
+                      {applied
+                        ? " — applied to eligible earning components"
+                        : suppressed
+                          ? ` — ${suppressed}`
+                          : " — reprocess payroll if gross still shows full salary"}
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+              {(() => {
+                const em = runSnapshot?.execution_meta;
+                const mode =
+                  em?.input_snapshot?.payroll_settings?.payable_days_mode
+                  || em?.payroll_settings_at_creation?.payable_days_mode;
+                if (!mode) return null;
+                const stale = mode !== "attendance_units";
+                return (
+                  <div
+                    className={`sm:col-span-2 text-xs rounded p-2 border ${
+                      stale ? "bg-amber-50 border-amber-200" : "bg-white/80 border-emerald-100"
+                    }`}
+                  >
+                    Payroll mode: <strong>{mode}</strong>
+                    {stale && (
+                      <span className="text-amber-900">
+                        {" "}
+                        — run was prepared in calendar mode. Regenerate using attendance mode before processing.
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        {runSnapshot?.pay_period_id && (
+          <div className="border rounded-lg p-4 bg-white border-slate-200 space-y-2">
+            <h2 className="text-sm font-semibold text-slate-800">Attendance for this pay period</h2>
+            <p className="text-xs text-slate-600">
+              Payroll reads the <strong>attendances</strong> table (and approved LOP leave) for the pay period dates,
+              then passes <code className="bg-slate-100 px-1 rounded text-[11px]">WORKED_DAYS</code>,{" "}
+              <code className="bg-slate-100 px-1 rounded text-[11px]">WAGE_PRORATION_FACTOR</code>,{" "}
+              <code className="bg-slate-100 px-1 rounded text-[11px]">LOP_UNITS</code>, etc. into template formulas.
+              With <strong>prorate_with_attendance</strong> on template meta, earning lines can auto-multiply by{" "}
+              <code className="bg-slate-100 px-1 rounded text-[11px]">WAGE_PRORATION_FACTOR</code> unless the formula
+              already references attendance variables (see backend docs).
+            </p>
+            {attendanceLoading && <p className="text-xs text-slate-500">Loading attendance summary…</p>}
+            {attendanceError && (
+              <p className="text-xs text-amber-800 bg-amber-50 border border-amber-100 rounded p-2">{attendanceError}</p>
+            )}
+            {!attendanceLoading && attendanceSummary?.employees?.length > 0 && (
+              <div className="overflow-x-auto max-h-56 border rounded">
+                <table className="min-w-full text-xs">
+                  <thead>
+                    <tr className="bg-slate-100 text-left">
+                      <th className="p-2">Employee</th>
+                      <th className="p-2">Present</th>
+                      <th className="p-2">Absent</th>
+                      <th className="p-2">Half day</th>
+                      <th className="p-2">LOP leave</th>
+                      <th className="p-2">Rows</th>
+                      {processed ? (
+                        <>
+                          <th className="p-2">Payable</th>
+                          <th className="p-2">Worked</th>
+                          <th className="p-2">LOP units</th>
+                          <th className="p-2">Wage factor</th>
+                        </>
+                      ) : null}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {attendanceSummary.employees.map((row) => (
+                      <tr key={row.employee_id} className="border-t">
+                        <td className="p-2 font-mono max-w-[10rem] truncate" title={row.employee_id}>
+                          {row.employee_id}
+                        </td>
+                        <td className="p-2">{row.present_units}</td>
+                        <td className="p-2">{row.absent_units}</td>
+                        <td className="p-2">{row.half_day_units}</td>
+                        <td className="p-2">{row.lop_leave_units}</td>
+                        <td className="p-2">{row.recorded_attendance_rows}</td>
+                        {processed ? (
+                          <>
+                            <td className="p-2 font-mono text-[11px]">
+                              {snapDbg[row.employee_id]?.PAYABLE_DAYS ?? "—"}
+                            </td>
+                            <td className="p-2 font-mono text-[11px]">
+                              {snapDbg[row.employee_id]?.WORKED_DAYS ?? "—"}
+                            </td>
+                            <td className="p-2 font-mono text-[11px]">
+                              {snapDbg[row.employee_id]?.LOP_UNITS ?? "—"}
+                            </td>
+                            <td className="p-2 font-mono text-[11px]">
+                              {snapDbg[row.employee_id]?.WAGE_PRORATION_FACTOR ?? "—"}
+                            </td>
+                          </>
+                        ) : null}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {!attendanceLoading && attendanceSummary?.employees?.length === 0 && !attendanceError && (
+              <p className="text-xs text-slate-500">No attendance rows in range yet — payroll will treat LOP from absences as zero unless you record attendance.</p>
+            )}
+          </div>
+        )}
+
         {shadowSummary && (
           <div className="border border-amber-200 rounded-lg p-3 bg-amber-50">
             <h3 className="text-sm font-semibold text-amber-900 mb-2">Shadow comparison summary</h3>
@@ -341,6 +556,14 @@ export default function ProcessPayroll() {
             className="bg-white border border-gray-300 hover:bg-gray-50 text-gray-800 px-4 py-2 rounded-md text-sm"
           >
             {verifyLoading ? "Verifying…" : "Verify Payroll"}
+          </button>
+          <button
+            type="button"
+            onClick={regenerateForAttendanceMode}
+            disabled={regenerateLoading || !payrollId.trim()}
+            className="bg-amber-50 border border-amber-300 hover:bg-amber-100 text-amber-900 px-4 py-2 rounded-md text-sm disabled:opacity-50"
+          >
+            {regenerateLoading ? "Regenerating…" : "Regenerate (attendance mode)"}
           </button>
           <button
             type="button"

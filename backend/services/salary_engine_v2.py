@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
@@ -7,7 +8,38 @@ from typing import Any
 from uuid import UUID
 
 from services.salary_formula_ast import FormulaError, evaluate_formula, validate_formula
+from services.payroll_attendance_proration import (
+    apply_auto_proration_to_amount,
+    attendance_proration_suppressed_reason,
+    build_attendance_proration_preview_audit,
+    build_component_proration_breakdown,
+    component_attendance_proratable,
+    effective_template_proration_enabled,
+    resolve_attendance_proration_mode,
+    should_apply_auto_wage_proration,
+    template_proration_enabled,
+    wage_proration_factor_from_context,
+)
 from services.statutory_registry import DEFAULT_REGISTRY
+
+logger = logging.getLogger("payroll.salary_engine_v2")
+
+
+def _lookup_component_map(component_map_by_id: dict[Any, dict], component_id: Any) -> dict | None:
+    """Resolve component dict whether map keys are str or UUID (versioned templates vs tests)."""
+    if component_id is None:
+        return None
+    hit = component_map_by_id.get(component_id)
+    if hit is not None:
+        return hit
+    sid = str(component_id)
+    hit = component_map_by_id.get(sid)
+    if hit is not None:
+        return hit
+    try:
+        return component_map_by_id.get(UUID(sid))
+    except (TypeError, ValueError):
+        return None
 
 
 @dataclass
@@ -27,6 +59,7 @@ class SalaryPreviewResult:
     lines: list[SalaryLine]
     totals: dict[str, Decimal]
     errors: list[str]
+    proration_audit: dict[str, Any] | None = None
 
 
 class CircularDependencyError(ValueError):
@@ -99,6 +132,13 @@ def _toposort(nodes: set[str], edges: dict[str, set[str]]) -> list[str]:
     return out
 
 
+def _link_meta_dict(link: dict | None) -> dict[str, Any]:
+    if not link or not isinstance(link, dict):
+        return {}
+    m = link.get("meta")
+    return m if isinstance(m, dict) else {}
+
+
 def preview_salary_v2(
     *,
     as_of: date,
@@ -112,14 +152,28 @@ def preview_salary_v2(
     employee_overrides: dict[str, Any] | None = None,
     wage_proration_factor: Decimal | None = None,
     wage_proration_dv_codes: list[str] | None = None,
+    template_engine_meta: dict[str, Any] | None = None,
+    payroll_cfg: dict[str, Any] | None = None,
 ) -> SalaryPreviewResult:
     """
     Calculation-only engine.
 
     Inputs are plain dicts to keep this service layer decoupled from ORM/Pydantic.
+
+    ``template_engine_meta`` may include ``{"prorate_with_attendance": true}`` to auto-apply
+    ``WAGE_PRORATION_FACTOR`` to earning lines when component mode is ``auto`` and formulas
+    do not already reference attendance scalars (see ``payroll_attendance_proration``).
     """
     errors: list[str] = []
     overrides = employee_overrides or {}
+    tpl_meta = template_engine_meta or {}
+    template_prorate_flag = template_proration_enabled(tpl_meta)
+    template_prorate = effective_template_proration_enabled(
+        tpl_meta,
+        payroll_cfg=payroll_cfg,
+        wage_proration_factor=wage_proration_factor,
+        employee_overrides=overrides,
+    )
 
     pf_settings_early = (statutory_cfg_by_code.get("PF") or {}).get("settings") or {}
     if wage_proration_dv_codes is None:
@@ -134,6 +188,22 @@ def preview_salary_v2(
         proration_codes = [_norm_code(str(x)) for x in wage_proration_dv_codes if str(x).strip()]
 
     ctx: dict[str, Any] = {"CTC": _d(ctc), "ctc": _d(ctc), **overrides}
+    if wage_proration_factor is not None:
+        ctx["WAGE_PRORATION_FACTOR"] = _d(wage_proration_factor)
+    elif "WAGE_PRORATION_FACTOR" not in ctx:
+        wpf_ctx = wage_proration_factor_from_context(ctx)
+        if wpf_ctx != Decimal("1"):
+            ctx["WAGE_PRORATION_FACTOR"] = wpf_ctx
+
+    suppressed = attendance_proration_suppressed_reason(
+        template_engine_meta=tpl_meta,
+        payroll_cfg=payroll_cfg,
+        wage_proration_factor=wage_proration_factor,
+        employee_overrides=overrides,
+    )
+    if suppressed:
+        logger.warning("attendance_proration_suppressed %s", suppressed)
+
     variables: dict[str, Decimal] = {}
     lines: list[SalaryLine] = []
 
@@ -152,7 +222,7 @@ def preview_salary_v2(
     # Determine component codes from template components
     template_components_sorted = sorted(template_components, key=lambda x: int(x.get("sequence") or 1))
     for link in template_components_sorted:
-        comp = component_map_by_id.get(link.get("component_id"))
+        comp = _lookup_component_map(component_map_by_id, link.get("component_id"))
         if not comp:
             continue
         code = _norm_code(str(comp.get("code") or ""))
@@ -198,6 +268,79 @@ def preview_salary_v2(
         ctx[code] = amt
         ctx[str(comp.get("name") or "").strip()] = amt
 
+    def emit_comp_line(
+        comp: dict,
+        amount: Decimal,
+        source: str,
+        *,
+        link: dict | None = None,
+        formula_expr: str | None = None,
+        percentage_of_override: str | None = None,
+    ) -> None:
+        """Emit a template/group component line with optional template-level attendance proration."""
+        cat = (comp.get("component_category") or comp.get("component_type") or "earning").lower()
+        comp_type = str(comp.get("component_type") or "").strip().lower() or None
+        comp_code = str(comp.get("code") or "").strip() or None
+        cm = comp.get("meta") if isinstance(comp.get("meta"), dict) else {}
+        link_meta = _link_meta_dict(link)
+        mode = resolve_attendance_proration_mode(
+            component_meta=cm,
+            link_meta=link_meta,
+            template_prorate=template_prorate,
+        )
+        frags: list[str | None] = [
+            formula_expr,
+            comp.get("formula_expression"),
+            comp.get("formula"),
+        ]
+        if link and isinstance(link, dict):
+            frags.append(link.get("formula"))
+        po = percentage_of_override
+        if po is None and link and isinstance(link, dict):
+            po = link.get("percentage_of")
+        if po is None:
+            po = comp.get("percentage_of")
+        po_s = str(po).strip() if po is not None and str(po).strip() else None
+        original_amt = _d(amount)
+        proratable = component_attendance_proratable(
+            component_meta=cm,
+            link_meta=link_meta,
+            category_lower=cat,
+            component_type_lower=comp_type,
+            component_code=comp_code,
+        )
+        factor = wage_proration_factor_from_context(ctx)
+        amt = original_amt
+        bd: dict[str, Any] | None = None
+        check_pct_base = "percentage" in str(source or "").lower()
+        if cat == "earning" and template_prorate:
+            if should_apply_auto_wage_proration(
+                category_lower=cat,
+                component_type_lower=comp_type,
+                component_code=comp_code,
+                source=source,
+                template_prorate=template_prorate,
+                mode=mode,
+                formula_fragments=[x for x in frags if x],
+                percentage_of=po_s if check_pct_base else None,
+                component_meta=cm,
+                link_meta=link_meta,
+            ):
+                amt, bd = apply_auto_proration_to_amount(
+                    amount=original_amt,
+                    ctx=ctx,
+                    attendance_proratable=proratable,
+                )
+            elif factor != Decimal("1"):
+                bd = build_component_proration_breakdown(
+                    original=original_amt,
+                    final=original_amt,
+                    attendance_proratable=proratable,
+                    applied=False,
+                    factor=factor,
+                )
+        add_line(comp, amt, source, breakdown=bd)
+
     nodes: set[str] = set()
     edges: dict[str, set[str]] = {}
 
@@ -228,7 +371,7 @@ def preview_salary_v2(
     comp_link_by_code: dict[str, dict] = {}
     comp_by_code: dict[str, dict] = {}
     for link in template_components_sorted:
-        comp = component_map_by_id.get(link.get("component_id"))
+        comp = _lookup_component_map(component_map_by_id, link.get("component_id"))
         if not comp:
             continue
         code = _norm_code(str(comp.get("code") or ""))
@@ -376,22 +519,34 @@ def preview_salary_v2(
                 continue
             calc_type = (comp.get("calculation_type") or comp.get("calc_type") or "fixed").lower()
             if calc_type == "fixed":
-                add_line(comp, _d(link.get("amount")), "fixed")
+                emit_comp_line(comp, _d(link.get("amount")), "fixed", link=link)
             elif calc_type == "percentage":
                 pct = _d(link.get("percentage"))
                 base_key = str(link.get("percentage_of") or comp.get("percentage_of") or "CTC").strip()
                 base_val = _d(ctx.get(base_key, ctx.get(base_key.upper(), 0)))
-                add_line(comp, (base_val * pct) / Decimal("100"), f"percentage_of:{base_key}")
+                emit_comp_line(
+                    comp,
+                    (base_val * pct) / Decimal("100"),
+                    f"percentage_of:{base_key}",
+                    link=link,
+                    percentage_of_override=base_key,
+                )
             elif calc_type == "formula":
                 expr = (link.get("formula") or comp.get("formula_expression") or comp.get("formula") or "").strip()
                 if not expr:
-                    add_line(comp, Decimal("0"), "formula:empty")
+                    emit_comp_line(comp, Decimal("0"), "formula:empty", link=link, formula_expr=None)
                 else:
                     try:
-                        add_line(comp, evaluate_formula(expr, ctx), "formula")
+                        emit_comp_line(
+                            comp,
+                            evaluate_formula(expr, ctx),
+                            "formula",
+                            link=link,
+                            formula_expr=expr,
+                        )
                     except (FormulaError, Exception) as e:  # noqa: BLE001
                         errors.append(f"component formula eval failed ({code}): {str(e)}")
-                        add_line(comp, Decimal("0"), "formula:error")
+                        emit_comp_line(comp, Decimal("0"), "formula:error", link=link, formula_expr=expr)
             # system components are not emitted directly
             continue
 
@@ -424,8 +579,8 @@ def preview_salary_v2(
                     or c.get("calc_type")
                     or "fixed"
                 ).lower()
-                amount = Decimal("0")
-
+                expr_used: str | None = None
+                base_key_used: str | None = None
                 try:
                     if calc_type == "fixed":
                         if code in overrides:
@@ -447,6 +602,7 @@ def preview_salary_v2(
                             or c.get("percentage_of")
                             or "CTC"
                         ).strip()
+                        base_key_used = base_key
                         base_val = _d(ctx.get(base_key, ctx.get(base_key.upper(), 0)))
                         amount = (base_val * pct) / Decimal("100")
                     elif calc_type == "formula":
@@ -456,20 +612,27 @@ def preview_salary_v2(
                             or c.get("formula")
                             or ""
                         ).strip()
+                        expr_used = expr or None
                         if expr:
                             amount = evaluate_formula(expr, ctx)
 
-                    add_line(
+                    emit_comp_line(
                         c,
                         amount,
                         f"group:{meta.get('group_code')}",
+                        link=link,
+                        formula_expr=expr_used,
+                        percentage_of_override=base_key_used,
                     )
                 except Exception as e:  # noqa: BLE001
                     errors.append(f"group component eval failed ({code}): {str(e)}")
-                    add_line(
+                    emit_comp_line(
                         c,
                         Decimal("0"),
                         f"group:error:{meta.get('group_code')}",
+                        link=link,
+                        formula_expr=expr_used,
+                        percentage_of_override=base_key_used,
                     )
 
             continue
@@ -540,10 +703,22 @@ def preview_salary_v2(
 
     totals["net_pay"] = totals["earnings"] - totals["deductions"] - totals["statutory"]
 
+    proration_audit = build_attendance_proration_preview_audit(
+        lines=lines,
+        template_prorate=template_prorate_flag,
+        effective_template_prorate=template_prorate,
+        wage_proration_factor=wage_proration_factor,
+        employee_overrides=overrides,
+        template_engine_meta=tpl_meta,
+        payroll_cfg=payroll_cfg,
+        suppressed_reason=suppressed,
+    )
+
     return SalaryPreviewResult(
         variables=variables,
         lines=lines,
         totals=totals,
         errors=errors,
+        proration_audit=proration_audit,
     )
 

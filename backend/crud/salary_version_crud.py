@@ -199,6 +199,7 @@ async def resolve_versioned_preview_bundle(
                 "percentage": row.percentage,
                 "percentage_of": row.percentage_of,
                 "formula": row.formula,
+                "meta": dict(getattr(row, "meta", None) or {}),
             }
         )
         if picked:
@@ -344,6 +345,7 @@ async def resolve_versioned_preview_bundle(
         "resolved_versions": resolved_versions,
         "resolved_dag": resolved_dag,
         "template_version_id": template_version_id,
+        "template_engine_meta": dict(getattr(tv, "meta", None) or {}),
     }
 
 
@@ -585,15 +587,17 @@ async def publish_template_version(
     current_user,
     label: Optional[str] = None,
     created_by_user_id: Optional[UUID] = None,
+    version_engine_meta_patch: Optional[dict[str, Any]] = None,
 ) -> SalaryTemplateVersion:
     org_id = _org_id(current_user)
-    tpl = await db.execute(
+    tpl_row = await db.execute(
         select(SalaryTemplate).where(
             SalaryTemplate.template_id == template_id,
             SalaryTemplate.organisation_id == org_id,
         )
     )
-    if not tpl.scalar_one_or_none():
+    template = tpl_row.scalar_one_or_none()
+    if not template:
         raise ValueError("Template not found")
 
     hist = await db.execute(
@@ -619,6 +623,10 @@ async def publish_template_version(
         .values(effective_to=previous_day(effective_from))
     )
 
+    tv_meta = dict(getattr(template, "meta", None) or {})
+    if version_engine_meta_patch:
+        tv_meta.update(version_engine_meta_patch)
+
     tv = SalaryTemplateVersion(
         organisation_id=org_id,
         template_id=template_id,
@@ -626,6 +634,7 @@ async def publish_template_version(
         effective_to=None,
         label=label,
         created_by_user_id=created_by_user_id,
+        meta=tv_meta,
     )
     db.add(tv)
     await db.flush()
@@ -646,6 +655,7 @@ async def publish_template_version(
                 percentage_of=stc.percentage_of,
                 formula=stc.formula,
                 is_active=stc.is_active,
+                meta=dict(getattr(stc, "meta", None) or {}),
             )
         )
 

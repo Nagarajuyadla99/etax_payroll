@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_async_db
 from models.provider_models import ProviderBeneficiary
-from providers.registry import get_provider
+from providers.registry import resolve_provider
 from services.provider_beneficiary_service import ensure_provider_beneficiary
 from utils.dependencies import get_current_auth, resolve_organisation_id
 from utils.idempotency import idempotent_execute, require_idempotency_key
@@ -34,7 +34,7 @@ async def provision_beneficiary(
     if not org_id:
         raise HTTPException(status_code=400, detail="Organisation not found")
 
-    provider = get_provider()
+    provider = await resolve_provider(db, org_id)
 
     async def _exec():
         async with db.begin():
@@ -49,6 +49,7 @@ async def provision_beneficiary(
     status_code, payload = await idempotent_execute(
         request=request,
         db=db,
+        organisation_id=org_id,
         idempotency_key=idempotency_key,
         endpoint="provision_beneficiary",
         body={"employee_bank_account_id": str(employee_bank_account_id), "provider": provider.provider_code},
@@ -67,7 +68,7 @@ async def beneficiary_status(
     org_id = resolve_organisation_id(auth.principal, auth.payload)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organisation not found")
-    provider = get_provider()
+    provider = await resolve_provider(db, org_id)
 
     res = await db.execute(
         select(ProviderBeneficiary).where(

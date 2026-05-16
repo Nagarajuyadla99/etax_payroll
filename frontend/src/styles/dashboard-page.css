@@ -1,3 +1,13 @@
+.spin-icon {
+  animation: dash-spin 0.8s linear infinite;
+}
+
+@keyframes dash-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .dash-root {
   width: 100%;
   min-width: 0;

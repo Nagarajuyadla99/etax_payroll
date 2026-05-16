@@ -38,6 +38,22 @@ from .salary_version_models import (
 from .payroll_models import PayPeriod, PayrollRun, PayrollEntry
 from .payroll_audit_models import PayrollLifecycleAuditLog
 
+# Banking / disbursement (import order matters for relationship resolution)
+from .banking_models import (
+    Bank,
+    BankBranch,
+    BankFileFormat,
+    BankTransferMode,
+    CompanySalaryAccount,
+)
+from .employee_banking_models import EmployeeBankAccount, EmployeeBankAccountDocument
+from .disbursement_models import (
+    Approval,
+    AuditLog,
+    PaymentArtifact,
+    SalaryBatch,
+    SalaryBatchItem,
+)
 
 # Users, roles, and access control
 from .user_models import User, Role, UserRole

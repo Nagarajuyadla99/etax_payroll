@@ -84,9 +84,7 @@ class BankTransferMode(Base):
 
 class CompanySalaryAccount(Base):
     __tablename__ = "company_salary_accounts"
-    __table_args__ = (
-        UniqueConstraint("organisation_id", "is_default", name="ux_company_salary_accounts_org_default"),
-    )
+    __table_args__ = ()
 
     company_account_id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
     organisation_id = Column(

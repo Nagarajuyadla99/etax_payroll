@@ -22,6 +22,41 @@ export function clearPayrollWorkflow() {
   sessionStorage.removeItem(STORAGE_KEY);
 }
 
+/**
+ * Drop stale tenant IDs from session workflow when they disagree with /users/me.
+ * Keeps pay-period/run pointers only when the cached org matches auth.
+ */
+export function reconcilePayrollWorkflowWithUser(user) {
+  const authOrgId = resolveOrganisationId(user);
+  if (!authOrgId) return readPayrollWorkflow();
+
+  const wf = readPayrollWorkflow();
+  const cachedOrgId = wf.organisationId ? String(wf.organisationId) : "";
+  const authOrg = String(authOrgId);
+
+  if (cachedOrgId && cachedOrgId !== authOrg) {
+    return writePayrollWorkflow({
+      organisationId: authOrg,
+      organisationName: resolveOrganisationName(user),
+      payPeriodId: "",
+      payPeriodLabel: "",
+      payPeriodStart: "",
+      payPeriodEnd: "",
+      payrollRunId: "",
+      payrollRunLabel: "",
+    });
+  }
+
+  if (!cachedOrgId) {
+    return writePayrollWorkflow({
+      organisationId: authOrg,
+      organisationName: resolveOrganisationName(user) || wf.organisationName || "",
+    });
+  }
+
+  return wf;
+}
+
 export function resolveOrganisationId(user) {
   if (!user) return "";
   return (
@@ -74,8 +109,10 @@ export function usePayrollWorkflow() {
     return next;
   }, []);
 
-  const organisationId = workflow.organisationId || resolveOrganisationId(user);
-  const organisationName = workflow.organisationName || resolveOrganisationName(user);
+  const authOrganisationId = resolveOrganisationId(user);
+  const authOrganisationName = resolveOrganisationName(user);
+  const organisationId = authOrganisationId || workflow.organisationId || "";
+  const organisationName = authOrganisationName || workflow.organisationName || "";
 
   return useMemo(
     () => ({
@@ -105,10 +142,10 @@ export function usePrefilledPayrollRunId(setRunId) {
 export function usePrefilledOrganisationId(setOrganisationId) {
   const { user } = useContext(AuthContext);
   useEffect(() => {
-    const wf = readPayrollWorkflow();
-    const orgId = wf.organisationId || resolveOrganisationId(user);
+    const wf = reconcilePayrollWorkflowWithUser(user);
+    const orgId = resolveOrganisationId(user) || wf.organisationId;
     if (orgId) {
-      setOrganisationId((current) => current || orgId);
+      setOrganisationId(orgId);
     }
   }, [setOrganisationId, user]);
 }

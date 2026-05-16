@@ -12,8 +12,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.idempotency_models import ApiIdempotencyKey
 
-_IDEMPOTENCY_ORG_SENTINEL = UUID("00000000-0000-0000-0000-000000000000")
-
 
 def _stable_hash(payload: Any) -> str:
     # Canonical JSON, sorted keys, stable separators
@@ -108,6 +106,7 @@ async def idempotent_execute(
     *,
     request: Request,
     db: AsyncSession,
+    organisation_id: UUID,
     idempotency_key: str,
     endpoint: str,
     body: Any,
@@ -116,7 +115,7 @@ async def idempotent_execute(
     scoped_key = f"{endpoint}:{idempotency_key}"
     replay = await idempotency_replay_or_none(
         db=db,
-        organisation_id=_IDEMPOTENCY_ORG_SENTINEL,
+        organisation_id=organisation_id,
         key=scoped_key,
         method=request.method,
         path=request.url.path,
@@ -128,7 +127,7 @@ async def idempotent_execute(
     status_code, payload = await exec_fn()
     await idempotency_store(
         db=db,
-        organisation_id=_IDEMPOTENCY_ORG_SENTINEL,
+        organisation_id=organisation_id,
         key=scoped_key,
         method=request.method,
         path=request.url.path,

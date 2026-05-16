@@ -27,46 +27,46 @@ async def setup_org(
     if not org_id:
         raise HTTPException(status_code=400, detail="User has no organisation")
 
-    # Transactional: all-or-nothing
-    async with db.begin():
-        result = await db.execute(
-            select(Organisation).where(Organisation.organisation_id == org_id)
+    # Use the request-scoped session (auth deps may have already started a transaction).
+    result = await db.execute(
+        select(Organisation).where(Organisation.organisation_id == org_id)
+    )
+    org = result.scalar_one_or_none()
+
+    if not org:
+        raise HTTPException(status_code=400, detail="User has no organisation")
+
+    if org.is_setup_complete:
+        raise HTTPException(status_code=400, detail="Already setup completed")
+
+    departments = [d.strip() for d in (payload.departments or []) if d and d.strip()]
+    designations = [d.strip() for d in (payload.designations or []) if d and d.strip()]
+    locations = [l.strip() for l in (payload.locations or []) if l and l.strip()]
+
+    if not departments or not designations or not locations:
+        raise HTTPException(
+            status_code=400,
+            detail="Departments, designations and locations are required",
         )
-        org = result.scalar_one_or_none()
 
-        if not org:
-            raise HTTPException(status_code=400, detail="User has no organisation")
+    db.add_all([Department(name=name, organisation_id=org.organisation_id) for name in departments])
+    db.add_all([Designation(title=title, organisation_id=org.organisation_id) for title in designations])
+    db.add_all([WorkLocation(name=name, organisation_id=org.organisation_id) for name in locations])
 
-        if org.is_setup_complete:
-            raise HTTPException(status_code=400, detail="Already setup completed")
+    if payload.manager:
+        manager_name = (payload.manager.name or "").strip()
+        manager_email = (payload.manager.email or "").strip()
+        if not manager_name or not manager_email:
+            raise HTTPException(status_code=400, detail="Manager name and email are required")
+        manager = Employee(
+            first_name=manager_name,
+            work_email=manager_email,
+            organisation_id=org.organisation_id,
+        )
+        db.add(manager)
 
-        departments = [d.strip() for d in (payload.departments or []) if d and d.strip()]
-        designations = [d.strip() for d in (payload.designations or []) if d and d.strip()]
-        locations = [l.strip() for l in (payload.locations or []) if l and l.strip()]
-
-        if not departments or not designations or not locations:
-            raise HTTPException(
-                status_code=400,
-                detail="Departments, designations and locations are required",
-            )
-
-        db.add_all([Department(name=name, organisation_id=org.organisation_id) for name in departments])
-        db.add_all([Designation(title=title, organisation_id=org.organisation_id) for title in designations])
-        db.add_all([WorkLocation(name=name, organisation_id=org.organisation_id) for name in locations])
-
-        if payload.manager:
-            manager_name = (payload.manager.name or "").strip()
-            manager_email = (payload.manager.email or "").strip()
-            if not manager_name or not manager_email:
-                raise HTTPException(status_code=400, detail="Manager name and email are required")
-            manager = Employee(
-                first_name=manager_name,
-                work_email=manager_email,
-                organisation_id=org.organisation_id,
-            )
-            db.add(manager)
-
-        org.is_setup_complete = True
+    org.is_setup_complete = True
+    await db.commit()
 
     return {"message": "Organisation setup completed successfully"}
 

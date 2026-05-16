@@ -40,8 +40,11 @@ from crud.salary_phase2_crud import (
     update_salary_component_v2,
 )
 from database import get_async_db
+from models.org_models import Organisation
 from services.salary_engine_v2 import preview_salary_v2
-from services.salary_formula_ast import validate_formula
+from services.payroll_run_gather import merge_pay_period_attendance_overrides
+from sqlalchemy import select
+from services.salary_formula_policy import audit_formula_policy
 from services.payroll_phase2_bundle_loader import load_phase2_engine_bundle
 from utils.rbac import require_roles
 from utils.idempotency import idempotency_replay_or_none, idempotency_store
@@ -468,8 +471,20 @@ async def v2_validate_formula(
     payload: FormulaValidateRequest,
     current_user=Depends(require_roles(["admin", "hr"])),
 ):
-    res = validate_formula(payload.expression)
-    return FormulaValidateResponse(is_valid=res.is_valid, dependencies=res.dependencies, error=res.error)
+    known = {str(x) for x in (payload.known_identifiers or []) if str(x).strip()}
+    pol = audit_formula_policy(
+        payload.expression,
+        known_identifiers=known,
+        strict_unknown=payload.strict_unknown_identifiers,
+    )
+    return FormulaValidateResponse(
+        is_valid=pol.is_valid,
+        dependencies=pol.dependencies,
+        error=pol.error,
+        warnings=pol.warnings,
+        unknown_dependencies=pol.unknown_dependencies,
+        risk_hints=pol.risk_hints,
+    )
 
 
 # ------------------------------------------------------------------
@@ -566,9 +581,35 @@ async def v2_preview(
     statutory_cfg_by_code = bundle["statutory_cfg_by_code"]
 
     overrides = payload.overrides or {}
+    wage_pf: Decimal | None = None
+    att_breakdown: dict | None = None
     if payload.employee_id:
         stored = await get_employee_overrides_for_preview(db, payload.employee_id, payload.template_id, current_user)
         overrides = {**(stored or {}), **(payload.overrides or {})}
+
+    if payload.pay_period_id is not None and payload.employee_id is not None:
+        org_id = _org_id(current_user)
+        if not org_id:
+            raise HTTPException(status_code=400, detail="Organisation scope required for pay-period attendance merge")
+        try:
+            overrides, wage_pf, att_breakdown = await merge_pay_period_attendance_overrides(
+                db,
+                org_id,
+                payload.employee_id,
+                payload.pay_period_id,
+                overrides,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=404, detail=str(e)) from e
+
+    tmpl_meta = dict(bundle.get("template_engine_meta") or {})
+
+    payroll_cfg: dict[str, Any] = {}
+    org_id = _org_id(current_user)
+    if org_id:
+        org_row = await db.execute(select(Organisation).where(Organisation.organisation_id == org_id))
+        org = org_row.scalar_one_or_none()
+        payroll_cfg = ((org.hr_settings or {}) if org else {}).get("payroll") or {}
 
     res = preview_salary_v2(
         as_of=as_of,
@@ -580,6 +621,9 @@ async def v2_preview(
         group_items_by_group_id=group_items_by_group_id,
         statutory_cfg_by_code=statutory_cfg_by_code,
         employee_overrides=overrides,
+        wage_proration_factor=wage_pf,
+        template_engine_meta=tmpl_meta or None,
+        payroll_cfg=payroll_cfg,
     )
     elapsed_ms = int((time.perf_counter() - t0) * 1000)
     try:
@@ -606,6 +650,26 @@ async def v2_preview(
     if response is not None:
         response.headers["x-preview-trace-id"] = trace_id
 
+    preview_audit = None
+    include_audit = payload.include_engine_audit or (
+        wage_pf is not None and wage_pf < Decimal("1")
+    )
+    if include_audit:
+        preview_audit = {
+            "pay_period_id": str(payload.pay_period_id) if payload.pay_period_id else None,
+            "attendance_merged": bool(payload.pay_period_id and payload.employee_id),
+            "wage_proration_factor": float(wage_pf) if wage_pf is not None else None,
+            "template_prorate_with_attendance": bool(tmpl_meta.get("prorate_with_attendance")),
+            "attendance_breakdown": att_breakdown if payload.pay_period_id and payload.employee_id else None,
+        }
+        if res.proration_audit:
+            preview_audit = {**preview_audit, **res.proration_audit}
+        elif preview_audit.get("wage_proration_factor") is not None and preview_audit["wage_proration_factor"] < 1:
+            preview_audit["attendance_proration_suppressed_reason"] = (
+                "Wage factor is below 1 but no earning lines were prorated. "
+                "Check template prorate_with_attendance and component attendance_proratable flags."
+            )
+
     preview_body = SalaryPreviewResponse(
         as_of_date=as_of,
         template_id=payload.template_id,
@@ -613,6 +677,8 @@ async def v2_preview(
         trace_id=trace_id,
         template_version_id=template_version_id,
         resolved_versions=(resolved_versions_meta if payload.include_versions else None),
+        template_engine_meta=tmpl_meta if tmpl_meta else None,
+        preview_audit=preview_audit,
         variables={k: float(v) for k, v in (res.variables or {}).items()},
         lines=[
             {
@@ -773,6 +839,7 @@ async def v2_publish_template_version(
             current_user=current_user,
             label=payload.label,
             created_by_user_id=_user_id(current_user),
+            version_engine_meta_patch=payload.engine_meta,
         )
         return PublishedSalaryTemplateVersionOut(
             template_version_id=row.template_version_id,

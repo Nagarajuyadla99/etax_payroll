@@ -120,6 +120,8 @@ class SalaryTemplateVersion(Base):
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     created_by_user_id = Column(PGUUID(as_uuid=True), nullable=True)
 
+    meta = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
+
     __table_args__ = (
         CheckConstraint(
             "effective_to IS NULL OR effective_to >= effective_from",
@@ -148,6 +150,8 @@ class SalaryTemplateComponentVersion(Base):
     percentage_of = Column(String(100))
     formula = Column(Text)
     is_active = Column(Boolean, nullable=False, server_default=text("true"))
+
+    meta = Column(JSONB, nullable=False, server_default=text("'{}'::jsonb"))
 
     __table_args__ = (
         UniqueConstraint("template_version_id", "component_id", name="ux_stcv_tplver_component"),

@@ -1,7 +1,7 @@
 # payroll_system/schemas/org_schemas.py
 
-from pydantic import BaseModel, ConfigDict
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Optional
 from uuid import UUID
 from datetime import datetime
 
@@ -42,6 +42,28 @@ class OrganisationUpdate(BaseModel):
     postal_code: Optional[str] = None
     timezone: Optional[str] = None
     is_active: Optional[bool] = None
+
+
+class HrSettingsPatch(BaseModel):
+    """Partial update for organisations.hr_settings (deep-merged by section)."""
+
+    payroll: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="e.g. payable_days_mode=attendance_units, prorate_with_attendance=true",
+    )
+    attendance: Optional[dict[str, Any]] = Field(
+        default=None,
+        description="e.g. week_off_weekdays=[5,6] (Mon=0 … Sun=6)",
+    )
+
+
+class OrganisationHrSettingsOut(BaseModel):
+    organisation_id: UUID
+    hr_settings: dict[str, Any]
+    payroll_settings: dict[str, Any] = Field(default_factory=dict)
+    attendance_settings: dict[str, Any] = Field(default_factory=dict)
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrganisationOut(BaseModel):

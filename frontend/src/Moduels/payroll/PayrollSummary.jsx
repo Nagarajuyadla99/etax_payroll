@@ -6,8 +6,15 @@ export default function PayrollSummary(){
 
   const [id,setId] = useState("");
   const [summary,setSummary] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   usePrefilledPayrollRunId(setId);
+
+  const fmt = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v ?? "");
+  };
 
   const loadSummary = async () => {
 
@@ -16,9 +23,17 @@ export default function PayrollSummary(){
       return;
     }
 
-    const res = await getPayrollSummary(id);
-
-    setSummary(res.data);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getPayrollSummary(id);
+      setSummary(res.data);
+    } catch (e) {
+      setSummary(null);
+      setError(e?.response?.data?.detail || e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -49,12 +64,17 @@ export default function PayrollSummary(){
 
           <button
             onClick={loadSummary}
-            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-md"
+            disabled={loading}
+            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-md disabled:opacity-60"
           >
-            Get Summary
+            {loading ? "Loading…" : "Get Summary"}
           </button>
 
         </div>
+
+        {error && (
+          <p className="mt-3 text-sm text-red-600">{error}</p>
+        )}
 
       </div>
 
@@ -72,21 +92,30 @@ export default function PayrollSummary(){
             <div className="bg-green-50 p-4 rounded">
               <p className="text-gray-500">Earnings</p>
               <p className="text-green-600 font-semibold text-lg">
-                {summary.totals.earnings}
+                {fmt(summary.totals.earnings)}
               </p>
             </div>
 
             <div className="bg-red-50 p-4 rounded">
               <p className="text-gray-500">Deductions</p>
               <p className="text-red-600 font-semibold text-lg">
-                {summary.totals.deductions}
+                {fmt(summary.totals.deductions)}
               </p>
             </div>
+
+            {summary.totals.employer_contributions != null && Number(summary.totals.employer_contributions) !== 0 && (
+              <div className="bg-blue-50 p-4 rounded col-span-2 sm:col-span-1">
+                <p className="text-gray-500">Employer contributions (not deducted from net)</p>
+                <p className="text-blue-700 font-semibold text-lg">
+                  {fmt(summary.totals.employer_contributions)}
+                </p>
+              </div>
+            )}
 
             <div className="bg-red-50 p-4 rounded">
               <p className="text-gray-500">Net Salary</p>
               <p className="text-red-700 font-semibold text-lg">
-                {summary.totals.net}
+                {fmt(summary.totals.net)}
               </p>
             </div>
 

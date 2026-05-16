@@ -7,8 +7,15 @@ export default function PayrollRegister(){
   const navigate = useNavigate()
   const [id,setId] = useState("");
   const [rows,setRows] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
   usePrefilledPayrollRunId(setId);
+
+  const fmt = (v) => {
+    const n = Number(v);
+    return Number.isFinite(n) ? n.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : String(v ?? "");
+  };
 
   const load = async () => {
 
@@ -17,9 +24,17 @@ export default function PayrollRegister(){
       return;
     }
 
-    const res = await getPayrollRegister(id);
-
-    setRows(res.data.register);
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await getPayrollRegister(id);
+      setRows(res.data.register || []);
+    } catch (e) {
+      setRows([]);
+      setError(e?.response?.data?.detail || e.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,12 +72,15 @@ export default function PayrollRegister(){
 
           <button
             onClick={load}
-            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-md"
+            disabled={loading}
+            className="bg-indigo-600 hover:bg-green-700 text-white px-6 py-2 rounded-md disabled:opacity-60"
           >
-            Load Register
+            {loading ? "Loading…" : "Load Register"}
           </button>
 
         </div>
+
+        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
 
       </div>
 
@@ -75,9 +93,16 @@ export default function PayrollRegister(){
           <thead className="bg-gray-100 text-gray-700 text-sm">
             <tr>
               <th className="text-left p-3 border-b">Employee</th>
+              <th className="text-left p-3 border-b">Mode</th>
+              <th className="text-left p-3 border-b">Cal.</th>
+              <th className="text-left p-3 border-b">H/WO</th>
+              <th className="text-left p-3 border-b">Working</th>
+              <th className="text-left p-3 border-b">Payable</th>
+              <th className="text-left p-3 border-b">Absent</th>
+              <th className="text-left p-3 border-b">Factor</th>
               <th className="text-left p-3 border-b">Earnings</th>
               <th className="text-left p-3 border-b">Deductions</th>
-              <th className="text-left p-3 border-b">Net Salary</th>
+              <th className="text-left p-3 border-b">Net</th>
             </tr>
           </thead>
 
@@ -86,7 +111,7 @@ export default function PayrollRegister(){
             {rows.length === 0 ? (
 
               <tr>
-                <td colSpan="4" className="text-center p-6 text-gray-500">
+                <td colSpan="12" className="text-center p-6 text-gray-500">
                   No payroll data loaded
                 </td>
               </tr>
@@ -98,10 +123,21 @@ export default function PayrollRegister(){
                   key={r.employee_id}
                   className="hover:bg-gray-50"
                 >
-                  <td className="p-3 border-b">{r.employee_id}</td>
-                  <td className="p-3 border-b text-green-600">{r.earnings}</td>
-                  <td className="p-3 border-b text-red-500">{r.deductions}</td>
-                  <td className="p-3 border-b font-medium">{r.net_salary}</td>
+                  <td className="p-3 border-b font-mono text-xs">{String(r.employee_id).slice(0, 8)}…</td>
+                  <td className="p-3 border-b text-xs text-gray-600">{r.payable_days_mode ?? "—"}</td>
+                  <td className="p-3 border-b text-gray-600">{r.calendar_days ?? "—"}</td>
+                  <td className="p-3 border-b text-xs text-gray-600">
+                    {r.holiday_units != null || r.week_off_units != null
+                      ? `${r.holiday_units ?? 0}/${r.week_off_units ?? 0}`
+                      : "—"}
+                  </td>
+                  <td className="p-3 border-b text-gray-600">{r.total_working_days ?? "—"}</td>
+                  <td className="p-3 border-b text-gray-600">{r.payable_days ?? "—"}</td>
+                  <td className="p-3 border-b text-gray-600">{r.absent_units ?? "—"}</td>
+                  <td className="p-3 border-b text-gray-600">{r.wage_proration_factor ?? "—"}</td>
+                  <td className="p-3 border-b text-green-600">{fmt(r.earnings)}</td>
+                  <td className="p-3 border-b text-red-500">{fmt(r.deductions)}</td>
+                  <td className="p-3 border-b font-medium">{fmt(r.net_salary)}</td>
                 </tr>
               ))
 

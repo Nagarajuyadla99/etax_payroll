@@ -29,11 +29,15 @@ from crud.payroll_crud import (
     verify_payroll_run_replay,
     build_payroll_execution_trace,
     mark_payroll_run_queued,
+    reset_payroll_run_for_reprocess,
 )
 from services.payroll_report_service import generate_salary_statement,generate_tds_summary,generate_payroll_register
 from services.payroll_attendance_summary_service import build_pay_period_attendance_summary
+from services.payroll_attendance_validation import PayrollAttendanceValidationError
+from services.payroll_process_policy import PayrollProcessBlockedError
 from utils.rbac import require_roles
 from utils.idempotency import idempotency_replay_or_none, idempotency_store
+from utils.tenant_guard import require_same_org
 from services.payroll_lifecycle_service import (
     approve_payroll_lifecycle,
     deny_if_locked_with_audit,
@@ -50,11 +54,33 @@ router = APIRouter(
 
 
 def _org_id(current_user):
-    return getattr(current_user, "organisation_id", None) or getattr(current_user, "org_id", None)
+    raw = getattr(current_user, "organisation_id", None) or getattr(current_user, "org_id", None)
+    if raw is None:
+        return None
+    return raw if isinstance(raw, UUID) else UUID(str(raw))
+
+
+def _require_org_id(current_user) -> UUID:
+    org_id = _org_id(current_user)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organisation context missing")
+    return org_id
 
 
 def _user_id(current_user):
     return getattr(current_user, "user_id", None) or getattr(current_user, "id", None)
+
+
+def _http_payroll_error(exc: Exception) -> HTTPException:
+    """Map payroll policy / validation failures to structured 400 responses."""
+    if isinstance(exc, (PayrollAttendanceValidationError, PayrollProcessBlockedError)):
+        return HTTPException(status_code=400, detail=exc.detail)
+    if isinstance(exc, ValueError):
+        return HTTPException(
+            status_code=400,
+            detail={"code": "PAYROLL_VALIDATION_ERROR", "message": str(exc)},
+        )
+    return HTTPException(status_code=400, detail=str(exc))
 
 
 # ============================================================
@@ -73,8 +99,10 @@ async def create_pay_period_route(
     current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
+    org_id = _require_org_id(current_user)
+
     try:
-        period = await create_pay_period(db, data)
+        period = await create_pay_period(db, data, organisation_id=org_id)
         return period
 
     except ValueError as e:
@@ -100,8 +128,10 @@ async def create_new_payroll(
     current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
+    org_id = _require_org_id(current_user)
+
     try:
-        payroll = await create_payroll(db, data)
+        payroll = await create_payroll(db, data, organisation_id=org_id)
         return payroll
 
     except ValueError as e:
@@ -126,13 +156,14 @@ async def get_pay_period_route(
     current_user = Depends(require_roles(["admin", "hr"])),
 ):
 
+    org_id = _require_org_id(current_user)
     period = await get_pay_period(db, pay_period_id)
 
-    if not period:
-        raise HTTPException(
-            status_code=404,
-            detail="Pay period not found"
-        )
+    require_same_org(
+        org_id=org_id,
+        resource_org_id=getattr(period, "organisation_id", None) if period else None,
+        not_found_msg="Pay period not found",
+    )
 
     return period
 
@@ -453,8 +484,8 @@ async def batch_process_payrolls(
                 max_parallel=parallelism,
                 shadow_legacy=shadow_legacy,
             )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except (PayrollAttendanceValidationError, PayrollProcessBlockedError, ValueError) as e:
+            raise _http_payroll_error(e) from e
         results.append({"payroll_run_id": str(payroll_run_id), "status": "processed"})
 
     data = {"results": results}
@@ -469,6 +500,52 @@ async def batch_process_payrolls(
         response_json=data,
     )
     return data
+
+
+# ============================================================
+# REPROCESS / RESET
+# ============================================================
+
+@router.post(
+    "/{payroll_run_id}/reset-for-reprocess",
+    status_code=status.HTTP_200_OK,
+    summary="Clear payroll lines and stale snapshot so run can be processed with current attendance settings",
+)
+async def reset_payroll_for_reprocess(
+    payroll_run_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_user=Depends(require_roles(["admin", "hr"])),
+):
+    org_id = _org_id(current_user)
+    payroll = await get_payroll_by_id(db, payroll_run_id)
+    if not payroll:
+        raise HTTPException(status_code=404, detail="Payroll record not found")
+    if org_id and str(payroll.organisation_id) != str(org_id):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    uid = _user_id(current_user)
+    await deny_if_locked_with_audit(
+        db,
+        payroll,
+        org_id or payroll.organisation_id,
+        UUID(str(uid)) if uid else None,
+        "RESET_FOR_REPROCESS",
+    )
+
+    try:
+        updated = await reset_payroll_run_for_reprocess(db, payroll_run_id)
+    except PayrollProcessBlockedError as e:
+        raise _http_payroll_error(e) from e
+    except ValueError as e:
+        raise _http_payroll_error(e) from e
+
+    return {
+        "message": "Payroll run reset for reprocess. Process again to rebuild attendance snapshot and entries.",
+        "payroll_run_id": str(payroll_run_id),
+        "status": updated.status,
+        "execution_status": updated.execution_status,
+        "execution_meta": updated.execution_meta,
+    }
 
 
 # ============================================================
@@ -539,8 +616,8 @@ async def process_payroll(
                 str(uid),
                 shadow_legacy,
             )
-        except ValueError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except (PayrollProcessBlockedError, PayrollAttendanceValidationError, ValueError) as e:
+            raise _http_payroll_error(e) from e
 
         data = {
             "message": "Payroll queued for distributed processing",
@@ -569,8 +646,8 @@ async def process_payroll(
             max_parallel=parallelism,
             shadow_legacy=shadow_legacy,
         )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+    except (PayrollAttendanceValidationError, PayrollProcessBlockedError, ValueError) as e:
+        raise _http_payroll_error(e) from e
     except ProgrammingError:
         raise HTTPException(
             status_code=500,

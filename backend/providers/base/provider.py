@@ -11,6 +11,7 @@ class BeneficiaryCreateRequest:
     ifsc: str
     email: str | None = None
     phone: str | None = None
+    reference_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -22,7 +23,7 @@ class BeneficiaryCreateResponse:
 
 @dataclass(frozen=True)
 class PayoutRequest:
-    amount_inr: int  # smallest unit not needed for INR in most APIs; keep int for safety
+    amount_inr: int  # integer paise (INR × 100)
     beneficiary_id: str
     reference_id: str
     narration: str | None = None

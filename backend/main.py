@@ -6,7 +6,7 @@ from uuid import uuid4
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -30,10 +30,12 @@ from api.reconciliation_routes import router as reconciliation_router
 from api.ops_routes import router as ops_router
 from api.webhooks_routes import router as webhooks_router
 from api.provider_beneficiary_routes import router as provider_beneficiary_router
+from api.provider_config_routes import router as provider_config_router
 from api.fraud_routes import router as fraud_router
 from api.workflow_routes import router as workflow_router
 from api.org_reporting_routes import router as org_reporting_router
 from api.events_routes import router as events_router
+from api.dashboard_routes import router as dashboard_router
 import uvicorn
 
 
@@ -72,6 +74,10 @@ from models.salary_version_models import (
 app = FastAPI()
 API_PREFIX = "/api"
 AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "false").lower() == "true"
+# Production default: false — schema must be applied with Alembic before boot.
+# Set "true" only for legacy databases that predate migration ``f8e7d6c5b4a3`` / partial
+# applies, or for emergency self-heal (includes a **destructive** idempotency repair).
+ENABLE_STARTUP_SCHEMA_PATCH = os.getenv("ENABLE_STARTUP_SCHEMA_PATCH", "false").lower() == "true"
 
 _SALARY_V2_TABLES = (
     SalaryComponentGroup.__table__,
@@ -92,10 +98,22 @@ _SALARY_V2_TABLES = (
 
 
 def _ensure_salary_v2_tables(sync_conn) -> None:
+    """
+    **Compatibility:** ``CREATE TABLE IF NOT EXISTS`` for Salary V2 + idempotency ORM tables.
+
+    Redundant when revision ``2e3bd6785936`` (or later) has been applied; safe no-op then.
+    """
     Base.metadata.create_all(sync_conn, tables=list(_SALARY_V2_TABLES), checkfirst=True)
 
 
 def _repair_api_idempotency_schema(sync_conn) -> None:
+    """
+    **Legacy / unsafe:** drops ``api_idempotency_keys`` if an ancient wrong shape is detected,
+    then recreates from the ORM model.
+
+    Do **not** rely on this in production: run Alembic instead. Kept only behind
+    ``ENABLE_STARTUP_SCHEMA_PATCH=true`` for one-off recovery.
+    """
     sync_conn.execute(
         text(
             "DO $$ BEGIN "
@@ -136,16 +154,6 @@ for _o in os.getenv("CORS_ORIGINS", "").split(","):
 
 # Any localhost / loopback port (covers CRA port changes, IPv6 ::1, etc.)
 _local_origin_re = r"https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$"
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_origin_regex=_local_origin_re,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-    expose_headers=["*"],
-)
 
 app.add_middleware(RequestContextMiddleware)
 app.add_middleware(SecurityMiddleware)
@@ -201,6 +209,19 @@ async def request_logging_middleware(request: Request, call_next):
     return response
 
 
+# CORS must be registered after other middleware so it stays outermost: when
+# request_logging catches errors, the JSONResponse still passes through CORSMiddleware.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_origin_regex=_local_origin_re,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
+
 # include router
 app.include_router(attendance_router, prefix=API_PREFIX)
 app.include_router(employee_router, prefix=API_PREFIX)
@@ -224,10 +245,12 @@ app.include_router(reconciliation_router, prefix=API_PREFIX)
 app.include_router(ops_router, prefix=API_PREFIX)
 app.include_router(webhooks_router, prefix=API_PREFIX)
 app.include_router(provider_beneficiary_router, prefix=API_PREFIX)
+app.include_router(provider_config_router, prefix=API_PREFIX)
 app.include_router(fraud_router, prefix=API_PREFIX)
 app.include_router(workflow_router, prefix=API_PREFIX)
 app.include_router(org_reporting_router, prefix=API_PREFIX)
 app.include_router(events_router, prefix=API_PREFIX)
+app.include_router(dashboard_router, prefix=API_PREFIX)
 
 
 # Used by deploy pipeline / load balancers (health check on localhost:9000)
@@ -259,8 +282,17 @@ async def startup():
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
-    # Safety for environments where Alembic wasn't applied but the app code expects
-    # payroll lock fields. This keeps the app running without changing business logic.
+    if not ENABLE_STARTUP_SCHEMA_PATCH:
+        logger.info(
+            "Startup schema patch skipped (ENABLE_STARTUP_SCHEMA_PATCH=false). "
+            "Ensure `alembic upgrade head` has been applied (includes f8e7d6c5b4a3 for legacy parity)."
+        )
+        return
+
+    logger.warning(
+        "ENABLE_STARTUP_SCHEMA_PATCH=true: applying runtime DDL — deprecated. "
+        "Migrate to Alembic-only and set this env to false."
+    )
     async with engine.begin() as conn:
         await conn.execute(
             text(
@@ -424,6 +456,20 @@ async def startup():
                 "FOREIGN KEY (lifecycle_locked_by) REFERENCES users(user_id) ON DELETE SET NULL; "
                 "END IF; "
                 "END $$;"
+            )
+        )
+        await conn.execute(
+            text(
+                "CREATE TABLE IF NOT EXISTS payroll_lifecycle_audit ("
+                "audit_id uuid PRIMARY KEY DEFAULT gen_random_uuid(),"
+                "organisation_id uuid NOT NULL REFERENCES organisations(organisation_id) ON DELETE CASCADE,"
+                "user_id uuid REFERENCES users(user_id) ON DELETE SET NULL,"
+                "action varchar(64) NOT NULL,"
+                "entity_type varchar(64) NOT NULL,"
+                "entity_id uuid NOT NULL,"
+                "detail jsonb,"
+                "created_at timestamptz NOT NULL DEFAULT now()"
+                ")"
             )
         )
         await conn.run_sync(_repair_api_idempotency_schema)

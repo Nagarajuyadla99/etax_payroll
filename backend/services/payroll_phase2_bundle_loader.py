@@ -12,9 +12,11 @@ from typing import Any
 from uuid import UUID
 
 from fastapi.encoders import jsonable_encoder
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from crud.salary_phase2_crud import (
+    _org_id,
     get_derived_variables_for_preview,
     get_effective_org_statutory_config,
     get_group_items_with_components_for_preview,
@@ -23,7 +25,8 @@ from crud.salary_phase2_crud import (
     get_template_groups_with_codes_for_preview,
 )
 from crud.salary_version_crud import resolve_versioned_preview_bundle
-from models.salary_models import SalaryTemplateComponent
+from models.org_models import Organisation
+from models.salary_models import SalaryTemplate, SalaryTemplateComponent
 
 
 async def load_phase2_engine_bundle(
@@ -62,10 +65,22 @@ async def load_phase2_engine_bundle(
         derived_dicts = [jsonable_encoder(x) for x in vbundle["derived_variables"]]
         template_groups = jsonable_encoder(vbundle["template_groups"])
         group_items_by_group_id = jsonable_encoder(vbundle["group_items_by_group_id"])
+        template_engine_meta = dict(vbundle.get("template_engine_meta") or {})
 
         if not template_components and not template_groups:
             raise ValueError("Template version has no components or groups")
     else:
+        template_engine_meta = {}
+        tr = await db.execute(
+            select(SalaryTemplate).where(
+                SalaryTemplate.template_id == template_id,
+                SalaryTemplate.organisation_id == _org_id(current_user),
+            )
+        )
+        t = tr.scalar_one_or_none()
+        if t is not None:
+            template_engine_meta = dict(getattr(t, "meta", None) or {})
+
         template_components_raw = await get_template_components_for_preview(db, template_id, current_user)
         if not template_components_raw:
             raise ValueError("Template not found or has no components")
@@ -86,6 +101,21 @@ async def load_phase2_engine_bundle(
         template_components = [jsonable_encoder(x) for x in template_components_raw]
         template_groups = jsonable_encoder(template_groups)
         group_items_by_group_id = jsonable_encoder(group_items_by_group_id)
+
+    org_id = _org_id(current_user)
+    if org_id:
+        org_row = await db.execute(
+            select(Organisation).where(Organisation.organisation_id == org_id)
+        )
+        org = org_row.scalar_one_or_none()
+        payroll_cfg = ((org.hr_settings or {}) if org else {}).get("payroll") or {}
+        mode = str(payroll_cfg.get("payable_days_mode") or "").strip().lower()
+        enable_prorate = bool(payroll_cfg.get("prorate_with_attendance")) or mode == "attendance_units"
+        if enable_prorate:
+            template_engine_meta = {
+                **template_engine_meta,
+                "prorate_with_attendance": True,
+            }
 
     statutory_cfg_by_code: dict[str, dict] = {}
     for g in template_groups:
@@ -108,4 +138,5 @@ async def load_phase2_engine_bundle(
         "template_version_id": template_version_id,
         "resolved_versions": resolved_versions_meta,
         "resolved_dag": resolved_dag_meta,
+        "template_engine_meta": template_engine_meta,
     }

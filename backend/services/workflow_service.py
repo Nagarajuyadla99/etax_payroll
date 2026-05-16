@@ -174,19 +174,38 @@ async def can_decide_step(
 
 
 async def recompute_batch_status_from_approvals(db: AsyncSession, *, batch: SalaryBatch) -> None:
+    """
+    Approval-driven batch status. Does not downgrade payout lifecycle states.
+    Flow: hr_pending → finance_pending → approved
+    """
+    if batch.status in {"payout_in_progress", "paid", "failed", "held", "cancelled"}:
+        return
+
     res = await db.execute(
-        select(Approval.status).where(
+        select(Approval.step, Approval.status).where(
             Approval.entity_type == "salary_batch",
             Approval.entity_id == batch.batch_id,
             Approval.organisation_id == batch.organisation_id,
         )
     )
-    statuses = [r[0] for r in res.all()]
-    if statuses and all(s == "approved" for s in statuses):
+    rows = res.all()
+    if not rows:
+        return
+
+    statuses = [s for _, s in rows]
+    if any(s == "rejected" for s in statuses):
+        return
+
+    if all(s == "approved" for s in statuses):
         batch.status = "approved"
         return
-    # pending
-    # keep existing states if already moved forward; else use generic pending
-    if batch.status not in {"finance_pending", "approved"}:
+
+    by_step = {step: status for step, status in rows}
+    hr_status = by_step.get("HR")
+    finance_status = by_step.get("FINANCE")
+
+    if hr_status == "approved" and finance_status != "approved":
+        batch.status = "finance_pending"
+    elif batch.status not in {"approved", "finance_pending"}:
         batch.status = "hr_pending"
 

@@ -51,6 +51,11 @@ class SalaryBatch(Base):
         server_default=text("'draft'"),
     )  # draft/hr_pending/finance_pending/approved/payout_in_progress/paid/failed/held/cancelled
 
+    # bank_file | api — set on first disbursement action; mutually exclusive
+    disbursement_mode = Column(String(20), nullable=True)
+    disbursement_locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    payout_job_id = Column(String(64), nullable=True)
+
     created_by = Column(PGUUID(as_uuid=True), ForeignKey("users.user_id", ondelete="SET NULL"))
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
     updated_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now())
@@ -140,7 +145,7 @@ class Approval(Base):
 class PaymentArtifact(Base):
     __tablename__ = "payment_artifacts"
     __table_args__ = (
-        UniqueConstraint("batch_id", "kind", name="ux_payment_artifact_batch_kind"),
+        UniqueConstraint("batch_id", "kind", "version", name="ux_payment_artifact_batch_kind_version"),
     )
 
     artifact_id = Column(PGUUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -152,6 +157,7 @@ class PaymentArtifact(Base):
 
     kind = Column(String(30), nullable=False)  # bank_file
     format = Column(String(10), nullable=False)  # csv/txt/xml
+    version = Column(Integer, nullable=False, server_default=text("1"))
     storage_path = Column(Text, nullable=False)
     sha256 = Column(String(64), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), nullable=False, server_default=func.now())
