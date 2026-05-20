@@ -4,6 +4,20 @@
 
 export const ATTENDANCE_SECTIONS = [
   {
+    id: "setup",
+    title: "First-time setup",
+    description: "Required for new organisations — configure attendance before workforce modules.",
+    roles: ["admin"],
+    items: [
+      {
+        path: "/attendance/setup",
+        label: "Organisation setup wizard",
+        desc: "Sources, industry, cycle, payroll behaviors",
+        roles: ["admin"],
+      },
+    ],
+  },
+  {
     id: "daily",
     title: "Daily attendance",
     description: "Mark and review employee attendance for payroll.",
@@ -72,11 +86,14 @@ export const ATTENDANCE_QUICK_TABS = [
 ];
 
 export function filterSectionsByRole(sections, role) {
+  const r = String(role || "").toLowerCase();
+  const match = (roles) =>
+    !roles || roles.some((x) => String(x).toLowerCase() === r);
   return sections
-    .filter((sec) => !sec.roles || sec.roles.includes(role))
+    .filter((sec) => match(sec.roles))
     .map((sec) => ({
       ...sec,
-      items: sec.items.filter((it) => !it.roles || it.roles.includes(role)),
+      items: sec.items.filter((it) => match(it.roles)),
     }))
     .filter((sec) => sec.items.length > 0);
 }

@@ -10,6 +10,31 @@ export async function fetchWfAttendanceProfile() {
   return res.data;
 }
 
+export async function fetchWfSetupStatus() {
+  const res = await API.get("/wf/setup/status");
+  return res.data;
+}
+
+export async function fetchWfSetupOptions() {
+  const res = await API.get("/wf/setup/options");
+  return res.data;
+}
+
+export async function saveWfSetupProgress(step, payload) {
+  const res = await API.put("/wf/setup/progress", { step, payload });
+  return res.data;
+}
+
+export async function completeWfSetup(payload) {
+  const res = await API.post("/wf/setup/complete", payload);
+  return res.data;
+}
+
+export async function completeWfSetupFromProgress() {
+  const res = await API.post("/wf/setup/complete-from-progress");
+  return res.data;
+}
+
 export async function activateWfAttendanceProfile(payload) {
   const res = await API.post("/wf/attendance-profile/activate", payload);
   return res.data;

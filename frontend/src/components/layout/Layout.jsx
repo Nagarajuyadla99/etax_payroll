@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Navbar from "./Navbar";
 import Sidebar from "./Sidebar";
 import { Outlet, useLocation } from "react-router-dom";
+import WfSetupGuard from "../WfSetupGuard";
 import "../../styles/Layout.css";
 
 export default function Layout() {
@@ -80,7 +81,9 @@ export default function Layout() {
           </div>
           <main className={`content-area ${mounted ? "enter-content" : ""}`}>
             <div className="page-wrapper" key={location.pathname}>
-              <Outlet />
+              <WfSetupGuard>
+                <Outlet />
+              </WfSetupGuard>
             </div>
           </main>
         </div>
