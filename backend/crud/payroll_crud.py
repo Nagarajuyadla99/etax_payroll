@@ -609,6 +609,13 @@ async def process_payroll_run(
                 locked_by_payroll_run_id=payroll_run_id,
             )
         )
+        try:
+            from services.wf_snapshot_service import persist_payroll_attendance_snapshot
+
+            await persist_payroll_attendance_snapshot(db, payroll, gathered, input_snapshot)
+        except Exception:
+            pass
+
         await db.commit()
         await db.refresh(payroll)
 

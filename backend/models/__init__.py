@@ -61,6 +61,58 @@ from .user_models import User, Role, UserRole
 # API infra
 from .idempotency_models import ApiIdempotencyKey
 
+# Workforce management extensions
+from .wf_models import (
+    AttendanceException,
+    AttendanceExceptionResolution,
+    AttendanceExceptionRule,
+    AttendanceSnapshot,
+    FeatureFlag,
+    LabelMaster,
+    LocalizationRegistry,
+    OrganizationFeatureFlag,
+    OrganizationLabel,
+    OrganisationAttendanceProfile,
+    OrganisationSourceConfig,
+    PolicySnapshot,
+    RawAttendanceEvent,
+    TerminologyPack,
+    WfApprovalAction,
+    WfApprovalRequest,
+    WfApprovalWorkflow,
+    WfAttendanceCycle,
+    WfAttendanceLayer,
+    WfAttendanceLayerResult,
+    WfAttendancePolicy,
+    WfAttendanceSourcePlugin,
+    WfAuditLog,
+    WfAttendanceFreezeLog,
+    WfPolicyPack,
+    WfPolicyRule,
+    WfPolicyVersion,
+    WfRecomputeJob,
+    WfRecomputeJobItem,
+    WfRosterAssignment,
+    WfRosterPlan,
+    WfShift,
+    WfShiftTemplate,
+    WfWeeklyOffRule,
+)
+
+from .wf_enterprise_models import (
+    AttendanceDevice,
+    DeviceHealthLog,
+    DeviceSyncLog,
+    WfAttendanceDailyProjection,
+    WfDeadLetterEvent,
+    WfFreezeRecord,
+    WfOpsMetric,
+    WfPolicyExecutionLog,
+    WfRosterStateLog,
+    WfShiftSegment,
+    WfShiftVersion,
+)
+
 
 
 

@@ -354,6 +354,7 @@ class AttendancePayrollScalars:
     payable_days_mode: str
     missing_working_dates: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    derived_scalar_flags: dict[str, Any] = field(default_factory=dict)
 
     def to_formula_variables(self) -> dict[str, Decimal]:
         return {
@@ -374,6 +375,15 @@ class AttendancePayrollScalars:
             "LOP_UNITS": self.lop_units,
             "WORKED_DAYS": self.worked_days,
             "WAGE_PRORATION_FACTOR": self.wage_proration_factor,
+            "NIGHT_SHIFT_ALLOWANCE_UNITS": Decimal(
+                "1" if self.derived_scalar_flags.get("night_shift_allowance_enabled") else "0"
+            ),
+            "HOLIDAY_SHIFT_ALLOWANCE_UNITS": Decimal(
+                "1" if self.derived_scalar_flags.get("holiday_shift_allowance_enabled") else "0"
+            ),
+            "SHIFT_DIFFERENTIAL_UNITS": Decimal(
+                "1" if self.derived_scalar_flags.get("shift_differential_enabled") else "0"
+            ),
         }
 
     def to_payroll_breakdown(self) -> dict[str, str]:
@@ -444,6 +454,8 @@ def compute_payroll_attendance_scalars(
     missing_working_dates: Sequence[date] | None = None,
     org_holiday_dates: frozenset[date] | None = None,
     week_off_weekdays: frozenset[int] | None = None,
+    roster_working_days: Decimal | None = None,
+    derived_payroll_flags: dict[str, Any] | None = None,
 ) -> AttendancePayrollScalars:
     """Compute payroll attendance scalars (see module docstring for modes)."""
     cfg = merge_payroll_cfg(payroll_cfg)
@@ -492,6 +504,7 @@ def compute_payroll_attendance_scalars(
             holiday_units=hol_for_total,
             week_off_units=wo_for_total,
             payroll_cfg=cfg,
+            roster_working_days=roster_working_days,
         )
 
         if override_payable is not None:

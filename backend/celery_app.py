@@ -19,6 +19,7 @@ def make_celery() -> Celery:
             "tasks.reconciliation_tasks",
             "tasks.event_tasks",
             "tasks.banking_ops_tasks",
+            "tasks.wf_attendance_tasks",
         ],
     )
 
@@ -41,12 +42,14 @@ def make_celery() -> Celery:
             Queue("reconciliation", Exchange("reconciliation"), routing_key="reconciliation"),
             Queue("banking_ops", Exchange("banking_ops"), routing_key="banking_ops"),
             Queue("default", Exchange("default"), routing_key="default"),
+            Queue("attendance", Exchange("attendance"), routing_key="attendance"),
         ),
         task_routes={
             "payout.*": {"queue": "payouts"},
             "reconciliation.*": {"queue": "reconciliation"},
             "banking.*": {"queue": "banking_ops"},
             "events.*": {"queue": "default"},
+            "wf.*": {"queue": "attendance"},
         },
     )
 

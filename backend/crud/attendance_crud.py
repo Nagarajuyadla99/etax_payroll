@@ -60,6 +60,17 @@ async def assert_attendance_range_unlocked(
         raise ValueError(
             "Attendance/leave inputs are locked for this date range (payroll finalized)."
         )
+    try:
+        from services.wf_freeze_service import is_attendance_range_frozen
+
+        if await is_attendance_range_frozen(db, organisation_id, range_start, range_end):
+            raise ValueError(
+                "Attendance is frozen for this date range (workforce freeze active)."
+            )
+    except ValueError:
+        raise
+    except Exception:
+        pass
 
 
 # ------------------------------------------------------------
@@ -93,6 +104,12 @@ async def create_attendance(db: AsyncSession, payload: AttendanceCreate) -> Atte
         db.add(attendance)
         await db.commit()
         await db.refresh(attendance)
+        try:
+            from services.wf_dual_write_service import mirror_attendance_to_raw
+
+            await mirror_attendance_to_raw(db, attendance, event_type="IN")
+        except Exception:
+            pass
         return attendance
     except IntegrityError:
         await db.rollback()

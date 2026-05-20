@@ -63,7 +63,11 @@ export default function AttendanceTablePage() {
   }, []);
 
   return (
-    <div className="p-6">
+    <div className="max-w-6xl mx-auto p-6">
+      <header className="mb-4">
+        <h1 className="text-xl font-semibold text-slate-900">Attendance records</h1>
+        <p className="text-sm text-slate-500">All saved attendance rows for your organisation.</p>
+      </header>
       <style>{`
         .att-table-scroll {
           overflow-y: auto;

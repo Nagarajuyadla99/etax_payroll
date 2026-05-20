@@ -36,6 +36,11 @@ class AttendanceOut(AttendanceCreate):
     day_fraction: Optional[Decimal] = None
     is_locked: bool = False
     updated_at: Optional[datetime] = None
+    payable_fraction: Optional[Decimal] = None
+    attendance_source: Optional[str] = None
+    approval_status: Optional[str] = None
+    overtime_hours: Optional[Decimal] = None
+    engine_version: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

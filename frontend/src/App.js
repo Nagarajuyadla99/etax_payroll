@@ -16,7 +16,9 @@ import EmployeeInput from "./Moduels/Employees/EmployeeInput";
 import Tax from "./components/pages/Tax";
 import NoticeBoard from "./components/layout/NoticeBoard";
 import Help from "./components/pages/Help";
-import AttendancePage from "./Moduels/attendance/AttendancePage";
+import AttendanceLayout from "./components/pages/Attendance/AttendanceLayout";
+import AttendanceHub from "./components/pages/Attendance/AttendanceHub";
+import MarkAttendancePage from "./Moduels/attendance/MarkAttendancePage";
 import PayrollHome from "./Moduels/Salary/PayrollHome";
 import SalaryComponents from "./Moduels/Salary/SalaryComponent";
 import SalaryTemplatess from "./Moduels/Salary/SalaryTemplates";
@@ -30,6 +32,20 @@ import LeaveApproval from "./components/pages/Attendance/LeaveApproval";
 import AttendanceBulkUpload from "./components/pages/Attendance/AttendanceBulkUpload";
 import DailyAttendance from "./components/pages/Attendance/DailyAttendance";
 import ApplyCalendar from "./components/pages/Attendance/ApplyCalendar";
+import HolidayManagement from "./components/pages/Attendance/HolidayManagement";
+import WfAttendanceSetup from "./components/pages/Attendance/WfAttendanceSetup";
+import WfExceptions from "./components/pages/Attendance/WfExceptions";
+import WfApprovals from "./components/pages/Attendance/WfApprovals";
+import WfPolicies from "./components/pages/Attendance/WfPolicies";
+import WfLabels from "./components/pages/Attendance/WfLabels";
+import WfLivePunches from "./components/pages/Attendance/WfLivePunches";
+import WfDashboard from "./components/pages/Attendance/WfDashboard";
+import WfRosterBoard from "./components/pages/Attendance/WfRosterBoard";
+import WfDevices from "./components/pages/Attendance/WfDevices";
+import WfOpsConsole from "./components/pages/Attendance/WfOpsConsole";
+import WfPolicyTrace from "./components/pages/Attendance/WfPolicyTrace";
+import WfFreeze from "./components/pages/Attendance/WfFreeze";
+import AttendanceTablePage from "./Moduels/attendance/AttendanceTablePage";
 import BankPayments from "./Moduels/Bank/BankPayment";
 import StatutoryTax from "./Moduels/Statutary/StatutoryTax";
 import Audit from "./Moduels/Audit/AuditLogViewer";
@@ -124,13 +140,56 @@ export default function App() {
               <Route path="/settings" element={<SettingsPage />} />
               <Route path="/security" element={<SecurityPage />} />
 
-              <Route path="/attendance" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><AttendancePage /></ProtectedRoute>} />
-              <Route path="/attendanceCalendar" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><DailyAttendance /></ProtectedRoute>} />
-              <Route path="/attendanceSummary" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><AttendanceSummary /></ProtectedRoute>} />
-              <Route path="/attendanceTable" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><AttendanceTable /></ProtectedRoute>} />
-              <Route path="/attendanceBulkUpload" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><AttendanceBulkUpload /></ProtectedRoute>} />
-              <Route path="/attendanceApplyCalendar" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><ApplyCalendar /></ProtectedRoute>} />
-              <Route path="/leaveApproval" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><LeaveApproval /></ProtectedRoute>} />
+              <Route
+                path="/attendance"
+                element={
+                  <ProtectedRoute allowedRoles={["admin", "hr"]}>
+                    <AttendanceLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route index element={<AttendanceHub />} />
+                <Route path="mark" element={<MarkAttendancePage />} />
+                <Route path="records" element={<AttendanceTablePage />} />
+                <Route path="calendar" element={<DailyAttendance />} />
+                <Route path="summary" element={<AttendanceSummary />} />
+                <Route path="bulk" element={<AttendanceBulkUpload />} />
+                <Route path="apply-calendar" element={<ApplyCalendar />} />
+                <Route path="leave" element={<LeaveApproval />} />
+                <Route path="holidays" element={<HolidayManagement />} />
+                <Route path="dashboard" element={<WfDashboard />} />
+                <Route path="punches" element={<WfLivePunches />} />
+                <Route path="roster" element={<WfRosterBoard />} />
+                <Route path="exceptions" element={<WfExceptions />} />
+                <Route path="approvals" element={<WfApprovals />} />
+                <Route path="setup" element={<ProtectedRoute allowedRoles={["admin"]}><WfAttendanceSetup /></ProtectedRoute>} />
+                <Route path="policies" element={<ProtectedRoute allowedRoles={["admin"]}><WfPolicies /></ProtectedRoute>} />
+                <Route path="freeze" element={<ProtectedRoute allowedRoles={["admin"]}><WfFreeze /></ProtectedRoute>} />
+                <Route path="devices" element={<WfDevices />} />
+                <Route path="policy-trace" element={<WfPolicyTrace />} />
+                <Route path="ops" element={<ProtectedRoute allowedRoles={["admin"]}><WfOpsConsole /></ProtectedRoute>} />
+                <Route path="labels" element={<ProtectedRoute allowedRoles={["admin"]}><WfLabels /></ProtectedRoute>} />
+              </Route>
+              {/* Legacy URLs → new paths (bookmarks still work) */}
+              <Route path="/attendanceTable" element={<Navigate to="/attendance/records" replace />} />
+              <Route path="/attendanceCalendar" element={<Navigate to="/attendance/calendar" replace />} />
+              <Route path="/attendanceSummary" element={<Navigate to="/attendance/summary" replace />} />
+              <Route path="/attendanceBulkUpload" element={<Navigate to="/attendance/bulk" replace />} />
+              <Route path="/attendanceApplyCalendar" element={<Navigate to="/attendance/apply-calendar" replace />} />
+              <Route path="/leaveApproval" element={<Navigate to="/attendance/leave" replace />} />
+              <Route path="/attendanceHolidays" element={<Navigate to="/attendance/holidays" replace />} />
+              <Route path="/attendanceSetup" element={<Navigate to="/attendance/setup" replace />} />
+              <Route path="/attendanceExceptions" element={<Navigate to="/attendance/exceptions" replace />} />
+              <Route path="/attendanceApprovals" element={<Navigate to="/attendance/approvals" replace />} />
+              <Route path="/attendancePolicies" element={<Navigate to="/attendance/policies" replace />} />
+              <Route path="/attendanceLabels" element={<Navigate to="/attendance/labels" replace />} />
+              <Route path="/attendancePunches" element={<Navigate to="/attendance/punches" replace />} />
+              <Route path="/attendanceWfDashboard" element={<Navigate to="/attendance/dashboard" replace />} />
+              <Route path="/attendanceRoster" element={<Navigate to="/attendance/roster" replace />} />
+              <Route path="/attendanceDevices" element={<Navigate to="/attendance/devices" replace />} />
+              <Route path="/attendanceOps" element={<Navigate to="/attendance/ops" replace />} />
+              <Route path="/attendancePolicyTrace" element={<Navigate to="/attendance/policy-trace" replace />} />
+              <Route path="/attendanceFreeze" element={<Navigate to="/attendance/freeze" replace />} />
 
               <Route path="/pay-periods" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><PayPeriods /></ProtectedRoute>} />
               <Route path="/payroll-runs" element={<ProtectedRoute allowedRoles={["admin", "hr"]}><PayrollRuns /></ProtectedRoute>} />

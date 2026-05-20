@@ -21,6 +21,10 @@ async def create_organisation(db: AsyncSession, payload: OrganisationCreate) -> 
     org = Organisation(**payload.model_dump())
     try:
         db.add(org)
+        await db.flush()
+        from services.wf_profile_service import ensure_attendance_profile
+
+        await ensure_attendance_profile(db, org.organisation_id)
         await db.commit()
         await db.refresh(org)
         return org

@@ -36,6 +36,8 @@ from api.workflow_routes import router as workflow_router
 from api.org_reporting_routes import router as org_reporting_router
 from api.events_routes import router as events_router
 from api.dashboard_routes import router as dashboard_router
+from api.wf_routes import router as wf_router
+from api.wf_enterprise_routes import router as wf_enterprise_router
 import uvicorn
 
 
@@ -78,6 +80,80 @@ AUTO_CREATE_TABLES = os.getenv("AUTO_CREATE_TABLES", "false").lower() == "true"
 # Set "true" only for legacy databases that predate migration ``f8e7d6c5b4a3`` / partial
 # applies, or for emergency self-heal (includes a **destructive** idempotency repair).
 ENABLE_STARTUP_SCHEMA_PATCH = os.getenv("ENABLE_STARTUP_SCHEMA_PATCH", "false").lower() == "true"
+
+from models.wf_models import (
+    AttendanceException,
+    AttendanceExceptionResolution,
+    AttendanceExceptionRule,
+    AttendanceSnapshot,
+    FeatureFlag,
+    LabelMaster,
+    LocalizationRegistry,
+    OrganizationFeatureFlag,
+    OrganizationLabel,
+    OrganisationAttendanceProfile,
+    OrganisationSourceConfig,
+    PolicySnapshot,
+    RawAttendanceEvent,
+    TerminologyPack,
+    WfApprovalAction,
+    WfApprovalRequest,
+    WfApprovalWorkflow,
+    WfAttendanceCycle,
+    WfAttendanceFreezeLog,
+    WfAttendanceLayer,
+    WfAttendanceLayerResult,
+    WfAttendancePolicy,
+    WfAttendanceSourcePlugin,
+    WfAuditLog,
+    WfPolicyPack,
+    WfPolicyRule,
+    WfPolicyVersion,
+    WfRecomputeJob,
+    WfRecomputeJobItem,
+    WfRosterAssignment,
+    WfRosterPlan,
+    WfShift,
+    WfShiftTemplate,
+    WfWeeklyOffRule,
+)
+
+_WF_TABLES = (
+    FeatureFlag.__table__,
+    OrganizationFeatureFlag.__table__,
+    OrganisationAttendanceProfile.__table__,
+    WfAttendanceSourcePlugin.__table__,
+    OrganisationSourceConfig.__table__,
+    LabelMaster.__table__,
+    TerminologyPack.__table__,
+    OrganizationLabel.__table__,
+    LocalizationRegistry.__table__,
+    RawAttendanceEvent.__table__,
+    WfShiftTemplate.__table__,
+    WfShift.__table__,
+    WfRosterPlan.__table__,
+    WfRosterAssignment.__table__,
+    WfAttendanceCycle.__table__,
+    WfWeeklyOffRule.__table__,
+    WfPolicyPack.__table__,
+    WfAttendancePolicy.__table__,
+    WfPolicyRule.__table__,
+    WfPolicyVersion.__table__,
+    AttendanceException.__table__,
+    AttendanceExceptionRule.__table__,
+    AttendanceExceptionResolution.__table__,
+    WfRecomputeJob.__table__,
+    WfRecomputeJobItem.__table__,
+    AttendanceSnapshot.__table__,
+    PolicySnapshot.__table__,
+    WfAttendanceLayer.__table__,
+    WfAttendanceLayerResult.__table__,
+    WfApprovalWorkflow.__table__,
+    WfApprovalRequest.__table__,
+    WfApprovalAction.__table__,
+    WfAttendanceFreezeLog.__table__,
+    WfAuditLog.__table__,
+)
 
 _SALARY_V2_TABLES = (
     SalaryComponentGroup.__table__,
@@ -251,6 +327,8 @@ app.include_router(workflow_router, prefix=API_PREFIX)
 app.include_router(org_reporting_router, prefix=API_PREFIX)
 app.include_router(events_router, prefix=API_PREFIX)
 app.include_router(dashboard_router, prefix=API_PREFIX)
+app.include_router(wf_router, prefix=API_PREFIX)
+app.include_router(wf_enterprise_router, prefix=API_PREFIX)
 
 
 # Used by deploy pipeline / load balancers (health check on localhost:9000)
@@ -272,6 +350,112 @@ def metrics():
 
 
 # create tables on startup
+_WF_TABLES = None
+
+
+def _get_wf_tables():
+    global _WF_TABLES
+    if _WF_TABLES is None:
+        from models.wf_models import (
+            AttendanceException,
+            AttendanceExceptionResolution,
+            AttendanceExceptionRule,
+            AttendanceSnapshot,
+            FeatureFlag,
+            LabelMaster,
+            LocalizationRegistry,
+            OrganizationFeatureFlag,
+            OrganizationLabel,
+            OrganisationAttendanceProfile,
+            OrganisationSourceConfig,
+            PolicySnapshot,
+            RawAttendanceEvent,
+            TerminologyPack,
+            WfApprovalAction,
+            WfApprovalRequest,
+            WfApprovalWorkflow,
+            WfAttendanceCycle,
+            WfAttendanceFreezeLog,
+            WfAttendanceLayer,
+            WfAttendanceLayerResult,
+            WfAttendancePolicy,
+            WfAttendanceSourcePlugin,
+            WfAuditLog,
+            WfPolicyPack,
+            WfPolicyRule,
+            WfPolicyVersion,
+            WfRecomputeJob,
+            WfRecomputeJobItem,
+            WfRosterAssignment,
+            WfRosterPlan,
+            WfShift,
+            WfShiftTemplate,
+            WfWeeklyOffRule,
+        )
+        from models.wf_enterprise_models import (
+            AttendanceDevice,
+            DeviceHealthLog,
+            DeviceSyncLog,
+            WfAttendanceDailyProjection,
+            WfDeadLetterEvent,
+            WfFreezeRecord,
+            WfOpsMetric,
+            WfPolicyExecutionLog,
+            WfRosterStateLog,
+            WfShiftSegment,
+            WfShiftVersion,
+        )
+
+        _WF_TABLES = [
+            FeatureFlag.__table__,
+            OrganizationFeatureFlag.__table__,
+            OrganisationAttendanceProfile.__table__,
+            WfAttendanceSourcePlugin.__table__,
+            OrganisationSourceConfig.__table__,
+            LabelMaster.__table__,
+            TerminologyPack.__table__,
+            OrganizationLabel.__table__,
+            LocalizationRegistry.__table__,
+            RawAttendanceEvent.__table__,
+            WfShiftTemplate.__table__,
+            WfShift.__table__,
+            WfRosterPlan.__table__,
+            WfRosterAssignment.__table__,
+            WfAttendanceCycle.__table__,
+            WfWeeklyOffRule.__table__,
+            WfPolicyPack.__table__,
+            WfAttendancePolicy.__table__,
+            WfPolicyRule.__table__,
+            WfPolicyVersion.__table__,
+            AttendanceException.__table__,
+            AttendanceExceptionRule.__table__,
+            AttendanceExceptionResolution.__table__,
+            WfRecomputeJob.__table__,
+            WfRecomputeJobItem.__table__,
+            AttendanceSnapshot.__table__,
+            PolicySnapshot.__table__,
+            WfAttendanceLayer.__table__,
+            WfAttendanceLayerResult.__table__,
+            WfApprovalWorkflow.__table__,
+            WfApprovalRequest.__table__,
+            WfApprovalAction.__table__,
+            WfAttendanceFreezeLog.__table__,
+            WfAuditLog.__table__,
+            WfShiftSegment.__table__,
+            WfShiftVersion.__table__,
+            WfRosterStateLog.__table__,
+            WfPolicyExecutionLog.__table__,
+            WfOpsMetric.__table__,
+            WfDeadLetterEvent.__table__,
+            AttendanceDevice.__table__,
+            DeviceHealthLog.__table__,
+            DeviceSyncLog.__table__,
+            WfFreezeRecord.__table__,
+            WfAttendanceDailyProjection.__table__,
+        ]
+    return _WF_TABLES
+
+
 @app.on_event("startup")
 async def startup():
     if AUTO_CREATE_TABLES:
@@ -281,6 +465,20 @@ async def startup():
         )
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
+            await conn.run_sync(
+                lambda c: Base.metadata.create_all(c, tables=_get_wf_tables(), checkfirst=True)
+            )
+
+    if os.getenv("WF_SEED_ON_STARTUP", "false").lower() == "true":
+        try:
+            from database import AsyncSessionLocal
+            from services.wf_seed_service import seed_wf_platform_data
+
+            async with AsyncSessionLocal() as db:
+                await seed_wf_platform_data(db)
+            logger.info("WF platform seed completed (WF_SEED_ON_STARTUP=true)")
+        except Exception as exc:
+            logger.warning("WF seed on startup failed: %s", exc)
 
     if not ENABLE_STARTUP_SCHEMA_PATCH:
         logger.info(
@@ -318,6 +516,19 @@ async def startup():
                 "ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT now()"
             )
         )
+        for stmt in (
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS payable_fraction numeric(5,4)",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS policy_result_json jsonb",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS attendance_source varchar(50)",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS approval_status varchar(20)",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS overtime_hours numeric(8,2)",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS late_minutes integer",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS early_exit_minutes integer",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS shift_id uuid",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS roster_assignment_id uuid",
+            "ALTER TABLE attendances ADD COLUMN IF NOT EXISTS engine_version varchar(20)",
+        ):
+            await conn.execute(text(stmt))
         await conn.execute(
             text("ALTER TABLE leaves ADD COLUMN IF NOT EXISTS cancelled_at timestamptz")
         )

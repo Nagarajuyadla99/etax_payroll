@@ -17,7 +17,7 @@ from sqlalchemy import (
     Index,
     text,
 )
-from sqlalchemy.dialects.postgresql import UUID as PG_UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID as PG_UUID
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from enum import Enum
@@ -81,6 +81,18 @@ class Attendance(Base):
         ForeignKey("employee_salary_assignments.salary_assignment_id", ondelete="CASCADE"),
         nullable=True,
     )
+
+    # WF engine extensions (additive; legacy clients may ignore)
+    payable_fraction = Column(Numeric(5, 4), nullable=True)
+    policy_result_json = Column(JSONB, nullable=True)
+    attendance_source = Column(String(50), nullable=True)
+    approval_status = Column(String(20), nullable=True)
+    overtime_hours = Column(Numeric(8, 2), nullable=True)
+    late_minutes = Column(Integer, nullable=True)
+    early_exit_minutes = Column(Integer, nullable=True)
+    shift_id = Column(PG_UUID(as_uuid=True), nullable=True)
+    roster_assignment_id = Column(PG_UUID(as_uuid=True), nullable=True)
+    engine_version = Column(String(20), nullable=True)
 
     salary_assignment = relationship("EmployeeSalaryAssignment", back_populates="attendance_records")
 
